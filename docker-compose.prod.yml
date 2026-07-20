@@ -1,0 +1,66 @@
+# Production dagitimi (tek VM). Calistirmadan once repo kokune
+# .env.production.example'i .env.production olarak kopyalayip
+# gercek degerlerle doldurun.
+#
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: isletme
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: isletme_yonetim
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # NOT: disariya port acilmiyor - sadece docker network icinden erisilir.
+
+  api:
+    build:
+      # api Dockerfile'i kendi klasorune gore yazildi (COPY requirements.txt .),
+      # bu yuzden context repo koku degil apps/api olmali - web'den farkli
+      # olarak api'nin monorepo paketlerine (packages/*) bagimliligi yok.
+      context: ./apps/api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://isletme:${POSTGRES_PASSWORD}@postgres:5432/isletme_yonetim
+      CORS_ORIGIN: https://${DOMAIN}
+      ENVIRONMENT: production
+    depends_on:
+      - postgres
+    # NOT: disariya port acilmiyor - tarayici API'ye hicbir zaman dogrudan
+    # istek atmaz, sadece web container'i (Next.js server) internal
+    # network uzerinden konusur.
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    environment:
+      API_URL: http://api:3001
+    depends_on:
+      - api
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - api
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

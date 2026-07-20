@@ -1,0 +1,12 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@isletme/shared": ["../../packages/shared/src"],
+      "@isletme/shared/*": ["../../packages/shared/src/*"],
+      "@isletme/types": ["../../packages/types/src"],
+      "@isletme/types/*": ["../../packages/types/src/*"]
+    }
+  }
+}

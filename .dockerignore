@@ -1,0 +1,11 @@
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+.turbo/
+**/.turbo/
+.git/
+.venv/
+apps/api/.venv/
+apps/mobile/node_modules/
+*.log
