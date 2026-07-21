@@ -82,9 +82,20 @@ const semenBatches: OptionSource = {
 const buyers: OptionSource = { endpoint: '/sales/buyers', label: label('name') };
 const feedItems: OptionSource = { endpoint: '/feed/items', label: label('name') };
 const medications: OptionSource = { endpoint: '/health-events/medications', label: label('name') };
+const breedingEventLabel = (e: ApiRecord): string =>
+  `${e.dam_tag_number ? String(e.dam_tag_number) : '?'} — Aşım #${String(e.id)} (${String(e.service_date)})`;
+
 const breedingEvents: OptionSource = {
   endpoint: '/breeding-events',
-  label: (e) => `Aşım #${String(e.id)} — ${String(e.service_date)}`,
+  label: breedingEventLabel,
+};
+
+// Gebelik kontrolu formunda kupe no'dan arama yapabilmek icin: sadece
+// tohumlanip henuz kontrol edilmemis asim kayitlari (sahada operasyonu
+// kolaylastirir - bkz. pregnancy-checks.breeding_event_id).
+const pendingBreedingEvents: OptionSource = {
+  endpoint: '/breeding-events?pending_check=true',
+  label: breedingEventLabel,
 };
 
 const mainResources: ResourceConfig[] = [
@@ -267,7 +278,7 @@ const mainResources: ResourceConfig[] = [
       { key: 'result_id', label: 'Sonuç', lookup: pregnancyResults },
     ],
     fields: [
-      { name: 'breeding_event_id', label: 'Aşım Kaydı', type: 'select', options: breedingEvents, required: true },
+      { name: 'breeding_event_id', label: 'Küpe No (Tohumlanmış, Kontrol Bekleyen)', type: 'select', options: pendingBreedingEvents, required: true },
       { name: 'check_date', label: 'Kontrol Tarihi', type: 'date', required: true },
       { name: 'method_id', label: 'Kontrol Yöntemi', type: 'select', options: pregnancyCheckMethods, required: true },
       { name: 'result_id', label: 'Sonuç', type: 'select', options: pregnancyResults, required: true },

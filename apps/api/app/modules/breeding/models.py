@@ -41,6 +41,13 @@ class BreedingEvent(TimestampMixin, Base):
     service_method = relationship("ServiceMethod")
     semen_batch = relationship("SemenBatch")
 
+    @property
+    def dam_tag_number(self) -> str | None:
+        """Sahada (kulak nosu ile) hayvan aramayi kolaylastirmak icin - dam_id
+        yerine dogrudan kupe no ile listelenebilsin diye (BreedingEventRead
+        uzerinden disariya acilir)."""
+        return self.dam.tag_number if self.dam else None
+
 
 class PregnancyCheck(TimestampMixin, Base):
     __tablename__ = "pregnancy_checks"

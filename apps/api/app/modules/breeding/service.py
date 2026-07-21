@@ -10,7 +10,7 @@ from datetime import date, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.exceptions import ConflictError, NotFoundError
 from app.modules.breeding.models import BreedingEvent, PregnancyCheck
@@ -53,10 +53,22 @@ def delete_breeding_event(db: Session, event_id: int) -> None:
         raise ConflictError("Bu aşım kaydı (gebelik kontrolleri var) silinemez.") from exc
 
 
-def list_breeding_events(db: Session, dam_id: uuid.UUID | None = None) -> list[BreedingEvent]:
-    stmt = select(BreedingEvent)
+def list_breeding_events(
+    db: Session, dam_id: uuid.UUID | None = None, pending_check: bool | None = None
+) -> list[BreedingEvent]:
+    stmt = select(BreedingEvent).options(joinedload(BreedingEvent.dam))
     if dam_id is not None:
         stmt = stmt.where(BreedingEvent.dam_id == dam_id)
+    if pending_check:
+        # Sahada gebelik kontrolu girilirken, tohumlamasi yapilip henuz
+        # kontrol edilmemis hayvanlari pulldown'da listeleyebilmek icin:
+        # kendisine bagli hic pregnancy_checks kaydi olmayan asim kayitlari.
+        has_check = (
+            select(PregnancyCheck.id)
+            .where(PregnancyCheck.breeding_event_id == BreedingEvent.id)
+            .exists()
+        )
+        stmt = stmt.where(~has_check)
     return list(db.scalars(stmt.order_by(BreedingEvent.service_date)).all())
 
 

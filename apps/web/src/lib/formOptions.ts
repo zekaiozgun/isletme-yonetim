@@ -8,7 +8,10 @@ import type { ResourceConfig } from './resources';
  * FieldConfig'i Client Component'e gecebilir (serilestirilebilir) hale
  * getirir (options.label fonksiyonu server'da kalir).
  */
-export async function loadFormOptions(resource: ResourceConfig): Promise<{
+export async function loadFormOptions(
+  resource: ResourceConfig,
+  currentValues?: ApiRecord
+): Promise<{
   options: Record<string, { value: string; label: string }[]>;
   clientFields: ClientFieldConfig[];
 }> {
@@ -25,6 +28,23 @@ export async function loadFormOptions(resource: ResourceConfig): Promise<{
         value: source.value ? source.value(item) : String(item.id),
         label: source.label(item),
       }));
+
+      // Duzenleme modunda: mevcut kaydin secili degeri, filtrelenmis bir
+      // secenek listesinde (orn. "sadece kontrol bekleyenler") artik
+      // bulunmuyorsa secim kutusundan kaybolmasin diye tek kayit olarak
+      // ayrica cekilip listeye eklenir.
+      const currentValue = currentValues?.[field.name];
+      if (currentValue !== undefined && currentValue !== null && !opts.some((o) => o.value === String(currentValue))) {
+        const baseEndpoint = endpoint.split('?')[0];
+        const current = await apiGetSafe<ApiRecord | null>(`${baseEndpoint}/${String(currentValue)}`, null);
+        if (current) {
+          opts.unshift({
+            value: source.value ? source.value(current) : String(current.id),
+            label: source.label(current),
+          });
+        }
+      }
+
       return [endpoint, opts] as const;
     })
   );

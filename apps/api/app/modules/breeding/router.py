@@ -25,8 +25,12 @@ def create_breeding_event(payload: BreedingEventCreate, db: Session = Depends(ge
 
 
 @router.get("", response_model=list[BreedingEventRead])
-def list_breeding_events(dam_id: uuid.UUID | None = None, db: Session = Depends(get_db)) -> list[BreedingEventRead]:
-    return service.list_breeding_events(db, dam_id=dam_id)
+def list_breeding_events(
+    dam_id: uuid.UUID | None = None,
+    pending_check: bool | None = None,
+    db: Session = Depends(get_db),
+) -> list[BreedingEventRead]:
+    return service.list_breeding_events(db, dam_id=dam_id, pending_check=pending_check)
 
 
 @router.get("/expected-calving-date")

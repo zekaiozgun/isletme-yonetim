@@ -15,7 +15,7 @@ export default async function EditResourcePage({ params }: { params: Promise<{ r
   const record = await apiGetSafe<ApiRecord | null>(`${resource.listEndpoint}/${id}`, null);
   if (!record) notFound();
 
-  const { options, clientFields } = await loadFormOptions(resource);
+  const { options, clientFields } = await loadFormOptions(resource, record);
   const updateAction = updateResource.bind(null, resource.slug, id);
   const deleteAction = deleteResource.bind(null, resource.slug, id);
 
