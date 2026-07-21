@@ -18,7 +18,7 @@ export default async function ResourceListPage({ params }: { params: Promise<{ r
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold text-slate-900">{resource.title}</h1>
         <Link
           href={`/${resource.slug}/new`}
