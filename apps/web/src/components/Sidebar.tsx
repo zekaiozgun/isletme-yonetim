@@ -3,34 +3,56 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { groupedResources } from '@/lib/resources';
+import { groupedResources, quickAccessResources } from '@/lib/resources';
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+  const quickAccess = quickAccessResources();
   const groups = groupedResources();
 
   return (
-    <ul className="space-y-5">
-      {groups.map((group) => (
-        <li key={group.group}>
-          <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
-            {group.group}
-          </div>
-          <ul className="space-y-0.5">
-            {group.items.map((resource) => (
-              <li key={resource.slug}>
-                <Link
-                  href={`/${resource.slug}`}
-                  onClick={onNavigate}
-                  className="block rounded px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-200"
-                >
-                  {resource.title}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </li>
-      ))}
-    </ul>
+    <div className="space-y-5">
+      <div className="border-b border-slate-200 pb-5">
+        <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+          Hızlı Erişim
+        </div>
+        <ul className="space-y-0.5">
+          {quickAccess.map((item) => (
+            <li key={item.slug}>
+              <Link
+                href={`/${item.slug}`}
+                onClick={onNavigate}
+                className="block rounded px-2 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-200"
+              >
+                {item.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <ul className="space-y-5">
+        {groups.map((group) => (
+          <li key={group.group}>
+            <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              {group.group}
+            </div>
+            <ul className="space-y-0.5">
+              {group.items.map((resource) => (
+                <li key={resource.slug}>
+                  <Link
+                    href={`/${resource.slug}`}
+                    onClick={onNavigate}
+                    className="block rounded px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-200"
+                  >
+                    {resource.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

@@ -525,3 +525,17 @@ export function groupedResources(): { group: string; items: ResourceConfig[] }[]
   }
   return groups;
 }
+
+/** Sahada en sık kullanılan veri giriş ekranlarına menüde üstte, tek listede hızlı erişim. */
+const quickAccessDefs: { slug: string; label: string }[] = [
+  { slug: 'animals', label: 'Hayvanlar' },
+  { slug: 'breeding-events', label: 'Aşım/Tohumlama Kayıtları' },
+  { slug: 'pregnancy-checks', label: 'Gebelik Kontrolleri' },
+  { slug: 'weight-records', label: 'Tartılar' },
+  { slug: 'pen-assignments', label: 'Padok Atamaları' },
+  { slug: 'health-events', label: 'Sağlık Olayları' },
+];
+
+export function quickAccessResources(): { slug: string; label: string }[] {
+  return quickAccessDefs.filter((item) => getResource(item.slug) !== undefined);
+}
