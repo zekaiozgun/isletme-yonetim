@@ -57,6 +57,6 @@ def handle_domain_error(request: Request, exc: DomainError) -> JSONResponse:
     return JSONResponse(status_code=422, content={"detail": str(exc)})
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health() -> dict[str, str]:
     return {"status": "ok"}
