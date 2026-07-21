@@ -47,7 +47,8 @@ export const reports: ReportConfig[] = [
   {
     slug: 'breeding-candidates',
     title: 'Tohumlanacak Hayvanlar',
-    description: '12 ay yaşına ulaşan düveler ve doğum sonrası bekleme süresini (45 gün) tamamlamış inekler.',
+    description:
+      '12 ay yaşına ulaşan düveler, doğum sonrası bekleme süresini (45 gün) tamamlamış inekler ve gebelik kontrolünde "Boş" çıkan hayvanlar.',
     endpoint: '/reports/breeding-candidates',
     columns: [
       { key: 'tag_number', label: 'Küpe No' },
@@ -55,7 +56,9 @@ export const reports: ReportConfig[] = [
       { key: 'age_months', label: 'Yaş', format: formatMonths },
       { key: 'reason', label: 'Sebep' },
       { key: 'last_calving_date', label: 'Son Doğum Tarihi', format: formatDate },
+      { key: 'last_service_date', label: 'Son Tohumlama Tarihi', format: formatDate },
     ],
+    rowHighlight: (row) => row.reason === 'Tekrar Kızgınlık / Boş',
   },
   {
     slug: 'bred-animals',

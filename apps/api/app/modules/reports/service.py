@@ -14,6 +14,7 @@ yoktur, bkz. asagidaki _classify_female):
   3) Aktif tohumlama dongusu, kontrol yok ya da SUPHELI -> Tohumlu (bekliyor)
   4) Aktif tohumlama dongusu, sonuc GEBE -> Gebe (+ Tohumlu listesinde de gorunur)
   5) Aktif tohumlama dongusu, sonuc BOS -> Tekrar Kizginlik / Bos Cikan
+     (+ Tohumlanacak Hayvanlar listesinde de gorunur - tekrar tohumlanmasi gereken bir hayvan)
 """
 
 import uuid
@@ -149,25 +150,37 @@ def _classify_all_active_females(db: Session, today: date) -> list[tuple[Animal,
     return results
 
 
+_BREEDING_CANDIDATE_REASONS = {
+    "candidate_new": "İlk Tohumlama",
+    "candidate_postpartum": "Doğum Sonrası",
+    "open": "Tekrar Kızgınlık / Boş",
+}
+_BREEDING_CANDIDATE_REASON_ORDER = {"candidate_new": 0, "candidate_postpartum": 1, "open": 2}
+
+
 def list_breeding_candidates(db: Session, today: date | None = None) -> list[BreedingCandidateRead]:
     today = today or date.today()
-    rows: list[BreedingCandidateRead] = []
+    entries: list[tuple[int, BreedingCandidateRead]] = []
     for animal, classification in _classify_all_active_females(db, today):
-        if classification.kind not in ("candidate_new", "candidate_postpartum"):
+        if classification.kind not in _BREEDING_CANDIDATE_REASONS:
             continue
-        rows.append(
-            BreedingCandidateRead(
-                animal_id=animal.id,
-                tag_number=animal.tag_number,
-                name=animal.name,
-                birth_date=animal.birth_date,
-                age_months=full_months_between(animal.birth_date, today) if animal.birth_date else None,
-                reason="İlk Tohumlama" if classification.kind == "candidate_new" else "Doğum Sonrası",
-                last_calving_date=classification.last_calving_date,
-            )
+        last_service_date = None
+        if classification.kind == "open":
+            assert classification.breeding_event is not None
+            last_service_date = classification.breeding_event.service_date
+        row = BreedingCandidateRead(
+            animal_id=animal.id,
+            tag_number=animal.tag_number,
+            name=animal.name,
+            birth_date=animal.birth_date,
+            age_months=full_months_between(animal.birth_date, today) if animal.birth_date else None,
+            reason=_BREEDING_CANDIDATE_REASONS[classification.kind],
+            last_calving_date=classification.last_calving_date,
+            last_service_date=last_service_date,
         )
-    rows.sort(key=lambda r: (r.reason != "Doğum Sonrası", r.tag_number))
-    return rows
+        entries.append((_BREEDING_CANDIDATE_REASON_ORDER[classification.kind], row))
+    entries.sort(key=lambda e: (e[0], e[1].tag_number))
+    return [row for _, row in entries]
 
 
 def list_bred_animals(db: Session, today: date | None = None) -> list[BredAnimalRead]:

@@ -20,6 +20,7 @@ class BreedingCandidateRead(BaseModel):
     age_months: int | None = None
     reason: str
     last_calving_date: date | None = None
+    last_service_date: date | None = None
 
 
 class BredAnimalRead(BaseModel):
