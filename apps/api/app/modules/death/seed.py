@@ -6,6 +6,7 @@ Calistirma: python -m app.modules.death.seed
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
+from app.core.lookup_helpers import seed_lookup_rows
 from app.modules.death.lookups import DisposalMethod
 
 SEED_DATA: dict[type, list[tuple[str, str]]] = {
@@ -19,13 +20,7 @@ SEED_DATA: dict[type, list[tuple[str, str]]] = {
 
 
 def run(db: Session) -> None:
-    for model, rows in SEED_DATA.items():
-        existing_codes = {code for (code,) in db.query(model.code).all()}
-        for code, name in rows:
-            if code in existing_codes:
-                continue
-            db.add(model(code=code, name=name))
-    db.commit()
+    seed_lookup_rows(db, SEED_DATA)
 
 
 def main() -> None:
