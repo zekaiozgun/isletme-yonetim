@@ -14,4 +14,4 @@ EXPOSE 3001
 # Render gibi platformlar dinlenecek portu $PORT ile bildirir; kendi
 # docker-compose.prod.yml'imizde bu degisken tanimli olmadigi icin 3001'e
 # duser (mevcut yerel/VM kurulumu bozulmaz).
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-3001}"]
+CMD ["sh", "-c", "alembic upgrade head && python -m app.seed_all && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-3001}"]
