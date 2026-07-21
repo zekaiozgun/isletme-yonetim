@@ -151,3 +151,63 @@ export const reports: ReportConfig[] = [
 export function getReport(slug: string): ReportConfig | undefined {
   return reports.find((r) => r.slug === slug);
 }
+
+/**
+ * İki tarih arasında filtrelenebilecek, henüz yapım aşamasındaki genel
+ * raporların planı (bkz. /reports hub sayfası). `slug` bir rapor
+ * uygulandığında dolar; o zamana kadar hub sayfasında "Yakında" gösterilir.
+ */
+export interface GeneralReportPlan {
+  title: string;
+  description: string;
+  slug: string | null;
+}
+
+export const generalReportPlans: GeneralReportPlan[] = [
+  {
+    title: 'Doğum/Buzağılama Raporu',
+    description:
+      'Belirtilen tarih aralığında doğum yapan hayvanlar; buzağı sayısı, cinsiyet dağılımı, tekiz/ikiz oranı ve güç doğum (distoni) vakaları vurgulu.',
+    slug: null,
+  },
+  {
+    title: 'Tohumlama Performans Raporu',
+    description: 'Aralıktaki aşım kayıtları; doğal/suni tohumlama dağılımı, boğa veya sperma partisi bazında gebe kalma oranı.',
+    slug: null,
+  },
+  {
+    title: 'Gebelik Kontrol Sonuçları Özeti',
+    description: 'Aralıkta yapılan gebelik kontrolleri; gebe/boş/şüpheli sonuç oranı.',
+    slug: null,
+  },
+  {
+    title: 'Sağlık Olayları Raporu',
+    description: 'Aralıktaki hastalık/tedavi kayıtları; hastalık dağılımı, ilaç kullanım sıklığı.',
+    slug: null,
+  },
+  {
+    title: 'Kilo Alım (ADG) Raporu',
+    description: 'Aralıktaki tartı kayıtlarından günlük ortalama kilo alımı, hayvan veya padok bazında.',
+    slug: null,
+  },
+  {
+    title: 'Satış Raporu',
+    description: 'Aralıktaki satışlar; toplam gelir, ortalama satış ağırlığı/fiyatı, alıcı bazında kırılım.',
+    slug: null,
+  },
+  {
+    title: 'Ölüm/Kayıp Raporu',
+    description: 'Aralıktaki ölümler; neden dağılımı, kayıp oranı.',
+    slug: null,
+  },
+  {
+    title: 'Sürü Giriş-Çıkış Özeti',
+    description: 'Aralıkta işletmeye giren (doğum/satın alma) ve çıkan (satış/ölüm) hayvan sayıları; net büyüme.',
+    slug: null,
+  },
+  {
+    title: 'Yem Tüketim Raporu',
+    description: 'Aralıkta dağıtılan yem miktarı, padok/yem tipi bazında.',
+    slug: null,
+  },
+];

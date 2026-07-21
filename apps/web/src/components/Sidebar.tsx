@@ -17,9 +17,9 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
         </div>
         <ul className="space-y-0.5">
           {quickAccess.map((item) => (
-            <li key={item.slug}>
+            <li key={item.href}>
               <Link
-                href={`/${item.slug}`}
+                href={item.href}
                 onClick={onNavigate}
                 className="block rounded px-2 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-200"
               >

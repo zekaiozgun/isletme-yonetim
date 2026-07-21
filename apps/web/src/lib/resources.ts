@@ -526,16 +526,24 @@ export function groupedResources(): { group: string; items: ResourceConfig[] }[]
   return groups;
 }
 
-/** Sahada en sık kullanılan veri giriş ekranlarına menüde üstte, tek listede hızlı erişim. */
-const quickAccessDefs: { slug: string; label: string }[] = [
-  { slug: 'animals', label: 'Hayvanlar' },
-  { slug: 'breeding-events', label: 'Aşım/Tohumlama Kayıtları' },
-  { slug: 'pregnancy-checks', label: 'Gebelik Kontrolleri' },
-  { slug: 'weight-records', label: 'Tartılar' },
-  { slug: 'pen-assignments', label: 'Padok Atamaları' },
-  { slug: 'health-events', label: 'Sağlık Olayları' },
+/** Sahada en sık kullanılan veri giriş ekranlarına (+ raporlar hub'ına) menüde üstte, tek listede hızlı erişim. */
+interface QuickAccessDef {
+  href: string;
+  label: string;
+  /** Verilirse, bu resource kaydı yoksa öğe listeden düşer (link kopmasın diye). */
+  resourceSlug?: string;
+}
+
+const quickAccessDefs: QuickAccessDef[] = [
+  { href: '/animals', label: 'Hayvanlar', resourceSlug: 'animals' },
+  { href: '/breeding-events', label: 'Aşım/Tohumlama Kayıtları', resourceSlug: 'breeding-events' },
+  { href: '/pregnancy-checks', label: 'Gebelik Kontrolleri', resourceSlug: 'pregnancy-checks' },
+  { href: '/weight-records', label: 'Tartılar', resourceSlug: 'weight-records' },
+  { href: '/pen-assignments', label: 'Padok Atamaları', resourceSlug: 'pen-assignments' },
+  { href: '/health-events', label: 'Sağlık Olayları', resourceSlug: 'health-events' },
+  { href: '/reports', label: 'Raporlar' },
 ];
 
-export function quickAccessResources(): { slug: string; label: string }[] {
-  return quickAccessDefs.filter((item) => getResource(item.slug) !== undefined);
+export function quickAccessResources(): { href: string; label: string }[] {
+  return quickAccessDefs.filter((item) => !item.resourceSlug || getResource(item.resourceSlug) !== undefined);
 }
