@@ -1,0 +1,396 @@
+"""Raporlama servis katmani.
+
+Anayasa m.5: tum hesaplamalar (yas, gun farki, beklenen dogum tarihi vb.)
+istek aninda burada turetilir, hicbir yerde saklanmaz. Anayasa m.7/m.8
+geregi ayri bir "dogum/calving" event tablosu yoktur - bir hayvanin
+dogurup dogurmadigi, kendisine mother_id ile bagli baska bir Animal
+kaydinin (buzaginin) var olup olmadigina bakilarak turetilir.
+
+Her aktif disi hayvan, su bes durumdan TAM OLARAK BIRINE duser (cakisma
+yoktur, bkz. asagidaki _classify_female):
+  1) Hic tohumlanmamis + yas >= BREEDING_AGE_MONTHS  -> Tohumlanacak (ilk)
+  2) Son dogumu son tohumlamasindan sonra + gun farki >= POSTPARTUM_WAIT_DAYS
+     -> Tohumlanacak (dogum sonrasi)
+  3) Aktif tohumlama dongusu, kontrol yok ya da SUPHELI -> Tohumlu (bekliyor)
+  4) Aktif tohumlama dongusu, sonuc GEBE -> Gebe (+ Tohumlu listesinde de gorunur)
+  5) Aktif tohumlama dongusu, sonuc BOS -> Tekrar Kizginlik / Bos Cikan
+"""
+
+import uuid
+from dataclasses import dataclass
+from datetime import date, timedelta
+
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session, joinedload
+
+from app.core.lookup_helpers import get_lookup_by_code
+from app.modules.animal.lookups import AnimalStatus, Gender
+from app.modules.animal.models import Animal
+from app.modules.breeding.models import BreedingEvent, PregnancyCheck
+from app.modules.pen.models import Pen, PenAssignment
+from app.modules.reports.schemas import (
+    BredAnimalRead,
+    BreedingCandidateRead,
+    DashboardSummaryRead,
+    HerdInventoryRead,
+    PenOccupancyRead,
+    PregnantAnimalRead,
+    RepeatBreederRead,
+    YoungAnimalRead,
+)
+
+FEMALE_GENDER_CODE = "DISI"
+MALE_GENDER_CODE = "ERKEK"
+ACTIVE_STATUS_CODE = "AKTIF"
+
+BREEDING_AGE_MONTHS = 12
+POSTPARTUM_WAIT_DAYS = 45
+PREGNANCY_CHECK_DUE_DAYS = 45
+CALF_MAX_MONTHS = 7
+GESTATION_DAYS = 283
+
+
+def full_months_between(start: date, end: date) -> int:
+    """iki tarih arasindaki TAM (takvim) ay sayisi. dateutil'e gerek yok."""
+    if end < start:
+        return 0
+    months = (end.year - start.year) * 12 + (end.month - start.month)
+    if end.day < start.day:
+        months -= 1
+    return max(months, 0)
+
+
+def _latest_breeding_by_dam(db: Session) -> dict[uuid.UUID, BreedingEvent]:
+    stmt = select(BreedingEvent).options(joinedload(BreedingEvent.service_method)).order_by(BreedingEvent.service_date)
+    latest: dict[uuid.UUID, BreedingEvent] = {}
+    for event in db.scalars(stmt).all():
+        latest[event.dam_id] = event  # siralamadan dolayi son atama en yeni olur
+    return latest
+
+
+def _latest_calving_by_dam(db: Session) -> dict[uuid.UUID, date]:
+    stmt = (
+        select(Animal.mother_id, func.max(Animal.birth_date))
+        .where(Animal.mother_id.isnot(None), Animal.birth_date.isnot(None))
+        .group_by(Animal.mother_id)
+    )
+    return {mother_id: birth_date for mother_id, birth_date in db.execute(stmt).all()}
+
+
+def _latest_check_by_event(db: Session) -> dict[int, PregnancyCheck]:
+    stmt = select(PregnancyCheck).options(joinedload(PregnancyCheck.result)).order_by(PregnancyCheck.check_date)
+    latest: dict[int, PregnancyCheck] = {}
+    for check in db.scalars(stmt).all():
+        latest[check.breeding_event_id] = check
+    return latest
+
+
+@dataclass
+class _Classification:
+    kind: str  # "candidate_new" | "candidate_postpartum" | "pending" | "suspicious" | "pregnant" | "open" | "none"
+    breeding_event: BreedingEvent | None = None
+    last_calving_date: date | None = None
+
+
+def _classify_female(
+    animal: Animal,
+    last_breed: BreedingEvent | None,
+    last_calving: date | None,
+    latest_check_by_event: dict[int, PregnancyCheck],
+    today: date,
+) -> _Classification:
+    if last_breed is None:
+        if last_calving is None:
+            age_months = full_months_between(animal.birth_date, today) if animal.birth_date else None
+            if age_months is not None and age_months >= BREEDING_AGE_MONTHS:
+                return _Classification(kind="candidate_new")
+            return _Classification(kind="none")
+        # Hic tohumlama kaydi girilmeden dogurmus (orn. gebe/laktasyondaki bir
+        # hayvan disaridan alinmis) - yine de dogum sonrasi kuralini uygula.
+        days_since_calving = (today - last_calving).days
+        if days_since_calving >= POSTPARTUM_WAIT_DAYS:
+            return _Classification(kind="candidate_postpartum", last_calving_date=last_calving)
+        return _Classification(kind="none")
+
+    if last_calving is not None and last_calving > last_breed.service_date:
+        days_since_calving = (today - last_calving).days
+        if days_since_calving >= POSTPARTUM_WAIT_DAYS:
+            return _Classification(kind="candidate_postpartum", last_calving_date=last_calving)
+        return _Classification(kind="none")
+
+    check = latest_check_by_event.get(last_breed.id)
+    if check is None:
+        return _Classification(kind="pending", breeding_event=last_breed)
+    result_code = check.result.code
+    if result_code == "GEBE":
+        return _Classification(kind="pregnant", breeding_event=last_breed)
+    if result_code == "BOS":
+        return _Classification(kind="open", breeding_event=last_breed)
+    return _Classification(kind="suspicious", breeding_event=last_breed)
+
+
+def _active_females(db: Session) -> list[Animal]:
+    female_id = get_lookup_by_code(db, Gender, FEMALE_GENDER_CODE).id
+    active_id = get_lookup_by_code(db, AnimalStatus, ACTIVE_STATUS_CODE).id
+    stmt = select(Animal).where(Animal.gender_id == female_id, Animal.status_id == active_id)
+    return list(db.scalars(stmt.order_by(Animal.tag_number)).all())
+
+
+def _classify_all_active_females(db: Session, today: date) -> list[tuple[Animal, _Classification]]:
+    last_breeding = _latest_breeding_by_dam(db)
+    last_calving = _latest_calving_by_dam(db)
+    latest_checks = _latest_check_by_event(db)
+    results: list[tuple[Animal, _Classification]] = []
+    for animal in _active_females(db):
+        classification = _classify_female(
+            animal, last_breeding.get(animal.id), last_calving.get(animal.id), latest_checks, today
+        )
+        results.append((animal, classification))
+    return results
+
+
+def list_breeding_candidates(db: Session, today: date | None = None) -> list[BreedingCandidateRead]:
+    today = today or date.today()
+    rows: list[BreedingCandidateRead] = []
+    for animal, classification in _classify_all_active_females(db, today):
+        if classification.kind not in ("candidate_new", "candidate_postpartum"):
+            continue
+        rows.append(
+            BreedingCandidateRead(
+                animal_id=animal.id,
+                tag_number=animal.tag_number,
+                name=animal.name,
+                birth_date=animal.birth_date,
+                age_months=full_months_between(animal.birth_date, today) if animal.birth_date else None,
+                reason="İlk Tohumlama" if classification.kind == "candidate_new" else "Doğum Sonrası",
+                last_calving_date=classification.last_calving_date,
+            )
+        )
+    rows.sort(key=lambda r: (r.reason != "Doğum Sonrası", r.tag_number))
+    return rows
+
+
+def list_bred_animals(db: Session, today: date | None = None) -> list[BredAnimalRead]:
+    today = today or date.today()
+    rows: list[BredAnimalRead] = []
+    for animal, classification in _classify_all_active_females(db, today):
+        if classification.kind not in ("pending", "suspicious", "pregnant"):
+            continue
+        event = classification.breeding_event
+        assert event is not None
+        days_since_service = (today - event.service_date).days
+        if classification.kind == "pending":
+            check_status = "Kontrol Bekliyor"
+            check_due = days_since_service >= PREGNANCY_CHECK_DUE_DAYS
+            expected_calving = None
+        elif classification.kind == "suspicious":
+            check_status = "Şüpheli (Tekrar Kontrol Gerekli)"
+            check_due = True
+            expected_calving = None
+        else:
+            check_status = "Gebe"
+            check_due = False
+            expected_calving = event.service_date + timedelta(days=GESTATION_DAYS)
+        rows.append(
+            BredAnimalRead(
+                breeding_event_id=event.id,
+                animal_id=animal.id,
+                tag_number=animal.tag_number,
+                name=animal.name,
+                service_date=event.service_date,
+                service_method_name=event.service_method.name,
+                days_since_service=days_since_service,
+                check_status=check_status,
+                pregnancy_check_due=check_due,
+                expected_calving_date=expected_calving,
+            )
+        )
+
+    def sort_key(row: BredAnimalRead) -> tuple[int, object]:
+        if row.pregnancy_check_due and row.check_status != "Gebe":
+            return (0, -row.days_since_service)
+        if row.check_status == "Kontrol Bekliyor":
+            return (1, row.service_date)
+        if row.check_status == "Gebe":
+            return (2, row.service_date)
+        return (3, row.service_date)
+
+    rows.sort(key=sort_key)
+    return rows
+
+
+def list_repeat_breeders(db: Session, today: date | None = None) -> list[RepeatBreederRead]:
+    today = today or date.today()
+    rows: list[RepeatBreederRead] = []
+    for animal, classification in _classify_all_active_females(db, today):
+        if classification.kind != "open":
+            continue
+        event = classification.breeding_event
+        assert event is not None
+        rows.append(
+            RepeatBreederRead(
+                animal_id=animal.id,
+                tag_number=animal.tag_number,
+                name=animal.name,
+                last_service_date=event.service_date,
+                days_open=(today - event.service_date).days,
+                service_method_name=event.service_method.name,
+            )
+        )
+    rows.sort(key=lambda r: -r.days_open)
+    return rows
+
+
+def list_pregnant_animals(db: Session, today: date | None = None) -> list[PregnantAnimalRead]:
+    today = today or date.today()
+    rows: list[PregnantAnimalRead] = []
+    for animal, classification in _classify_all_active_females(db, today):
+        if classification.kind != "pregnant":
+            continue
+        event = classification.breeding_event
+        assert event is not None
+        expected_calving = event.service_date + timedelta(days=GESTATION_DAYS)
+        rows.append(
+            PregnantAnimalRead(
+                animal_id=animal.id,
+                tag_number=animal.tag_number,
+                name=animal.name,
+                service_date=event.service_date,
+                expected_calving_date=expected_calving,
+                days_until_calving=(expected_calving - today).days,
+            )
+        )
+    rows.sort(key=lambda r: r.expected_calving_date)
+    return rows
+
+
+def _active_animals_with_age(db: Session, today: date) -> list[tuple[Animal, int]]:
+    active_id = get_lookup_by_code(db, AnimalStatus, ACTIVE_STATUS_CODE).id
+    stmt = (
+        select(Animal)
+        .options(joinedload(Animal.gender), joinedload(Animal.mother))
+        .where(Animal.status_id == active_id, Animal.birth_date.isnot(None))
+        .order_by(Animal.birth_date)
+    )
+    return [(a, full_months_between(a.birth_date, today)) for a in db.scalars(stmt).all()]
+
+
+def list_calves(db: Session, today: date | None = None) -> list[YoungAnimalRead]:
+    today = today or date.today()
+    rows: list[YoungAnimalRead] = []
+    for animal, age_months in _active_animals_with_age(db, today):
+        if not (0 <= age_months < CALF_MAX_MONTHS):
+            continue
+        rows.append(_to_young_animal_read(animal, age_months, today))
+    return rows
+
+
+def list_heifers_and_steers(db: Session, today: date | None = None) -> list[YoungAnimalRead]:
+    today = today or date.today()
+    rows: list[YoungAnimalRead] = []
+    for animal, age_months in _active_animals_with_age(db, today):
+        if not (CALF_MAX_MONTHS <= age_months < BREEDING_AGE_MONTHS):
+            continue
+        rows.append(_to_young_animal_read(animal, age_months, today))
+    return rows
+
+
+def _to_young_animal_read(animal: Animal, age_months: int, today: date) -> YoungAnimalRead:
+    return YoungAnimalRead(
+        animal_id=animal.id,
+        tag_number=animal.tag_number,
+        name=animal.name,
+        gender_name=animal.gender.name,
+        birth_date=animal.birth_date,
+        age_months=age_months,
+        age_days=(today - animal.birth_date).days if animal.birth_date else None,
+        mother_tag_number=animal.mother.tag_number if animal.mother else None,
+    )
+
+
+def list_pen_occupancy(db: Session) -> list[PenOccupancyRead]:
+    counts_stmt = (
+        select(PenAssignment.pen_id, func.count(PenAssignment.id))
+        .where(PenAssignment.removed_date.is_(None))
+        .group_by(PenAssignment.pen_id)
+    )
+    counts = dict(db.execute(counts_stmt).all())
+    rows: list[PenOccupancyRead] = []
+    for pen in db.scalars(select(Pen).order_by(Pen.code)).all():
+        current_count = counts.get(pen.id, 0)
+        occupancy_rate = round(current_count / pen.capacity * 100, 1) if pen.capacity else None
+        rows.append(
+            PenOccupancyRead(
+                pen_id=pen.id,
+                code=pen.code,
+                name=pen.name,
+                capacity=pen.capacity,
+                current_count=current_count,
+                occupancy_rate=occupancy_rate,
+            )
+        )
+    return rows
+
+
+def get_herd_inventory(db: Session, today: date | None = None) -> HerdInventoryRead:
+    today = today or date.today()
+    female_id = get_lookup_by_code(db, Gender, FEMALE_GENDER_CODE).id
+    male_id = get_lookup_by_code(db, Gender, MALE_GENDER_CODE).id
+    active_id = get_lookup_by_code(db, AnimalStatus, ACTIVE_STATUS_CODE).id
+
+    status_counts_stmt = (
+        select(AnimalStatus.code, func.count(Animal.id))
+        .join(AnimalStatus, Animal.status_id == AnimalStatus.id)
+        .group_by(AnimalStatus.code)
+    )
+    by_status = dict(db.execute(status_counts_stmt).all())
+
+    gender_counts_stmt = (
+        select(Animal.gender_id, func.count(Animal.id)).where(Animal.status_id == active_id).group_by(Animal.gender_id)
+    )
+    gender_counts = dict(db.execute(gender_counts_stmt).all())
+
+    # Yas kovalarina (buzagi/duve-dana/yetiskin) sadece dogum tarihi girilmis
+    # aktif hayvanlar dahil olur - satin alinip dogum tarihi bilinmeyen
+    # hayvanlar bu kovalara giremez ama genel cinsiyet toplamlarina girer.
+    active_with_age = _active_animals_with_age(db, today)
+    calves_count = sum(1 for _, m in active_with_age if 0 <= m < CALF_MAX_MONTHS)
+    heifers_steers_count = sum(1 for _, m in active_with_age if CALF_MAX_MONTHS <= m < BREEDING_AGE_MONTHS)
+    breeding_age_female_count = sum(1 for a, m in active_with_age if a.gender_id == female_id and m >= BREEDING_AGE_MONTHS)
+    adult_male_count = sum(1 for a, m in active_with_age if a.gender_id == male_id and m >= BREEDING_AGE_MONTHS)
+
+    return HerdInventoryRead(
+        total_active=by_status.get(ACTIVE_STATUS_CODE, 0),
+        by_status=by_status,
+        female_active=gender_counts.get(female_id, 0),
+        male_active=gender_counts.get(male_id, 0),
+        calves_count=calves_count,
+        heifers_steers_count=heifers_steers_count,
+        breeding_age_female_count=breeding_age_female_count,
+        adult_male_count=adult_male_count,
+    )
+
+
+def get_dashboard_summary(db: Session, today: date | None = None) -> DashboardSummaryRead:
+    today = today or date.today()
+    inventory = get_herd_inventory(db, today)
+    bred_animals = list_bred_animals(db, today)
+    pen_occupancy = list_pen_occupancy(db)
+
+    capacities = [p for p in pen_occupancy if p.capacity]
+    pen_occupancy_rate = (
+        round(sum(p.current_count for p in capacities) / sum(p.capacity for p in capacities) * 100, 1)
+        if capacities
+        else None
+    )
+
+    return DashboardSummaryRead(
+        active_animal_count=inventory.total_active,
+        breeding_candidate_count=len(list_breeding_candidates(db, today)),
+        pregnancy_check_due_count=sum(1 for b in bred_animals if b.pregnancy_check_due),
+        pregnant_count=sum(1 for b in bred_animals if b.check_status == "Gebe"),
+        repeat_breeder_count=len(list_repeat_breeders(db, today)),
+        calves_count=inventory.calves_count,
+        heifers_steers_count=inventory.heifers_steers_count,
+        pen_occupancy_rate=pen_occupancy_rate,
+    )

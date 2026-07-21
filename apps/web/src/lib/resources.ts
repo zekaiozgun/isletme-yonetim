@@ -36,6 +36,8 @@ export interface ResourceConfig {
   createEndpoint: string;
   columns: ColumnConfig[];
   fields: FieldConfig[];
+  /** Bu veri girişiyle ilişkili, salt-okunur raporlara hızlı erişim linkleri (bkz. lib/reports.ts). */
+  relatedReports?: { slug: string; title: string }[];
 }
 
 const label =
@@ -133,6 +135,10 @@ const mainResources: ResourceConfig[] = [
       { name: 'entry_source_id', label: 'Giriş Kaynağı', type: 'select', options: entrySources, required: true },
       { name: 'note', label: 'Not', type: 'textarea' },
     ],
+    relatedReports: [
+      { slug: 'calves', title: 'Buzağı Listesi (0-7 Ay)' },
+      { slug: 'heifers-steers', title: 'Düve ve Dana Listesi (7-12 Ay)' },
+    ],
   },
   {
     slug: 'pens',
@@ -154,6 +160,7 @@ const mainResources: ResourceConfig[] = [
       { name: 'capacity', label: 'Kapasite', type: 'number' },
       { name: 'note', label: 'Not', type: 'textarea' },
     ],
+    relatedReports: [{ slug: 'pen-occupancy', title: 'Padok Doluluk Durumu' }],
   },
   {
     slug: 'pen-assignments',
@@ -263,6 +270,11 @@ const mainResources: ResourceConfig[] = [
       { name: 'semen_batch_id', label: 'Sperma Partisi (Suni Tohumlama)', type: 'select', options: semenBatches },
       { name: 'note', label: 'Not (Doğal Aşım ise Boğa, Suni Tohumlama ise Sperma Partisi seçin — sadece biri)', type: 'textarea' },
     ],
+    relatedReports: [
+      { slug: 'breeding-candidates', title: 'Tohumlanacak Hayvanlar' },
+      { slug: 'bred-animals', title: 'Tohumlu Hayvanlar' },
+      { slug: 'repeat-breeders', title: 'Tekrar Kızgınlık / Boş Çıkanlar' },
+    ],
   },
   {
     slug: 'pregnancy-checks',
@@ -284,6 +296,7 @@ const mainResources: ResourceConfig[] = [
       { name: 'result_id', label: 'Sonuç', type: 'select', options: pregnancyResults, required: true },
       { name: 'note', label: 'Not', type: 'textarea' },
     ],
+    relatedReports: [{ slug: 'pregnant-animals', title: 'Gebe Hayvanlar' }],
   },
   {
     slug: 'health-events',

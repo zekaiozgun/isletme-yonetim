@@ -11,6 +11,7 @@ from app.modules.feed.router import router as feed_router
 from app.modules.genetic_resource.router import router as genetic_resource_router
 from app.modules.health.router import router as health_router
 from app.modules.pen.router import router as pen_router
+from app.modules.reports.router import router as reports_router
 from app.modules.sale.router import router as sale_router
 from app.modules.weight.router import router as weight_router
 
@@ -36,6 +37,7 @@ for router in (
     feed_router,
     sale_router,
     death_router,
+    reports_router,
 ):
     app.include_router(router)
 
