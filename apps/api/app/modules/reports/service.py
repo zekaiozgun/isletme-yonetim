@@ -32,6 +32,7 @@ from app.modules.pen.models import Pen, PenAssignment
 from app.modules.reports.schemas import (
     BredAnimalRead,
     BreedingCandidateRead,
+    CalvingRead,
     DashboardSummaryRead,
     HerdInventoryRead,
     PenOccupancyRead,
@@ -43,6 +44,7 @@ from app.modules.reports.schemas import (
 FEMALE_GENDER_CODE = "DISI"
 MALE_GENDER_CODE = "ERKEK"
 ACTIVE_STATUS_CODE = "AKTIF"
+DIFFICULT_BIRTH_TYPE_CODE = "GUC"
 
 BREEDING_AGE_MONTHS = 12
 POSTPARTUM_WAIT_DAYS = 45
@@ -274,6 +276,42 @@ def list_pregnant_animals(db: Session, today: date | None = None) -> list[Pregna
             )
         )
     rows.sort(key=lambda r: r.expected_calving_date)
+    return rows
+
+
+def list_calvings(db: Session, start_date: date, end_date: date) -> list[CalvingRead]:
+    """Belirtilen tarih araliginda dogan (birth_date) tum hayvanlar - dogum/buzagilama
+    raporu. Anayasa m.7/m.8 geregi ayri bir calving event tablosu yok; bir dogum,
+    kendisi de bir Animal kaydi olan buzaginin birth_date'i uzerinden turetilir."""
+    stmt = (
+        select(Animal)
+        .options(
+            joinedload(Animal.gender),
+            joinedload(Animal.birth_type),
+            joinedload(Animal.litter_type),
+            joinedload(Animal.mother),
+        )
+        .where(Animal.birth_date.isnot(None), Animal.birth_date >= start_date, Animal.birth_date <= end_date)
+        .order_by(Animal.birth_date, Animal.tag_number)
+    )
+    rows: list[CalvingRead] = []
+    for animal in db.scalars(stmt).all():
+        assert animal.birth_date is not None
+        rows.append(
+            CalvingRead(
+                animal_id=animal.id,
+                tag_number=animal.tag_number,
+                name=animal.name,
+                birth_date=animal.birth_date,
+                gender_name=animal.gender.name,
+                birth_type_name=animal.birth_type.name if animal.birth_type else None,
+                is_difficult_birth=bool(animal.birth_type and animal.birth_type.code == DIFFICULT_BIRTH_TYPE_CODE),
+                litter_type_name=animal.litter_type.name if animal.litter_type else None,
+                birth_weight_kg=animal.birth_weight_kg,
+                mother_id=animal.mother_id,
+                mother_tag_number=animal.mother.tag_number if animal.mother else None,
+            )
+        )
     return rows
 
 

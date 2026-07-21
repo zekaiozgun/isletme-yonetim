@@ -2,7 +2,9 @@
 (Anayasa m.2). Her endpoint app/modules/reports/service.py'deki turetme
 mantigini cagirir; hicbir hesaplama burada yapilmaz."""
 
-from fastapi import APIRouter, Depends
+from datetime import date
+
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -10,6 +12,7 @@ from app.modules.reports import service
 from app.modules.reports.schemas import (
     BredAnimalRead,
     BreedingCandidateRead,
+    CalvingRead,
     DashboardSummaryRead,
     HerdInventoryRead,
     PenOccupancyRead,
@@ -39,6 +42,15 @@ def repeat_breeders(db: Session = Depends(get_db)) -> list[RepeatBreederRead]:
 @router.get("/pregnant-animals", response_model=list[PregnantAnimalRead])
 def pregnant_animals(db: Session = Depends(get_db)) -> list[PregnantAnimalRead]:
     return service.list_pregnant_animals(db)
+
+
+@router.get("/calving", response_model=list[CalvingRead])
+def calving(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    db: Session = Depends(get_db),
+) -> list[CalvingRead]:
+    return service.list_calvings(db, start_date, end_date)
 
 
 @router.get("/calves", response_model=list[YoungAnimalRead])

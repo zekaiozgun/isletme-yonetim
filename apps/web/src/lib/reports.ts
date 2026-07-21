@@ -14,6 +14,9 @@ export interface ReportConfig {
   columns: ReportColumn[];
   /** true dönerse satır dikkat çekecek şekilde vurgulanır (örn. gecikmiş gebelik kontrolü). */
   rowHighlight?: (row: ApiRecord) => boolean;
+  /** true ise rapor sayfası bir başlangıç/bitiş tarihi filtresi gösterir ve
+   * bunları `start_date`/`end_date` query param'ı olarak endpoint'e ekler. */
+  dateRange?: boolean;
 }
 
 function formatDate(value: unknown): string {
@@ -43,7 +46,31 @@ function formatPlain(value: unknown): string {
   return String(value);
 }
 
+function formatKg(value: unknown): string {
+  if (value === null || value === undefined || value === '') return '—';
+  return `${String(value)} kg`;
+}
+
 export const reports: ReportConfig[] = [
+  {
+    slug: 'calving',
+    title: 'Doğum/Buzağılama Raporu',
+    description:
+      'Belirtilen tarih aralığında doğan hayvanlar; cinsiyet, doğum tipi (tekiz/ikiz) ve doğum ağırlığı ile birlikte. Güç doğum (distoni) vakaları vurgulu.',
+    endpoint: '/reports/calving',
+    dateRange: true,
+    columns: [
+      { key: 'tag_number', label: 'Küpe No' },
+      { key: 'name', label: 'İsim', format: formatPlain },
+      { key: 'mother_tag_number', label: 'Anne Küpe No', format: formatPlain },
+      { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate },
+      { key: 'gender_name', label: 'Cinsiyet' },
+      { key: 'birth_type_name', label: 'Doğum Şekli', format: formatPlain },
+      { key: 'litter_type_name', label: 'Doğum Tipi', format: formatPlain },
+      { key: 'birth_weight_kg', label: 'Doğum Ağırlığı', format: formatKg },
+    ],
+    rowHighlight: (row) => Boolean(row.is_difficult_birth),
+  },
   {
     slug: 'breeding-candidates',
     title: 'Tohumlanacak Hayvanlar',
@@ -168,7 +195,7 @@ export const generalReportPlans: GeneralReportPlan[] = [
     title: 'Doğum/Buzağılama Raporu',
     description:
       'Belirtilen tarih aralığında doğum yapan hayvanlar; buzağı sayısı, cinsiyet dağılımı, tekiz/ikiz oranı ve güç doğum (distoni) vakaları vurgulu.',
-    slug: null,
+    slug: 'calving',
   },
   {
     title: 'Tohumlama Performans Raporu',

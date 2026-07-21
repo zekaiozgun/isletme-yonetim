@@ -8,6 +8,7 @@ insa edilen, salt-okunur turetilmis goruntulerdir (Anayasa m.4/m.5).
 
 import uuid
 from datetime import date
+from decimal import Decimal
 
 from pydantic import BaseModel
 
@@ -21,6 +22,20 @@ class BreedingCandidateRead(BaseModel):
     reason: str
     last_calving_date: date | None = None
     last_service_date: date | None = None
+
+
+class CalvingRead(BaseModel):
+    animal_id: uuid.UUID
+    tag_number: str
+    name: str | None = None
+    birth_date: date
+    gender_name: str
+    birth_type_name: str | None = None
+    is_difficult_birth: bool
+    litter_type_name: str | None = None
+    birth_weight_kg: Decimal | None = None
+    mother_id: uuid.UUID | None = None
+    mother_tag_number: str | None = None
 
 
 class BredAnimalRead(BaseModel):
