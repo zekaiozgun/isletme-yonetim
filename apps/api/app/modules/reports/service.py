@@ -873,6 +873,18 @@ def get_dashboard_summary(db: Session, today: date | None = None) -> DashboardSu
         else None
     )
 
+    calving_intervals = list_calving_intervals(db)
+    average_calving_interval = calving_intervals[0].interval_days if calving_intervals else None
+
+    yearly_losses = list_death_losses(db, today - timedelta(days=365), today, today)
+    total_deaths = sum(r.death_count for r in yearly_losses)
+    total_active_for_loss = sum(r.current_active_count for r in yearly_losses)
+    annual_loss_rate = (
+        round(total_deaths / (total_deaths + total_active_for_loss) * 100, 1)
+        if (total_deaths + total_active_for_loss) > 0
+        else None
+    )
+
     return DashboardSummaryRead(
         active_animal_count=inventory.total_active,
         breeding_candidate_count=len(list_breeding_candidates(db, today)),
@@ -882,4 +894,6 @@ def get_dashboard_summary(db: Session, today: date | None = None) -> DashboardSu
         calves_count=inventory.calves_count,
         heifers_steers_count=inventory.heifers_steers_count,
         pen_occupancy_rate=pen_occupancy_rate,
+        average_calving_interval_days=average_calving_interval,
+        annual_loss_rate=annual_loss_rate,
     )

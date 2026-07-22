@@ -202,3 +202,5 @@ class DashboardSummaryRead(BaseModel):
     calves_count: int
     heifers_steers_count: int
     pen_occupancy_rate: float | None = None
+    average_calving_interval_days: float | None = None
+    annual_loss_rate: float | None = None

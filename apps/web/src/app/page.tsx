@@ -11,6 +11,10 @@ function formatPercent(value: unknown): string {
   return typeof value === 'number' ? `%${value}` : '—';
 }
 
+function formatDaysValue(value: unknown): string {
+  return typeof value === 'number' ? `${value} gün` : '—';
+}
+
 export default async function Home() {
   const groups = groupedResources();
 
@@ -23,6 +27,8 @@ export default async function Home() {
   const checkDueCount = asNumber(summary.pregnancy_check_due_count);
   const repeatBreederCount = asNumber(summary.repeat_breeder_count);
   const occupancyRate = typeof summary.pen_occupancy_rate === 'number' ? summary.pen_occupancy_rate : null;
+  const calvingInterval = typeof summary.average_calving_interval_days === 'number' ? summary.average_calving_interval_days : null;
+  const annualLossRate = typeof summary.annual_loss_rate === 'number' ? summary.annual_loss_rate : null;
 
   return (
     <div>
@@ -56,6 +62,18 @@ export default async function Home() {
           value={formatPercent(occupancyRate)}
           href="/reports/pen-occupancy"
           status={occupancyRate !== null && occupancyRate >= 100 ? 'critical' : 'neutral'}
+        />
+        <StatTile
+          label="Ort. Buzağılama Aralığı"
+          value={formatDaysValue(calvingInterval)}
+          href="/reports/calving-intervals"
+          status={calvingInterval !== null && calvingInterval > 400 ? 'warning' : 'neutral'}
+        />
+        <StatTile
+          label="Yıllık Kayıp Oranı"
+          value={formatPercent(annualLossRate)}
+          href="/reports/deaths"
+          status={annualLossRate !== null && annualLossRate >= 10 ? 'critical' : 'neutral'}
         />
       </div>
 
