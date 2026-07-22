@@ -38,6 +38,20 @@ class CalvingRead(BaseModel):
     mother_tag_number: str | None = None
 
 
+class HealthEventReportRead(BaseModel):
+    animal_id: uuid.UUID
+    tag_number: str
+    name: str | None = None
+    event_date: date
+    event_type_name: str
+    is_illness: bool
+    disease_name: str | None = None
+    medication_name: str | None = None
+    dosage_amount: Decimal | None = None
+    dosage_unit_name: str | None = None
+    veterinarian_note: str | None = None
+
+
 class PregnancyCheckResultRead(BaseModel):
     breeding_event_id: int
     animal_id: uuid.UUID

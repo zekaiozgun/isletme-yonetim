@@ -51,6 +51,12 @@ function formatKg(value: unknown): string {
   return `${String(value)} kg`;
 }
 
+function formatDosage(value: unknown, row: ApiRecord): string {
+  if (value === null || value === undefined || value === '') return '—';
+  const unit = row.dosage_unit_name;
+  return unit ? `${String(value)} ${String(unit)}` : String(value);
+}
+
 export const reports: ReportConfig[] = [
   {
     slug: 'calving',
@@ -105,6 +111,24 @@ export const reports: ReportConfig[] = [
       { key: 'result_name', label: 'Sonuç' },
     ],
     rowHighlight: (row) => Boolean(row.is_suspicious),
+  },
+  {
+    slug: 'health-events',
+    title: 'Sağlık Olayları Raporu',
+    description: 'Aralıktaki hastalık/tedavi kayıtları; hastalık dağılımı, ilaç kullanım sıklığı.',
+    endpoint: '/reports/health-events',
+    dateRange: true,
+    columns: [
+      { key: 'tag_number', label: 'Küpe No' },
+      { key: 'name', label: 'İsim', format: formatPlain },
+      { key: 'event_date', label: 'Tarih', format: formatDate },
+      { key: 'event_type_name', label: 'Olay Tipi' },
+      { key: 'disease_name', label: 'Hastalık/Tanı', format: formatPlain },
+      { key: 'medication_name', label: 'İlaç', format: formatPlain },
+      { key: 'dosage_amount', label: 'Doz', format: formatDosage },
+      { key: 'veterinarian_note', label: 'Veteriner Notu', format: formatPlain },
+    ],
+    rowHighlight: (row) => Boolean(row.is_illness),
   },
   {
     slug: 'breeding-candidates',
@@ -245,7 +269,7 @@ export const generalReportPlans: GeneralReportPlan[] = [
   {
     title: 'Sağlık Olayları Raporu',
     description: 'Aralıktaki hastalık/tedavi kayıtları; hastalık dağılımı, ilaç kullanım sıklığı.',
-    slug: null,
+    slug: 'health-events',
   },
   {
     title: 'Kilo Alım (ADG) Raporu',

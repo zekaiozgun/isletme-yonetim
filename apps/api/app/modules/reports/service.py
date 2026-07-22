@@ -29,6 +29,7 @@ from app.modules.animal.lookups import AnimalStatus, Gender
 from app.modules.animal.models import Animal
 from app.modules.breeding.models import BreedingEvent, PregnancyCheck
 from app.modules.genetic_resource.models import SemenBatch
+from app.modules.health.models import HealthEvent
 from app.modules.pen.models import Pen, PenAssignment
 from app.modules.reports.schemas import (
     BredAnimalRead,
@@ -36,6 +37,7 @@ from app.modules.reports.schemas import (
     BreedingPerformanceRead,
     CalvingRead,
     DashboardSummaryRead,
+    HealthEventReportRead,
     HerdInventoryRead,
     PenOccupancyRead,
     PregnancyCheckResultRead,
@@ -48,6 +50,7 @@ FEMALE_GENDER_CODE = "DISI"
 MALE_GENDER_CODE = "ERKEK"
 ACTIVE_STATUS_CODE = "AKTIF"
 DIFFICULT_BIRTH_TYPE_CODE = "GUC"
+ILLNESS_EVENT_TYPE_CODE = "HASTALIK_BILDIRIMI"
 
 BREEDING_AGE_MONTHS = 12
 POSTPARTUM_WAIT_DAYS = 45
@@ -420,6 +423,41 @@ def list_pregnancy_check_results(db: Session, start_date: date, end_date: date) 
                 method_name=check.method.name,
                 result_name=check.result.name,
                 is_suspicious=check.result.code == "SUPHELI",
+            )
+        )
+    return rows
+
+
+def list_health_events(db: Session, start_date: date, end_date: date) -> list[HealthEventReportRead]:
+    """Belirtilen tarih araliginda (event_date) kaydedilen tum saglik olaylari -
+    hastalik dagilimi ve ilac kullanim sikligi bu listeden turetilir."""
+    stmt = (
+        select(HealthEvent)
+        .options(
+            joinedload(HealthEvent.animal),
+            joinedload(HealthEvent.event_type),
+            joinedload(HealthEvent.disease),
+            joinedload(HealthEvent.medication),
+            joinedload(HealthEvent.dosage_unit),
+        )
+        .where(HealthEvent.event_date >= start_date, HealthEvent.event_date <= end_date)
+        .order_by(HealthEvent.event_date, HealthEvent.animal_id)
+    )
+    rows: list[HealthEventReportRead] = []
+    for event in db.scalars(stmt).all():
+        rows.append(
+            HealthEventReportRead(
+                animal_id=event.animal_id,
+                tag_number=event.animal.tag_number,
+                name=event.animal.name,
+                event_date=event.event_date,
+                event_type_name=event.event_type.name,
+                is_illness=event.event_type.code == ILLNESS_EVENT_TYPE_CODE or event.disease_id is not None,
+                disease_name=event.disease.name if event.disease else None,
+                medication_name=event.medication.name if event.medication else None,
+                dosage_amount=event.dosage_amount,
+                dosage_unit_name=event.dosage_unit.name if event.dosage_unit else None,
+                veterinarian_note=event.veterinarian_note,
             )
         )
     return rows

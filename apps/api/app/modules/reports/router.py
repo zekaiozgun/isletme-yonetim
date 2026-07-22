@@ -15,6 +15,7 @@ from app.modules.reports.schemas import (
     BreedingPerformanceRead,
     CalvingRead,
     DashboardSummaryRead,
+    HealthEventReportRead,
     HerdInventoryRead,
     PenOccupancyRead,
     PregnancyCheckResultRead,
@@ -71,6 +72,15 @@ def pregnancy_check_results(
     db: Session = Depends(get_db),
 ) -> list[PregnancyCheckResultRead]:
     return service.list_pregnancy_check_results(db, start_date, end_date)
+
+
+@router.get("/health-events", response_model=list[HealthEventReportRead])
+def health_events_report(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    db: Session = Depends(get_db),
+) -> list[HealthEventReportRead]:
+    return service.list_health_events(db, start_date, end_date)
 
 
 @router.get("/calves", response_model=list[YoungAnimalRead])
