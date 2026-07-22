@@ -38,6 +38,14 @@ class CalvingRead(BaseModel):
     mother_tag_number: str | None = None
 
 
+class DeathLossReportRead(BaseModel):
+    age_group: str
+    death_count: int
+    reason_breakdown: str
+    current_active_count: int
+    loss_rate: float | None = None
+
+
 class SalesReportRead(BaseModel):
     buyer_name: str
     sale_count: int

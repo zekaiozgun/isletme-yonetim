@@ -176,6 +176,21 @@ export const reports: ReportConfig[] = [
     ],
   },
   {
+    slug: 'deaths',
+    title: 'Ölüm/Kayıp Raporu',
+    description: 'Aralıktaki ölümler; buzağı (0-7 ay) ve yetişkin kaybı ayrı ayrı, neden dağılımı ve kayıp oranı.',
+    endpoint: '/reports/deaths',
+    dateRange: true,
+    columns: [
+      { key: 'age_group', label: 'Yaş Grubu' },
+      { key: 'death_count', label: 'Kayıp Sayısı' },
+      { key: 'reason_breakdown', label: 'Neden Dağılımı', format: formatPlain },
+      { key: 'current_active_count', label: 'Mevcut Aktif Sayı' },
+      { key: 'loss_rate', label: 'Kayıp Oranı', format: formatPercent },
+    ],
+    rowHighlight: (row) => typeof row.loss_rate === 'number' && row.loss_rate >= 10,
+  },
+  {
     slug: 'breeding-candidates',
     title: 'Tohumlanacak Hayvanlar',
     description:
@@ -329,7 +344,7 @@ export const generalReportPlans: GeneralReportPlan[] = [
   {
     title: 'Ölüm/Kayıp Raporu',
     description: 'Aralıktaki ölümler; buzağı (0-7 ay) ve yetişkin kaybı ayrı ayrı, neden dağılımı ve kayıp oranı.',
-    slug: null,
+    slug: 'deaths',
   },
   {
     title: 'Sürü Giriş-Çıkış Özeti',

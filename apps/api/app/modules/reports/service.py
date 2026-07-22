@@ -30,6 +30,7 @@ from app.modules.animal.lookups import AnimalStatus, Gender
 from app.modules.animal.models import Animal
 from app.modules.breeding.models import BreedingEvent, PregnancyCheck
 from app.modules.genetic_resource.models import SemenBatch
+from app.modules.death.models import Death
 from app.modules.health.models import HealthEvent
 from app.modules.sale.models import Sale
 from app.modules.weight.models import WeightRecord
@@ -40,6 +41,7 @@ from app.modules.reports.schemas import (
     BreedingPerformanceRead,
     CalvingRead,
     DashboardSummaryRead,
+    DeathLossReportRead,
     HealthEventReportRead,
     HerdInventoryRead,
     PenOccupancyRead,
@@ -554,6 +556,57 @@ def list_sales_report(db: Session, start_date: date, end_date: date) -> list[Sal
             )
         )
     rows.sort(key=lambda r: -r.total_revenue)
+    return rows
+
+
+def _death_age_group(animal: Animal, at_date: date) -> str:
+    if animal.birth_date is None:
+        return "Yetişkin (7+ Ay)"
+    age_months = full_months_between(animal.birth_date, at_date)
+    return "Buzağı (0-7 Ay)" if age_months < CALF_MAX_MONTHS else "Yetişkin (7+ Ay)"
+
+
+def list_death_losses(db: Session, start_date: date, end_date: date, today: date | None = None) -> list[DeathLossReportRead]:
+    """Belirtilen tarih araliginda (death_date) olen hayvanlari, olum aninda ki
+    yasina gore buzagi/yetiskin diye ikiye ayirip neden dagilimi ve kayip
+    oranini (o kategorideki mevcut aktif hayvan sayisina oranla) hesaplar."""
+    today = today or date.today()
+    stmt = (
+        select(Death)
+        .options(joinedload(Death.animal), joinedload(Death.death_reason))
+        .where(Death.death_date >= start_date, Death.death_date <= end_date)
+    )
+    groups = ("Buzağı (0-7 Ay)", "Yetişkin (7+ Ay)")
+    death_counts: dict[str, int] = {g: 0 for g in groups}
+    reason_counts: dict[str, dict[str, int]] = {g: {} for g in groups}
+    for death in db.scalars(stmt).all():
+        group = _death_age_group(death.animal, death.death_date)
+        death_counts[group] += 1
+        reason_name = death.death_reason.name
+        reason_counts[group][reason_name] = reason_counts[group].get(reason_name, 0) + 1
+
+    active_counts: dict[str, int] = {g: 0 for g in groups}
+    for animal, age_months in _active_animals_with_age(db, today):
+        key = "Buzağı (0-7 Ay)" if age_months < CALF_MAX_MONTHS else "Yetişkin (7+ Ay)"
+        active_counts[key] += 1
+
+    rows: list[DeathLossReportRead] = []
+    for group in groups:
+        dcount = death_counts[group]
+        acount = active_counts[group]
+        breakdown = ", ".join(
+            f"{name} ({count})" for name, count in sorted(reason_counts[group].items(), key=lambda kv: -kv[1])
+        )
+        rate = round(dcount / (dcount + acount) * 100, 1) if (dcount + acount) > 0 else None
+        rows.append(
+            DeathLossReportRead(
+                age_group=group,
+                death_count=dcount,
+                reason_breakdown=breakdown,
+                current_active_count=acount,
+                loss_rate=rate,
+            )
+        )
     return rows
 
 
