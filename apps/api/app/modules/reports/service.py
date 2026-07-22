@@ -26,7 +26,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.lookup_helpers import get_lookup_by_code
-from app.modules.animal.lookups import AnimalStatus, Gender
+from app.modules.animal.lookups import AnimalStatus, EntrySource, Gender
 from app.modules.animal.models import Animal
 from app.modules.breeding.models import BreedingEvent, PregnancyCheck
 from app.modules.genetic_resource.models import SemenBatch
@@ -43,6 +43,7 @@ from app.modules.reports.schemas import (
     DashboardSummaryRead,
     DeathLossReportRead,
     HealthEventReportRead,
+    HerdFlowReportRead,
     HerdInventoryRead,
     PenOccupancyRead,
     PregnancyCheckResultRead,
@@ -556,6 +557,40 @@ def list_sales_report(db: Session, start_date: date, end_date: date) -> list[Sal
             )
         )
     rows.sort(key=lambda r: -r.total_revenue)
+    return rows
+
+
+def list_herd_flow(db: Session, start_date: date, end_date: date) -> list[HerdFlowReportRead]:
+    """Belirtilen tarih araliginda surunun giris (entry_date, kaynagina gore
+    kirilim) ve cikis (satis + olum) hareketlerini ozetler, net degisimi
+    hesaplar. Anayasa m.4/m.5: hicbir "hareket" tablosu yok, uc ayri modulun
+    (Animal.entry_date, Sale, Death) tarih alanlarindan burada turetilir."""
+    entry_stmt = (
+        select(EntrySource.name, func.count(Animal.id))
+        .join(EntrySource, Animal.entry_source_id == EntrySource.id)
+        .where(Animal.entry_date >= start_date, Animal.entry_date <= end_date)
+        .group_by(EntrySource.name)
+    )
+    entry_counts = db.execute(entry_stmt).all()
+
+    sale_count = db.scalar(
+        select(func.count()).select_from(Sale).where(Sale.sale_date >= start_date, Sale.sale_date <= end_date)
+    ) or 0
+    death_count = db.scalar(
+        select(func.count()).select_from(Death).where(Death.death_date >= start_date, Death.death_date <= end_date)
+    ) or 0
+
+    rows: list[HerdFlowReportRead] = []
+    total_in = 0
+    for name, count in entry_counts:
+        rows.append(HerdFlowReportRead(category=f"Giriş - {name}", direction="Giriş", count=count))
+        total_in += count
+
+    rows.append(HerdFlowReportRead(category="Çıkış - Satış", direction="Çıkış", count=sale_count))
+    rows.append(HerdFlowReportRead(category="Çıkış - Ölüm", direction="Çıkış", count=death_count))
+    total_out = sale_count + death_count
+
+    rows.append(HerdFlowReportRead(category="Net Değişim", direction="Net", count=total_in - total_out))
     return rows
 
 

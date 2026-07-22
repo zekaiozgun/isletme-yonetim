@@ -191,6 +191,18 @@ export const reports: ReportConfig[] = [
     rowHighlight: (row) => typeof row.loss_rate === 'number' && row.loss_rate >= 10,
   },
   {
+    slug: 'herd-flow',
+    title: 'Sürü Giriş-Çıkış Özeti',
+    description: 'Aralıkta işletmeye giren (doğum/satın alma) ve çıkan (satış/ölüm) hayvan sayıları; net büyüme.',
+    endpoint: '/reports/herd-flow',
+    dateRange: true,
+    columns: [
+      { key: 'category', label: 'Hareket' },
+      { key: 'count', label: 'Hayvan Sayısı' },
+    ],
+    rowHighlight: (row) => row.direction === 'Net',
+  },
+  {
     slug: 'breeding-candidates',
     title: 'Tohumlanacak Hayvanlar',
     description:
@@ -349,7 +361,7 @@ export const generalReportPlans: GeneralReportPlan[] = [
   {
     title: 'Sürü Giriş-Çıkış Özeti',
     description: 'Aralıkta işletmeye giren (doğum/satın alma) ve çıkan (satış/ölüm) hayvan sayıları; net büyüme.',
-    slug: null,
+    slug: 'herd-flow',
   },
   {
     title: 'Yem Tüketim Raporu',

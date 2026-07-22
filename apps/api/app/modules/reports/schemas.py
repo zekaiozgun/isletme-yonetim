@@ -46,6 +46,12 @@ class DeathLossReportRead(BaseModel):
     loss_rate: float | None = None
 
 
+class HerdFlowReportRead(BaseModel):
+    category: str
+    direction: str
+    count: int
+
+
 class SalesReportRead(BaseModel):
     buyer_name: str
     sale_count: int
