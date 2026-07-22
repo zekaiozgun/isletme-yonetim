@@ -62,6 +62,11 @@ function formatKgPerDay(value: unknown): string {
   return `${String(value)} kg/gün`;
 }
 
+function formatCurrency(value: unknown): string {
+  if (value === null || value === undefined || value === '') return '—';
+  return `${String(value)} ₺`;
+}
+
 export const reports: ReportConfig[] = [
   {
     slug: 'calving',
@@ -154,6 +159,21 @@ export const reports: ReportConfig[] = [
       { key: 'average_daily_gain_kg', label: 'Günlük Ort. Artış (ADG)', format: formatKgPerDay },
     ],
     rowHighlight: (row) => typeof row.average_daily_gain_kg === 'number' && row.average_daily_gain_kg < 0,
+  },
+  {
+    slug: 'sales',
+    title: 'Satış Raporu',
+    description: 'Aralıktaki satışlar; toplam gelir, ortalama satış ağırlığı/fiyatı, alıcı bazında kırılım.',
+    endpoint: '/reports/sales',
+    dateRange: true,
+    columns: [
+      { key: 'buyer_name', label: 'Alıcı' },
+      { key: 'sale_count', label: 'Satış Sayısı' },
+      { key: 'total_weight_kg', label: 'Toplam Ağırlık', format: formatKg },
+      { key: 'total_revenue', label: 'Toplam Gelir', format: formatCurrency },
+      { key: 'average_sale_amount', label: 'Ort. Satış Tutarı', format: formatCurrency },
+      { key: 'average_price_per_kg', label: 'Ort. Kg Fiyatı', format: formatCurrency },
+    ],
   },
   {
     slug: 'breeding-candidates',
@@ -304,7 +324,7 @@ export const generalReportPlans: GeneralReportPlan[] = [
   {
     title: 'Satış Raporu',
     description: 'Aralıktaki satışlar; toplam gelir, ortalama satış ağırlığı/fiyatı, alıcı bazında kırılım.',
-    slug: null,
+    slug: 'sales',
   },
   {
     title: 'Ölüm/Kayıp Raporu',

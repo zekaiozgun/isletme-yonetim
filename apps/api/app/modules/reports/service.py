@@ -18,8 +18,9 @@ yoktur, bkz. asagidaki _classify_female):
 """
 
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, timedelta
+from decimal import Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
@@ -30,6 +31,7 @@ from app.modules.animal.models import Animal
 from app.modules.breeding.models import BreedingEvent, PregnancyCheck
 from app.modules.genetic_resource.models import SemenBatch
 from app.modules.health.models import HealthEvent
+from app.modules.sale.models import Sale
 from app.modules.weight.models import WeightRecord
 from app.modules.pen.models import Pen, PenAssignment
 from app.modules.reports.schemas import (
@@ -44,6 +46,7 @@ from app.modules.reports.schemas import (
     PregnancyCheckResultRead,
     PregnantAnimalRead,
     RepeatBreederRead,
+    SalesReportRead,
     WeightGainRead,
     YoungAnimalRead,
 )
@@ -504,6 +507,53 @@ def list_weight_gains(db: Session, start_date: date, end_date: date) -> list[Wei
             )
         )
     rows.sort(key=lambda r: r.average_daily_gain_kg)
+    return rows
+
+
+@dataclass
+class _SalesBucket:
+    buyer_name: str
+    sale_count: int = 0
+    total_weight_kg: Decimal = field(default_factory=lambda: Decimal("0"))
+    total_revenue: Decimal = field(default_factory=lambda: Decimal("0"))
+
+
+def list_sales_report(db: Session, start_date: date, end_date: date) -> list[SalesReportRead]:
+    """Belirtilen tarih araliginda (sale_date) yapilan satislar, alici bazinda
+    gruplanip toplam gelir, toplam agirlik ve ortalama fiyatlarla ozetlenir."""
+    stmt = (
+        select(Sale)
+        .options(joinedload(Sale.buyer))
+        .where(Sale.sale_date >= start_date, Sale.sale_date <= end_date)
+    )
+    buckets: dict[int, _SalesBucket] = {}
+    for sale in db.scalars(stmt).all():
+        bucket = buckets.get(sale.buyer_id)
+        if bucket is None:
+            bucket = _SalesBucket(buyer_name=sale.buyer.name)
+            buckets[sale.buyer_id] = bucket
+        bucket.sale_count += 1
+        bucket.total_revenue += sale.total_amount
+        if sale.sale_weight_kg:
+            bucket.total_weight_kg += sale.sale_weight_kg
+
+    rows: list[SalesReportRead] = []
+    for bucket in buckets.values():
+        rows.append(
+            SalesReportRead(
+                buyer_name=bucket.buyer_name,
+                sale_count=bucket.sale_count,
+                total_weight_kg=bucket.total_weight_kg,
+                total_revenue=bucket.total_revenue,
+                average_sale_amount=round(float(bucket.total_revenue) / bucket.sale_count, 2),
+                average_price_per_kg=(
+                    round(float(bucket.total_revenue) / float(bucket.total_weight_kg), 2)
+                    if bucket.total_weight_kg > 0
+                    else None
+                ),
+            )
+        )
+    rows.sort(key=lambda r: -r.total_revenue)
     return rows
 
 

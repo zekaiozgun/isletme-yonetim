@@ -38,6 +38,15 @@ class CalvingRead(BaseModel):
     mother_tag_number: str | None = None
 
 
+class SalesReportRead(BaseModel):
+    buyer_name: str
+    sale_count: int
+    total_weight_kg: Decimal
+    total_revenue: Decimal
+    average_sale_amount: float
+    average_price_per_kg: float | None = None
+
+
 class WeightGainRead(BaseModel):
     animal_id: uuid.UUID
     tag_number: str
