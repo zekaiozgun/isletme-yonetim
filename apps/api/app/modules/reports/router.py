@@ -12,6 +12,7 @@ from app.modules.reports import service
 from app.modules.reports.schemas import (
     BredAnimalRead,
     BreedingCandidateRead,
+    BreedingPerformanceRead,
     CalvingRead,
     DashboardSummaryRead,
     HerdInventoryRead,
@@ -51,6 +52,15 @@ def calving(
     db: Session = Depends(get_db),
 ) -> list[CalvingRead]:
     return service.list_calvings(db, start_date, end_date)
+
+
+@router.get("/breeding-performance", response_model=list[BreedingPerformanceRead])
+def breeding_performance(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    db: Session = Depends(get_db),
+) -> list[BreedingPerformanceRead]:
+    return service.list_breeding_performance(db, start_date, end_date)
 
 
 @router.get("/calves", response_model=list[YoungAnimalRead])

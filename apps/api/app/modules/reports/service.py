@@ -28,10 +28,12 @@ from app.core.lookup_helpers import get_lookup_by_code
 from app.modules.animal.lookups import AnimalStatus, Gender
 from app.modules.animal.models import Animal
 from app.modules.breeding.models import BreedingEvent, PregnancyCheck
+from app.modules.genetic_resource.models import SemenBatch
 from app.modules.pen.models import Pen, PenAssignment
 from app.modules.reports.schemas import (
     BredAnimalRead,
     BreedingCandidateRead,
+    BreedingPerformanceRead,
     CalvingRead,
     DashboardSummaryRead,
     HerdInventoryRead,
@@ -312,6 +314,80 @@ def list_calvings(db: Session, start_date: date, end_date: date) -> list[Calving
                 mother_tag_number=animal.mother.tag_number if animal.mother else None,
             )
         )
+    return rows
+
+
+@dataclass
+class _PerformanceBucket:
+    source_type: str
+    source_label: str
+    service_count: int = 0
+    pregnant_count: int = 0
+    open_count: int = 0
+    suspicious_count: int = 0
+    pending_count: int = 0
+
+
+def list_breeding_performance(db: Session, start_date: date, end_date: date) -> list[BreedingPerformanceRead]:
+    """Belirtilen tarih araliginda yapilan asimlar; boga (dogal asim) ya da
+    sperma partisi (suni tohumlama/embriyo) bazinda gebe kalma orani."""
+    stmt = (
+        select(BreedingEvent)
+        .options(
+            joinedload(BreedingEvent.service_method),
+            joinedload(BreedingEvent.sire_animal),
+            joinedload(BreedingEvent.semen_batch).joinedload(SemenBatch.sire),
+        )
+        .where(BreedingEvent.service_date >= start_date, BreedingEvent.service_date <= end_date)
+    )
+    events = list(db.scalars(stmt).all())
+    latest_checks = _latest_check_by_event(db)
+
+    buckets: dict[str, _PerformanceBucket] = {}
+    for event in events:
+        if event.sire_animal_id is not None:
+            key = f"sire:{event.sire_animal_id}"
+            sire_animal = event.sire_animal
+            label = f"{sire_animal.tag_number}{' - ' + sire_animal.name if sire_animal.name else ''}"
+        else:
+            assert event.semen_batch_id is not None
+            key = f"batch:{event.semen_batch_id}"
+            batch = event.semen_batch
+            label = f"{batch.batch_no} ({batch.sire.name})"
+
+        bucket = buckets.get(key)
+        if bucket is None:
+            bucket = _PerformanceBucket(source_type=event.service_method.name, source_label=label)
+            buckets[key] = bucket
+
+        bucket.service_count += 1
+        check = latest_checks.get(event.id)
+        if check is None:
+            bucket.pending_count += 1
+        elif check.result.code == "GEBE":
+            bucket.pregnant_count += 1
+        elif check.result.code == "BOS":
+            bucket.open_count += 1
+        else:
+            bucket.suspicious_count += 1
+
+    rows: list[BreedingPerformanceRead] = []
+    for bucket in buckets.values():
+        checked_total = bucket.pregnant_count + bucket.open_count
+        rate = round(bucket.pregnant_count / checked_total * 100, 1) if checked_total > 0 else None
+        rows.append(
+            BreedingPerformanceRead(
+                source_type=bucket.source_type,
+                source_label=bucket.source_label,
+                service_count=bucket.service_count,
+                pregnant_count=bucket.pregnant_count,
+                open_count=bucket.open_count,
+                suspicious_count=bucket.suspicious_count,
+                pending_count=bucket.pending_count,
+                pregnancy_rate=rate,
+            )
+        )
+    rows.sort(key=lambda r: (r.pregnancy_rate is None, -(r.pregnancy_rate or 0), -r.service_count))
     return rows
 
 

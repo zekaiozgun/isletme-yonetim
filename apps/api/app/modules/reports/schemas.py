@@ -38,6 +38,17 @@ class CalvingRead(BaseModel):
     mother_tag_number: str | None = None
 
 
+class BreedingPerformanceRead(BaseModel):
+    source_type: str
+    source_label: str
+    service_count: int
+    pregnant_count: int
+    open_count: int
+    suspicious_count: int
+    pending_count: int
+    pregnancy_rate: float | None = None
+
+
 class BredAnimalRead(BaseModel):
     breeding_event_id: int
     animal_id: uuid.UUID

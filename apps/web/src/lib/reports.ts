@@ -72,6 +72,25 @@ export const reports: ReportConfig[] = [
     rowHighlight: (row) => Boolean(row.is_difficult_birth),
   },
   {
+    slug: 'breeding-performance',
+    title: 'Tohumlama Performans Raporu',
+    description:
+      'Aralıktaki aşım kayıtları; doğal/suni tohumlama dağılımı, boğa veya sperma partisi bazında gebe kalma oranı.',
+    endpoint: '/reports/breeding-performance',
+    dateRange: true,
+    columns: [
+      { key: 'source_type', label: 'Yöntem' },
+      { key: 'source_label', label: 'Boğa / Sperma Partisi' },
+      { key: 'service_count', label: 'Tohumlama Sayısı' },
+      { key: 'pregnant_count', label: 'Gebe Kalan' },
+      { key: 'open_count', label: 'Boş Çıkan' },
+      { key: 'suspicious_count', label: 'Şüpheli' },
+      { key: 'pending_count', label: 'Kontrol Bekliyor' },
+      { key: 'pregnancy_rate', label: 'Gebe Kalma Oranı', format: formatPercent },
+    ],
+    rowHighlight: (row) => typeof row.pregnancy_rate === 'number' && row.pregnancy_rate < 40,
+  },
+  {
     slug: 'breeding-candidates',
     title: 'Tohumlanacak Hayvanlar',
     description:
@@ -200,7 +219,7 @@ export const generalReportPlans: GeneralReportPlan[] = [
   {
     title: 'Tohumlama Performans Raporu',
     description: 'Aralıktaki aşım kayıtları; doğal/suni tohumlama dağılımı, boğa veya sperma partisi bazında gebe kalma oranı.',
-    slug: null,
+    slug: 'breeding-performance',
   },
   {
     title: 'Gebelik Kontrol Sonuçları Özeti',
