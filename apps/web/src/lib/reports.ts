@@ -218,6 +218,22 @@ export const reports: ReportConfig[] = [
     ],
   },
   {
+    slug: 'calving-intervals',
+    title: 'Yavrulama Aralığı (Calving Interval) Raporu',
+    description:
+      'Her inek için son iki doğumu arasındaki gün farkı ve sürü ortalaması. Tarih aralığı gerektirmez. 400 günü aşanlar vurgulu.',
+    endpoint: '/reports/calving-intervals',
+    columns: [
+      { key: 'tag_number', label: 'Hayvan' },
+      { key: 'name', label: 'İsim', format: formatPlain },
+      { key: 'previous_calving_date', label: 'Önceki Doğum', format: formatDate },
+      { key: 'last_calving_date', label: 'Son Doğum', format: formatDate },
+      { key: 'interval_days', label: 'Yavrulama Aralığı', format: formatDays },
+      { key: 'calving_count', label: 'Toplam Doğum Sayısı' },
+    ],
+    rowHighlight: (row) => Boolean(row.is_summary) || (typeof row.interval_days === 'number' && row.interval_days > 400),
+  },
+  {
     slug: 'breeding-candidates',
     title: 'Tohumlanacak Hayvanlar',
     description:
@@ -387,6 +403,6 @@ export const generalReportPlans: GeneralReportPlan[] = [
     title: 'Yavrulama Aralığı (Calving Interval) Raporu',
     description:
       'Her inek için son iki doğum arasındaki gün farkı ve sürü ortalaması. Tarih aralığı gerektirmez, hedefi (365/400 gün) aşanlar vurgulu - yavaş değişen ama verimliliği gösteren bir gösterge.',
-    slug: null,
+    slug: 'calving-intervals',
   },
 ];

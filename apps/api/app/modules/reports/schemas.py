@@ -46,6 +46,17 @@ class DeathLossReportRead(BaseModel):
     loss_rate: float | None = None
 
 
+class CalvingIntervalRead(BaseModel):
+    is_summary: bool = False
+    animal_id: uuid.UUID | None = None
+    tag_number: str
+    name: str | None = None
+    previous_calving_date: date | None = None
+    last_calving_date: date | None = None
+    interval_days: int
+    calving_count: int
+
+
 class FeedConsumptionRead(BaseModel):
     pen_code: str
     pen_name: str

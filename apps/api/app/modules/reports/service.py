@@ -40,6 +40,7 @@ from app.modules.reports.schemas import (
     BredAnimalRead,
     BreedingCandidateRead,
     BreedingPerformanceRead,
+    CalvingIntervalRead,
     CalvingRead,
     DashboardSummaryRead,
     DeathLossReportRead,
@@ -330,6 +331,57 @@ def list_calvings(db: Session, start_date: date, end_date: date) -> list[Calving
             )
         )
     return rows
+
+
+def list_calving_intervals(db: Session) -> list[CalvingIntervalRead]:
+    """Her inek icin gecmisteki TUM dogumlarini (Animal.mother_id + birth_date)
+    tarihe gore siralayip son iki dogum arasindaki gun farkini (yavrulama
+    araligi) hesaplar. Tarih araligi gerektirmez - sureklilik gosteren, yavas
+    degisen bir verimlilik gostergesidir (Anayasa m.4/m.5: hicbir yerde
+    saklanmaz, her istek Animal.birth_date/mother_id'den turetilir)."""
+    stmt = (
+        select(Animal.mother_id, Animal.birth_date)
+        .where(Animal.mother_id.isnot(None), Animal.birth_date.isnot(None))
+        .order_by(Animal.mother_id, Animal.birth_date)
+    )
+    calving_dates_by_dam: dict[uuid.UUID, list[date]] = {}
+    for mother_id, birth_date in db.execute(stmt).all():
+        calving_dates_by_dam.setdefault(mother_id, []).append(birth_date)
+
+    dam_ids = list(calving_dates_by_dam.keys())
+    dams = {a.id: a for a in db.scalars(select(Animal).where(Animal.id.in_(dam_ids))).all()} if dam_ids else {}
+
+    dam_rows: list[CalvingIntervalRead] = []
+    for dam_id, dates in calving_dates_by_dam.items():
+        if len(dates) < 2:
+            continue
+        previous_calving, last_calving = dates[-2], dates[-1]
+        interval_days = (last_calving - previous_calving).days
+        dam = dams.get(dam_id)
+        dam_rows.append(
+            CalvingIntervalRead(
+                animal_id=dam_id,
+                tag_number=dam.tag_number if dam else "—",
+                name=dam.name if dam else None,
+                previous_calving_date=previous_calving,
+                last_calving_date=last_calving,
+                interval_days=interval_days,
+                calving_count=len(dates),
+            )
+        )
+    dam_rows.sort(key=lambda r: -r.interval_days)
+
+    if not dam_rows:
+        return []
+
+    average_interval = round(sum(r.interval_days for r in dam_rows) / len(dam_rows))
+    summary_row = CalvingIntervalRead(
+        is_summary=True,
+        tag_number="Sürü Ortalaması",
+        interval_days=average_interval,
+        calving_count=len(dam_rows),
+    )
+    return [summary_row, *dam_rows]
 
 
 @dataclass
