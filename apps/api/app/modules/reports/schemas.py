@@ -38,6 +38,18 @@ class CalvingRead(BaseModel):
     mother_tag_number: str | None = None
 
 
+class PregnancyCheckResultRead(BaseModel):
+    breeding_event_id: int
+    animal_id: uuid.UUID
+    tag_number: str
+    name: str | None = None
+    service_date: date
+    check_date: date
+    method_name: str
+    result_name: str
+    is_suspicious: bool
+
+
 class BreedingPerformanceRead(BaseModel):
     source_type: str
     source_label: str

@@ -38,6 +38,7 @@ from app.modules.reports.schemas import (
     DashboardSummaryRead,
     HerdInventoryRead,
     PenOccupancyRead,
+    PregnancyCheckResultRead,
     PregnantAnimalRead,
     RepeatBreederRead,
     YoungAnimalRead,
@@ -388,6 +389,39 @@ def list_breeding_performance(db: Session, start_date: date, end_date: date) -> 
             )
         )
     rows.sort(key=lambda r: (r.pregnancy_rate is None, -(r.pregnancy_rate or 0), -r.service_count))
+    return rows
+
+
+def list_pregnancy_check_results(db: Session, start_date: date, end_date: date) -> list[PregnancyCheckResultRead]:
+    """Belirtilen tarih araliginda (check_date) yapilan tum gebelik kontrolleri -
+    hangi hayvana, hangi yontemle, ne sonuc cikti."""
+    stmt = (
+        select(PregnancyCheck)
+        .options(
+            joinedload(PregnancyCheck.method),
+            joinedload(PregnancyCheck.result),
+            joinedload(PregnancyCheck.breeding_event).joinedload(BreedingEvent.dam),
+        )
+        .where(PregnancyCheck.check_date >= start_date, PregnancyCheck.check_date <= end_date)
+        .order_by(PregnancyCheck.check_date, PregnancyCheck.breeding_event_id)
+    )
+    rows: list[PregnancyCheckResultRead] = []
+    for check in db.scalars(stmt).all():
+        event = check.breeding_event
+        dam = event.dam
+        rows.append(
+            PregnancyCheckResultRead(
+                breeding_event_id=event.id,
+                animal_id=dam.id,
+                tag_number=dam.tag_number,
+                name=dam.name,
+                service_date=event.service_date,
+                check_date=check.check_date,
+                method_name=check.method.name,
+                result_name=check.result.name,
+                is_suspicious=check.result.code == "SUPHELI",
+            )
+        )
     return rows
 
 

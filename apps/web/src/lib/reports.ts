@@ -91,6 +91,22 @@ export const reports: ReportConfig[] = [
     rowHighlight: (row) => typeof row.pregnancy_rate === 'number' && row.pregnancy_rate < 40,
   },
   {
+    slug: 'pregnancy-check-results',
+    title: 'Gebelik Kontrol Sonuçları Özeti',
+    description: 'Aralıkta yapılan gebelik kontrolleri; hayvan, kontrol yöntemi ve sonuç bazında.',
+    endpoint: '/reports/pregnancy-check-results',
+    dateRange: true,
+    columns: [
+      { key: 'tag_number', label: 'Küpe No' },
+      { key: 'name', label: 'İsim', format: formatPlain },
+      { key: 'service_date', label: 'Tohumlama Tarihi', format: formatDate },
+      { key: 'check_date', label: 'Kontrol Tarihi', format: formatDate },
+      { key: 'method_name', label: 'Kontrol Yöntemi' },
+      { key: 'result_name', label: 'Sonuç' },
+    ],
+    rowHighlight: (row) => Boolean(row.is_suspicious),
+  },
+  {
     slug: 'breeding-candidates',
     title: 'Tohumlanacak Hayvanlar',
     description:
@@ -224,7 +240,7 @@ export const generalReportPlans: GeneralReportPlan[] = [
   {
     title: 'Gebelik Kontrol Sonuçları Özeti',
     description: 'Aralıkta yapılan gebelik kontrolleri; gebe/boş/şüpheli sonuç oranı.',
-    slug: null,
+    slug: 'pregnancy-check-results',
   },
   {
     title: 'Sağlık Olayları Raporu',
@@ -243,7 +259,7 @@ export const generalReportPlans: GeneralReportPlan[] = [
   },
   {
     title: 'Ölüm/Kayıp Raporu',
-    description: 'Aralıktaki ölümler; neden dağılımı, kayıp oranı.',
+    description: 'Aralıktaki ölümler; buzağı (0-7 ay) ve yetişkin kaybı ayrı ayrı, neden dağılımı ve kayıp oranı.',
     slug: null,
   },
   {
@@ -254,6 +270,12 @@ export const generalReportPlans: GeneralReportPlan[] = [
   {
     title: 'Yem Tüketim Raporu',
     description: 'Aralıkta dağıtılan yem miktarı, padok/yem tipi bazında.',
+    slug: null,
+  },
+  {
+    title: 'Yavrulama Aralığı (Calving Interval) Raporu',
+    description:
+      'Her inek için son iki doğum arasındaki gün farkı ve sürü ortalaması. Tarih aralığı gerektirmez, hedefi (365/400 gün) aşanlar vurgulu - yavaş değişen ama verimliliği gösteren bir gösterge.',
     slug: null,
   },
 ];
