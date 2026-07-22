@@ -57,6 +57,11 @@ function formatDosage(value: unknown, row: ApiRecord): string {
   return unit ? `${String(value)} ${String(unit)}` : String(value);
 }
 
+function formatKgPerDay(value: unknown): string {
+  if (value === null || value === undefined || value === '') return '—';
+  return `${String(value)} kg/gün`;
+}
+
 export const reports: ReportConfig[] = [
   {
     slug: 'calving',
@@ -129,6 +134,26 @@ export const reports: ReportConfig[] = [
       { key: 'veterinarian_note', label: 'Veteriner Notu', format: formatPlain },
     ],
     rowHighlight: (row) => Boolean(row.is_illness),
+  },
+  {
+    slug: 'weight-gains',
+    title: 'Kilo Alım (ADG) Raporu',
+    description:
+      'Aralıkta en az iki tartısı olan hayvanlar için, ilk ve son tartı arasındaki günlük ortalama canlı ağırlık artışı (ADG).',
+    endpoint: '/reports/weight-gains',
+    dateRange: true,
+    columns: [
+      { key: 'tag_number', label: 'Küpe No' },
+      { key: 'name', label: 'İsim', format: formatPlain },
+      { key: 'first_weigh_date', label: 'İlk Tartı', format: formatDate },
+      { key: 'first_weight_kg', label: 'İlk Kilo', format: formatKg },
+      { key: 'last_weigh_date', label: 'Son Tartı', format: formatDate },
+      { key: 'last_weight_kg', label: 'Son Kilo', format: formatKg },
+      { key: 'weight_gain_kg', label: 'Kilo Artışı', format: formatKg },
+      { key: 'days_between', label: 'Gün Sayısı', format: formatDays },
+      { key: 'average_daily_gain_kg', label: 'Günlük Ort. Artış (ADG)', format: formatKgPerDay },
+    ],
+    rowHighlight: (row) => typeof row.average_daily_gain_kg === 'number' && row.average_daily_gain_kg < 0,
   },
   {
     slug: 'breeding-candidates',
@@ -274,7 +299,7 @@ export const generalReportPlans: GeneralReportPlan[] = [
   {
     title: 'Kilo Alım (ADG) Raporu',
     description: 'Aralıktaki tartı kayıtlarından günlük ortalama kilo alımı, hayvan veya padok bazında.',
-    slug: null,
+    slug: 'weight-gains',
   },
   {
     title: 'Satış Raporu',

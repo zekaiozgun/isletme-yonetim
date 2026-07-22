@@ -38,6 +38,19 @@ class CalvingRead(BaseModel):
     mother_tag_number: str | None = None
 
 
+class WeightGainRead(BaseModel):
+    animal_id: uuid.UUID
+    tag_number: str
+    name: str | None = None
+    first_weigh_date: date
+    first_weight_kg: Decimal
+    last_weigh_date: date
+    last_weight_kg: Decimal
+    days_between: int
+    weight_gain_kg: Decimal
+    average_daily_gain_kg: float
+
+
 class HealthEventReportRead(BaseModel):
     animal_id: uuid.UUID
     tag_number: str

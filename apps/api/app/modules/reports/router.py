@@ -21,6 +21,7 @@ from app.modules.reports.schemas import (
     PregnancyCheckResultRead,
     PregnantAnimalRead,
     RepeatBreederRead,
+    WeightGainRead,
     YoungAnimalRead,
 )
 
@@ -81,6 +82,15 @@ def health_events_report(
     db: Session = Depends(get_db),
 ) -> list[HealthEventReportRead]:
     return service.list_health_events(db, start_date, end_date)
+
+
+@router.get("/weight-gains", response_model=list[WeightGainRead])
+def weight_gains(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    db: Session = Depends(get_db),
+) -> list[WeightGainRead]:
+    return service.list_weight_gains(db, start_date, end_date)
 
 
 @router.get("/calves", response_model=list[YoungAnimalRead])

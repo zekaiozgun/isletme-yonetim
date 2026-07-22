@@ -30,6 +30,7 @@ from app.modules.animal.models import Animal
 from app.modules.breeding.models import BreedingEvent, PregnancyCheck
 from app.modules.genetic_resource.models import SemenBatch
 from app.modules.health.models import HealthEvent
+from app.modules.weight.models import WeightRecord
 from app.modules.pen.models import Pen, PenAssignment
 from app.modules.reports.schemas import (
     BredAnimalRead,
@@ -43,6 +44,7 @@ from app.modules.reports.schemas import (
     PregnancyCheckResultRead,
     PregnantAnimalRead,
     RepeatBreederRead,
+    WeightGainRead,
     YoungAnimalRead,
 )
 
@@ -460,6 +462,48 @@ def list_health_events(db: Session, start_date: date, end_date: date) -> list[He
                 veterinarian_note=event.veterinarian_note,
             )
         )
+    return rows
+
+
+def list_weight_gains(db: Session, start_date: date, end_date: date) -> list[WeightGainRead]:
+    """Belirtilen tarih araliginda en az iki tartisi olan hayvanlar icin, aralikta
+    ilk ve son tarti arasindaki gunluk ortalama canli agirlik artisini (ADG)
+    hesaplar. Anayasa m.5: ADG hicbir yerde saklanmaz, iki weight_records
+    kaydindan burada turetilir."""
+    stmt = (
+        select(WeightRecord)
+        .options(joinedload(WeightRecord.animal))
+        .where(WeightRecord.weigh_date >= start_date, WeightRecord.weigh_date <= end_date)
+        .order_by(WeightRecord.animal_id, WeightRecord.weigh_date)
+    )
+    by_animal: dict[uuid.UUID, list[WeightRecord]] = {}
+    for record in db.scalars(stmt).all():
+        by_animal.setdefault(record.animal_id, []).append(record)
+
+    rows: list[WeightGainRead] = []
+    for records in by_animal.values():
+        if len(records) < 2:
+            continue
+        first, last = records[0], records[-1]
+        days = (last.weigh_date - first.weigh_date).days
+        if days <= 0:
+            continue
+        gain = last.weight_kg - first.weight_kg
+        rows.append(
+            WeightGainRead(
+                animal_id=first.animal_id,
+                tag_number=first.animal.tag_number,
+                name=first.animal.name,
+                first_weigh_date=first.weigh_date,
+                first_weight_kg=first.weight_kg,
+                last_weigh_date=last.weigh_date,
+                last_weight_kg=last.weight_kg,
+                days_between=days,
+                weight_gain_kg=gain,
+                average_daily_gain_kg=round(float(gain) / days, 3),
+            )
+        )
+    rows.sort(key=lambda r: r.average_daily_gain_kg)
     return rows
 
 
