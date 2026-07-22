@@ -31,6 +31,7 @@ from app.modules.animal.models import Animal
 from app.modules.breeding.models import BreedingEvent, PregnancyCheck
 from app.modules.genetic_resource.models import SemenBatch
 from app.modules.death.models import Death
+from app.modules.feed.models import FeedDistribution, FeedItem
 from app.modules.health.models import HealthEvent
 from app.modules.sale.models import Sale
 from app.modules.weight.models import WeightRecord
@@ -42,6 +43,7 @@ from app.modules.reports.schemas import (
     CalvingRead,
     DashboardSummaryRead,
     DeathLossReportRead,
+    FeedConsumptionRead,
     HealthEventReportRead,
     HerdFlowReportRead,
     HerdInventoryRead,
@@ -59,6 +61,7 @@ MALE_GENDER_CODE = "ERKEK"
 ACTIVE_STATUS_CODE = "AKTIF"
 DIFFICULT_BIRTH_TYPE_CODE = "GUC"
 ILLNESS_EVENT_TYPE_CODE = "HASTALIK_BILDIRIMI"
+FEED_TON_UNIT_CODE = "TON"
 
 BREEDING_AGE_MONTHS = 12
 POSTPARTUM_WAIT_DAYS = 45
@@ -557,6 +560,59 @@ def list_sales_report(db: Session, start_date: date, end_date: date) -> list[Sal
             )
         )
     rows.sort(key=lambda r: -r.total_revenue)
+    return rows
+
+
+@dataclass
+class _FeedBucket:
+    pen_code: str
+    pen_name: str
+    feed_item_name: str
+    feed_type_name: str
+    total_quantity_kg: float = 0.0
+    distribution_count: int = 0
+
+
+def list_feed_consumption(db: Session, start_date: date, end_date: date) -> list[FeedConsumptionRead]:
+    """Belirtilen tarih araliginda (distribution_date) padok + yem urunu bazinda
+    dagitilan toplam yem miktari (kg'a normalize edilerek, ton kayitlari x1000)."""
+    stmt = (
+        select(FeedDistribution)
+        .options(
+            joinedload(FeedDistribution.pen),
+            joinedload(FeedDistribution.feed_item).joinedload(FeedItem.feed_type),
+            joinedload(FeedDistribution.unit),
+        )
+        .where(FeedDistribution.distribution_date >= start_date, FeedDistribution.distribution_date <= end_date)
+    )
+    buckets: dict[tuple[int, int], _FeedBucket] = {}
+    for dist in db.scalars(stmt).all():
+        key = (dist.pen_id, dist.feed_item_id)
+        bucket = buckets.get(key)
+        if bucket is None:
+            bucket = _FeedBucket(
+                pen_code=dist.pen.code,
+                pen_name=dist.pen.name,
+                feed_item_name=dist.feed_item.name,
+                feed_type_name=dist.feed_item.feed_type.name,
+            )
+            buckets[key] = bucket
+        quantity_kg = float(dist.quantity) * (1000 if dist.unit.code == FEED_TON_UNIT_CODE else 1)
+        bucket.total_quantity_kg += quantity_kg
+        bucket.distribution_count += 1
+
+    rows = [
+        FeedConsumptionRead(
+            pen_code=b.pen_code,
+            pen_name=b.pen_name,
+            feed_item_name=b.feed_item_name,
+            feed_type_name=b.feed_type_name,
+            total_quantity_kg=round(b.total_quantity_kg, 2),
+            distribution_count=b.distribution_count,
+        )
+        for b in buckets.values()
+    ]
+    rows.sort(key=lambda r: -r.total_quantity_kg)
     return rows
 
 

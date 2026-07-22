@@ -16,6 +16,7 @@ from app.modules.reports.schemas import (
     CalvingRead,
     DashboardSummaryRead,
     DeathLossReportRead,
+    FeedConsumptionRead,
     HealthEventReportRead,
     HerdFlowReportRead,
     HerdInventoryRead,
@@ -121,6 +122,15 @@ def herd_flow(
     db: Session = Depends(get_db),
 ) -> list[HerdFlowReportRead]:
     return service.list_herd_flow(db, start_date, end_date)
+
+
+@router.get("/feed-consumption", response_model=list[FeedConsumptionRead])
+def feed_consumption(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    db: Session = Depends(get_db),
+) -> list[FeedConsumptionRead]:
+    return service.list_feed_consumption(db, start_date, end_date)
 
 
 @router.get("/calves", response_model=list[YoungAnimalRead])

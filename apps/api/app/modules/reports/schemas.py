@@ -46,6 +46,15 @@ class DeathLossReportRead(BaseModel):
     loss_rate: float | None = None
 
 
+class FeedConsumptionRead(BaseModel):
+    pen_code: str
+    pen_name: str
+    feed_item_name: str
+    feed_type_name: str
+    total_quantity_kg: float
+    distribution_count: int
+
+
 class HerdFlowReportRead(BaseModel):
     category: str
     direction: str

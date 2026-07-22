@@ -203,6 +203,21 @@ export const reports: ReportConfig[] = [
     rowHighlight: (row) => row.direction === 'Net',
   },
   {
+    slug: 'feed-consumption',
+    title: 'Yem Tüketim Raporu',
+    description: 'Aralıkta dağıtılan yem miktarı, padok/yem tipi bazında.',
+    endpoint: '/reports/feed-consumption',
+    dateRange: true,
+    columns: [
+      { key: 'pen_code', label: 'Padok Kodu' },
+      { key: 'pen_name', label: 'Padok Adı' },
+      { key: 'feed_item_name', label: 'Yem Ürünü' },
+      { key: 'feed_type_name', label: 'Yem Tipi' },
+      { key: 'total_quantity_kg', label: 'Toplam Miktar', format: formatKg },
+      { key: 'distribution_count', label: 'Dağıtım Sayısı' },
+    ],
+  },
+  {
     slug: 'breeding-candidates',
     title: 'Tohumlanacak Hayvanlar',
     description:
@@ -366,7 +381,7 @@ export const generalReportPlans: GeneralReportPlan[] = [
   {
     title: 'Yem Tüketim Raporu',
     description: 'Aralıkta dağıtılan yem miktarı, padok/yem tipi bazında.',
-    slug: null,
+    slug: 'feed-consumption',
   },
   {
     title: 'Yavrulama Aralığı (Calving Interval) Raporu',
