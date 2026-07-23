@@ -50,7 +50,10 @@ export async function loginAction(_prevState: LoginFormState, formData: FormData
 
 export async function logoutAction(): Promise<void> {
   const cookieStore = await cookies();
-  cookieStore.delete(AUTH_COOKIE_NAME);
+  // path'i loginAction'daki set() ile AYNI belirtmek sart - farkli path'te
+  // silme cerezi yazilirsa tarayici orijinal (path: '/') cerezi eslesmez
+  // sayip silmez, oturum acikta kalir.
+  cookieStore.delete({ name: AUTH_COOKIE_NAME, path: '/' });
   redirect('/login');
 }
 
