@@ -93,3 +93,21 @@ export async function deleteResource(
   revalidatePath(`/${resource.slug}`);
   redirect(`/${resource.slug}`);
 }
+
+/** "Hatalı Giriş İptali": kilitli olsa dahi hem Çalışan hem Yönetici
+ * kullanabilir - hayvanı silmek yerine statüsünü değiştirir (bkz.
+ * app/modules/animal service.cancel_animal_entry, PUT/DELETE ile ilgisizdir). */
+export async function cancelAnimalEntryAction(
+  animalId: string,
+  _prevState: FormState,
+  _formData: FormData
+): Promise<FormState> {
+  const result = await apiPost<unknown>(`/animals/${animalId}/cancel-entry`, {});
+
+  if (result.error !== undefined) {
+    return { error: result.error };
+  }
+
+  revalidatePath(`/animals/${animalId}`);
+  redirect('/animals');
+}

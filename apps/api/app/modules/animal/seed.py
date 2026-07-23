@@ -64,6 +64,7 @@ SEED_DATA: dict[type, list[tuple[str, str]]] = {
         ("SATILDI", "Satildi"),
         ("OLDU", "Oldu"),
         ("KESILDI", "Kesildi"),
+        ("HATALI_GIRIS", "Hatalı Giriş İptali"),
     ],
     DeathReason: [
         ("HASTALIK", "Hastalik"),

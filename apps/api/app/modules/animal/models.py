@@ -8,7 +8,7 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import Date, ForeignKey, Numeric, String
+from sqlalchemy import Boolean, Date, ForeignKey, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -63,6 +63,12 @@ class Animal(TimestampMixin, Base):
 
     # --- Not (Anayasa m.6: serbest metnin izinli oldugu tek alan turu) ---
     note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    # Calisan rolundeki bir kullanici cift onayla kayit olusturdugunda true
+    # olur; bu durumda kayit Calisan tarafindan bir daha PUT/DELETE ile
+    # degistirilemez (YONETICI icin kisitlama yoktur). Duzeltme yolu
+    # cancel-entry endpoint'i ile "Hatali Giris Iptali" statusune gecistir.
+    is_locked: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
 
     mother = relationship("Animal", remote_side=[id], foreign_keys=[mother_id])
     father_sire = relationship("Sire", foreign_keys=[father_sire_id])

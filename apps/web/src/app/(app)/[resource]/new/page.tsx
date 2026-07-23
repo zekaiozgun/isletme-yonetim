@@ -1,9 +1,14 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { apiGet } from '@/lib/api';
 import { createResource } from '@/lib/actions';
 import { loadFormOptions } from '@/lib/formOptions';
 import { getResource } from '@/lib/resources';
 import { ResourceForm } from '@/components/ResourceForm';
+
+interface MeResponse {
+  role: 'YONETICI' | 'CALISAN';
+}
 
 export default async function NewResourcePage({ params }: { params: Promise<{ resource: string }> }) {
   const { resource: slug } = await params;
@@ -13,6 +18,12 @@ export default async function NewResourcePage({ params }: { params: Promise<{ re
   const { options, clientFields } = await loadFormOptions(resource);
   const action = createResource.bind(null, resource.slug);
 
+  // Calisan modunda hayvan girisi cift onaylidir: once "Incele ve Onayla"
+  // ile ozet gosterilir, kayit ancak ikinci onaydan sonra olusturulur ve
+  // bu andan itibaren Calisan icin kilitlenir (bkz. app/modules/animal).
+  const me = await apiGet<MeResponse>('/auth/me');
+  const requireConfirmation = slug === 'animals' && me.role === 'CALISAN';
+
   return (
     <div>
       <div className="mb-4 flex items-center gap-3">
@@ -21,11 +32,17 @@ export default async function NewResourcePage({ params }: { params: Promise<{ re
         </Link>
       </div>
       <h1 className="mb-4 text-xl font-semibold text-slate-900">Yeni {resource.singularTitle}</h1>
+      {requireConfirmation && (
+        <p className="mb-4 max-w-xl rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          Bu kayıt, onayladıktan sonra sizin tarafınızdan değiştirilemez veya silinemez. Bilgileri dikkatle girin.
+        </p>
+      )}
       <ResourceForm
         fields={clientFields}
         options={options}
         action={action}
         submitLabel={`${resource.singularTitle} Ekle`}
+        requireConfirmation={requireConfirmation}
       />
     </div>
   );

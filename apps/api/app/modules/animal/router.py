@@ -7,7 +7,8 @@ from app.core.database import get_db
 from app.core.exceptions import NotFoundError
 from app.core.lookup_router import build_lookup_router
 from app.modules.animal import service
-from app.modules.auth.dependencies import require_admin
+from app.modules.auth.dependencies import get_current_user, require_admin
+from app.modules.auth.models import User
 from app.modules.animal.lookups import (
     AnimalStatus,
     BirthType,
@@ -19,15 +20,17 @@ from app.modules.animal.lookups import (
     LitterType,
     SourceFarm,
 )
-from app.modules.animal.schemas import AnimalCreate, AnimalRead
+from app.modules.animal.schemas import AnimalCancelEntry, AnimalCreate, AnimalRead
 
 router = APIRouter(prefix="/animals", tags=["animals"])
 
 
 @router.post("", response_model=AnimalRead, status_code=201)
-def create_animal(payload: AnimalCreate, db: Session = Depends(get_db)) -> AnimalRead:
+def create_animal(
+    payload: AnimalCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+) -> AnimalRead:
     try:
-        return service.create_animal(db, payload)
+        return service.create_animal(db, payload, created_by_role=user.role)
     except NotFoundError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -76,9 +79,26 @@ def get_animal_age(animal_id: uuid.UUID, db: Session = Depends(get_db)) -> dict[
 
 
 @router.put("/{animal_id}", response_model=AnimalRead)
-def update_animal(animal_id: uuid.UUID, payload: AnimalCreate, db: Session = Depends(get_db)) -> AnimalRead:
+def update_animal(
+    animal_id: uuid.UUID,
+    payload: AnimalCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> AnimalRead:
     try:
-        return service.update_animal(db, animal_id, payload)
+        return service.update_animal(db, animal_id, payload, requester_role=user.role)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/{animal_id}/cancel-entry", response_model=AnimalRead)
+def cancel_animal_entry(
+    animal_id: uuid.UUID, payload: AnimalCancelEntry, db: Session = Depends(get_db)
+) -> AnimalRead:
+    """Hatalı Giriş İptali: hem Çalışan hem Yönetici kullanabilir, kilitli
+    kayıtlar için BİLİNÇLİ istisna - düzeltmenin tek yolu budur."""
+    try:
+        return service.cancel_animal_entry(db, animal_id, payload.note)
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

@@ -53,5 +53,12 @@ class AnimalRead(AnimalBase):
     status_date: date | None = None
     death_reason_id: int | None = None
     age_months: int | None = None
+    is_locked: bool
     created_at: datetime
     updated_at: datetime
+
+
+class AnimalCancelEntry(BaseModel):
+    """'Hatalı Giriş İptali' istegi: sadece opsiyonel bir aciklama."""
+
+    note: str | None = None
