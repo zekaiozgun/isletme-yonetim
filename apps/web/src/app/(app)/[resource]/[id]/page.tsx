@@ -67,24 +67,19 @@ export default async function EditResourcePage({ params }: { params: Promise<{ r
         readOnly={isLockedForCalisan}
       />
 
-      {!isLockedForCalisan &&
-        (canDeleteResource(resource.slug, me.role) ? (
-          <div className="mt-8 max-w-xl border-t border-slate-200 pt-6">
-            <h2 className="mb-2 text-sm font-semibold text-slate-700">Tehlikeli Bölge</h2>
-            <p className="mb-3 text-sm text-slate-500">
-              Bu {resource.singularTitle.toLowerCase()} kaydını kalıcı olarak siler. Başka kayıtlarca kullanılıyorsa
-              silme işlemi engellenir.
-            </p>
-            <DeleteButton
-              action={deleteAction}
-              confirmMessage={`Bu ${resource.singularTitle.toLowerCase()} kaydını silmek istediğinize emin misiniz?`}
-            />
-          </div>
-        ) : (
-          <p className="mt-8 max-w-xl border-t border-slate-200 pt-6 text-sm text-slate-400">
-            Hayvan kayıtlarını silme yetkisi yalnızca yöneticilerdedir.
+      {!isLockedForCalisan && canDeleteResource(resource.slug, me.role) && (
+        <div className="mt-8 max-w-xl border-t border-slate-200 pt-6">
+          <h2 className="mb-2 text-sm font-semibold text-slate-700">Tehlikeli Bölge</h2>
+          <p className="mb-3 text-sm text-slate-500">
+            Bu {resource.singularTitle.toLowerCase()} kaydını kalıcı olarak siler. Başka kayıtlarca kullanılıyorsa
+            silme işlemi engellenir.
           </p>
-        ))}
+          <DeleteButton
+            action={deleteAction}
+            confirmMessage={`Bu ${resource.singularTitle.toLowerCase()} kaydını silmek istediğinize emin misiniz?`}
+          />
+        </div>
+      )}
 
       {isAnimal && (
         <div className="mt-8 max-w-xl border-t border-slate-200 pt-6">

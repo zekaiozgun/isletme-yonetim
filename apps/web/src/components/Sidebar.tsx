@@ -17,7 +17,7 @@ function UserBadge({ user }: { user: SidebarUser }) {
     <div className="mb-4 flex items-center justify-between gap-2 rounded border border-slate-200 bg-white px-3 py-2">
       <div className="min-w-0">
         <div className="truncate text-sm font-medium text-slate-800">{user.fullName || user.username}</div>
-        <div className="text-xs text-slate-400">{user.role === 'YONETICI' ? 'Yönetici' : 'Çalışan'}</div>
+        {user.role === 'YONETICI' && <div className="text-xs text-slate-400">Yönetici</div>}
       </div>
       <form action={logoutAction}>
         <button type="submit" className="shrink-0 text-xs font-medium text-slate-500 hover:text-slate-800 hover:underline">
