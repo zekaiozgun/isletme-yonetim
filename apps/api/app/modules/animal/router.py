@@ -7,6 +7,7 @@ from app.core.database import get_db
 from app.core.exceptions import NotFoundError
 from app.core.lookup_router import build_lookup_router
 from app.modules.animal import service
+from app.modules.auth.dependencies import require_admin
 from app.modules.animal.lookups import (
     AnimalStatus,
     BirthType,
@@ -82,7 +83,7 @@ def update_animal(animal_id: uuid.UUID, payload: AnimalCreate, db: Session = Dep
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.delete("/{animal_id}", status_code=204)
+@router.delete("/{animal_id}", status_code=204, dependencies=[Depends(require_admin)])
 def delete_animal(animal_id: uuid.UUID, db: Session = Depends(get_db)) -> None:
     try:
         service.delete_animal(db, animal_id)
