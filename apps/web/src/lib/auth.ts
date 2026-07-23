@@ -31,7 +31,7 @@ export async function loginAction(_prevState: LoginFormState, formData: FormData
   }
 
   const result = await apiPost<LoginResponse>('/auth/login', { username, password });
-  if (result.error) {
+  if (result.error !== undefined) {
     return { error: result.error };
   }
 

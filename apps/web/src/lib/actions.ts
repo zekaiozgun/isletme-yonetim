@@ -43,7 +43,7 @@ export async function createResource(resourceSlug: string, _prevState: FormState
   const payload = buildPayload(resource.fields, formData);
   const result = await apiPost(resource.createEndpoint, payload);
 
-  if (result.error) {
+  if (result.error !== undefined) {
     return { error: result.error };
   }
 
@@ -65,7 +65,7 @@ export async function updateResource(
   const payload = buildPayload(resource.fields, formData);
   const result = await apiPut(`${resource.listEndpoint}/${id}`, payload);
 
-  if (result.error) {
+  if (result.error !== undefined) {
     return { error: result.error };
   }
 
@@ -86,7 +86,7 @@ export async function deleteResource(
 
   const result = await apiDelete(`${resource.listEndpoint}/${id}`);
 
-  if (result.error) {
+  if (result.error !== undefined) {
     return { error: result.error };
   }
 
