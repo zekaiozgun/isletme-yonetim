@@ -18,6 +18,7 @@ export function ReportTable({ report, rows }: { report: ReportConfig; rows: ApiR
       <table className="min-w-full divide-y divide-slate-200 text-sm">
         <thead className="bg-slate-50">
           <tr>
+            <th className="px-3 py-2 text-left font-medium text-slate-600">#</th>
             {report.columns.map((column) => (
               <th key={column.key} className="px-3 py-2 text-left font-medium text-slate-600">
                 {column.label}
@@ -30,6 +31,9 @@ export function ReportTable({ report, rows }: { report: ReportConfig; rows: ApiR
             const highlighted = report.rowHighlight?.(row) ?? false;
             return (
               <tr key={String(row.animal_id ?? row.pen_id ?? row.breeding_event_id ?? index)} className={highlighted ? 'bg-amber-50' : undefined}>
+                <td className={`whitespace-nowrap px-3 py-2 ${highlighted ? 'font-medium text-amber-900' : 'text-slate-500'}`}>
+                  {index + 1}
+                </td>
                 {report.columns.map((column) => (
                   <td
                     key={column.key}

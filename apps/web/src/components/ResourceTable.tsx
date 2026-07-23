@@ -53,6 +53,7 @@ export async function ResourceTable({ resource, rows }: { resource: ResourceConf
       <table className="min-w-full divide-y divide-slate-200 text-sm">
         <thead className="bg-slate-50">
           <tr>
+            <th className="px-3 py-2 text-left font-medium text-slate-600">#</th>
             {resource.columns.map((column) => (
               <th key={column.key} className="px-3 py-2 text-left font-medium text-slate-600">
                 {column.label}
@@ -62,8 +63,9 @@ export async function ResourceTable({ resource, rows }: { resource: ResourceConf
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {rows.map((row) => (
+          {rows.map((row, index) => (
             <tr key={String(row.id)}>
+              <td className="whitespace-nowrap px-3 py-2 text-slate-500">{index + 1}</td>
               {resource.columns.map((column) => (
                 <td key={column.key} className="whitespace-nowrap px-3 py-2 text-slate-700">
                   {formatCell(row, column, lookupMaps)}
