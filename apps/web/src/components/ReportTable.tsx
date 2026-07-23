@@ -1,6 +1,7 @@
 import type { ApiRecord } from '@/lib/api';
 import type { ReportConfig } from '@/lib/reports';
 import { TableSearch } from '@/components/TableSearch';
+import { CsvExportButton } from '@/components/CsvExportButton';
 
 function formatCell(row: ApiRecord, column: ReportConfig['columns'][number]): string {
   const raw = row[column.key];
@@ -14,8 +15,17 @@ export function ReportTable({ report, rows }: { report: ReportConfig; rows: ApiR
     return <p className="text-sm text-slate-500">Bu raporda şu anda gösterilecek kayıt yok.</p>;
   }
 
+  const csvHeaders = ['#', ...report.columns.map((c) => c.label)];
+  const csvRows = rows.map((row, index) => [
+    String(index + 1),
+    ...report.columns.map((column) => formatCell(row, column)),
+  ]);
+
   return (
-    <TableSearch placeholder={`${report.title} içinde ara...`}>
+    <TableSearch
+      placeholder={`${report.title} içinde ara...`}
+      actions={<CsvExportButton headers={csvHeaders} rows={csvRows} filename={`${report.slug}.csv`} />}
+    >
       <div className="overflow-x-auto rounded border border-slate-200">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50">

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { apiGetSafe, type ApiRecord } from '@/lib/api';
 import type { ColumnConfig, ResourceConfig } from '@/lib/resources';
 import { TableSearch } from '@/components/TableSearch';
+import { CsvExportButton } from '@/components/CsvExportButton';
 
 async function buildLookupMaps(columns: ColumnConfig[]): Promise<Map<string, Map<string, string>>> {
   const maps = new Map<string, Map<string, string>>();
@@ -49,8 +50,19 @@ export async function ResourceTable({ resource, rows }: { resource: ResourceConf
     return <p className="text-sm text-slate-500">Henüz kayıt yok.</p>;
   }
 
+  const csvHeaders = ['#', ...resource.columns.map((c) => c.label)];
+  const tableRows = rows.map((row, index) => ({
+    row,
+    index,
+    cellValues: resource.columns.map((column) => formatCell(row, column, lookupMaps)),
+  }));
+  const csvRows = tableRows.map(({ index, cellValues }) => [String(index + 1), ...cellValues]);
+
   return (
-    <TableSearch placeholder={`${resource.title} içinde ara...`}>
+    <TableSearch
+      placeholder={`${resource.title} içinde ara...`}
+      actions={<CsvExportButton headers={csvHeaders} rows={csvRows} filename={`${resource.slug}.csv`} />}
+    >
       <div className="overflow-x-auto rounded border border-slate-200">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50">
@@ -65,8 +77,7 @@ export async function ResourceTable({ resource, rows }: { resource: ResourceConf
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {rows.map((row, index) => {
-              const cellValues = resource.columns.map((column) => formatCell(row, column, lookupMaps));
+            {tableRows.map(({ row, index, cellValues }) => {
               const searchText = cellValues.join(' ').toLocaleLowerCase('tr-TR');
               return (
                 <tr key={String(row.id)} data-search={searchText}>
