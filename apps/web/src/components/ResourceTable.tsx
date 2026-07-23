@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { apiGetSafe, type ApiRecord } from '@/lib/api';
 import type { ColumnConfig, ResourceConfig } from '@/lib/resources';
+import { TableSearch } from '@/components/TableSearch';
 
 async function buildLookupMaps(columns: ColumnConfig[]): Promise<Map<string, Map<string, string>>> {
   const maps = new Map<string, Map<string, string>>();
@@ -49,37 +50,43 @@ export async function ResourceTable({ resource, rows }: { resource: ResourceConf
   }
 
   return (
-    <div className="overflow-x-auto rounded border border-slate-200">
-      <table className="min-w-full divide-y divide-slate-200 text-sm">
-        <thead className="bg-slate-50">
-          <tr>
-            <th className="px-3 py-2 text-left font-medium text-slate-600">#</th>
-            {resource.columns.map((column) => (
-              <th key={column.key} className="px-3 py-2 text-left font-medium text-slate-600">
-                {column.label}
-              </th>
-            ))}
-            <th className="px-3 py-2 text-left font-medium text-slate-600">İşlemler</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {rows.map((row, index) => (
-            <tr key={String(row.id)}>
-              <td className="whitespace-nowrap px-3 py-2 text-slate-500">{index + 1}</td>
+    <TableSearch placeholder={`${resource.title} içinde ara...`}>
+      <div className="overflow-x-auto rounded border border-slate-200">
+        <table className="min-w-full divide-y divide-slate-200 text-sm">
+          <thead className="bg-slate-50">
+            <tr>
+              <th className="px-3 py-2 text-left font-medium text-slate-600">#</th>
               {resource.columns.map((column) => (
-                <td key={column.key} className="whitespace-nowrap px-3 py-2 text-slate-700">
-                  {formatCell(row, column, lookupMaps)}
-                </td>
+                <th key={column.key} className="px-3 py-2 text-left font-medium text-slate-600">
+                  {column.label}
+                </th>
               ))}
-              <td className="whitespace-nowrap px-3 py-2">
-                <Link href={`/${resource.slug}/${row.id}`} className="text-sm text-slate-600 hover:text-slate-900 hover:underline">
-                  Düzenle
-                </Link>
-              </td>
+              <th className="px-3 py-2 text-left font-medium text-slate-600">İşlemler</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {rows.map((row, index) => {
+              const cellValues = resource.columns.map((column) => formatCell(row, column, lookupMaps));
+              const searchText = cellValues.join(' ').toLocaleLowerCase('tr-TR');
+              return (
+                <tr key={String(row.id)} data-search={searchText}>
+                  <td className="whitespace-nowrap px-3 py-2 text-slate-500">{index + 1}</td>
+                  {resource.columns.map((column, columnIndex) => (
+                    <td key={column.key} className="whitespace-nowrap px-3 py-2 text-slate-700">
+                      {cellValues[columnIndex]}
+                    </td>
+                  ))}
+                  <td className="whitespace-nowrap px-3 py-2">
+                    <Link href={`/${resource.slug}/${row.id}`} className="text-sm text-slate-600 hover:text-slate-900 hover:underline">
+                      Düzenle
+                    </Link>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </TableSearch>
   );
 }

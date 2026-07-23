@@ -1,5 +1,6 @@
 import type { ApiRecord } from '@/lib/api';
 import type { ReportConfig } from '@/lib/reports';
+import { TableSearch } from '@/components/TableSearch';
 
 function formatCell(row: ApiRecord, column: ReportConfig['columns'][number]): string {
   const raw = row[column.key];
@@ -14,39 +15,47 @@ export function ReportTable({ report, rows }: { report: ReportConfig; rows: ApiR
   }
 
   return (
-    <div className="overflow-x-auto rounded border border-slate-200">
-      <table className="min-w-full divide-y divide-slate-200 text-sm">
-        <thead className="bg-slate-50">
-          <tr>
-            <th className="px-3 py-2 text-left font-medium text-slate-600">#</th>
-            {report.columns.map((column) => (
-              <th key={column.key} className="px-3 py-2 text-left font-medium text-slate-600">
-                {column.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {rows.map((row, index) => {
-            const highlighted = report.rowHighlight?.(row) ?? false;
-            return (
-              <tr key={String(row.animal_id ?? row.pen_id ?? row.breeding_event_id ?? index)} className={highlighted ? 'bg-amber-50' : undefined}>
-                <td className={`whitespace-nowrap px-3 py-2 ${highlighted ? 'font-medium text-amber-900' : 'text-slate-500'}`}>
-                  {index + 1}
-                </td>
-                {report.columns.map((column) => (
-                  <td
-                    key={column.key}
-                    className={`whitespace-nowrap px-3 py-2 ${highlighted ? 'font-medium text-amber-900' : 'text-slate-700'}`}
-                  >
-                    {formatCell(row, column)}
+    <TableSearch placeholder={`${report.title} içinde ara...`}>
+      <div className="overflow-x-auto rounded border border-slate-200">
+        <table className="min-w-full divide-y divide-slate-200 text-sm">
+          <thead className="bg-slate-50">
+            <tr>
+              <th className="px-3 py-2 text-left font-medium text-slate-600">#</th>
+              {report.columns.map((column) => (
+                <th key={column.key} className="px-3 py-2 text-left font-medium text-slate-600">
+                  {column.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {rows.map((row, index) => {
+              const highlighted = report.rowHighlight?.(row) ?? false;
+              const cellValues = report.columns.map((column) => formatCell(row, column));
+              const searchText = cellValues.join(' ').toLocaleLowerCase('tr-TR');
+              return (
+                <tr
+                  key={String(row.animal_id ?? row.pen_id ?? row.breeding_event_id ?? index)}
+                  data-search={searchText}
+                  className={highlighted ? 'bg-amber-50' : undefined}
+                >
+                  <td className={`whitespace-nowrap px-3 py-2 ${highlighted ? 'font-medium text-amber-900' : 'text-slate-500'}`}>
+                    {index + 1}
                   </td>
-                ))}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+                  {report.columns.map((column, columnIndex) => (
+                    <td
+                      key={column.key}
+                      className={`whitespace-nowrap px-3 py-2 ${highlighted ? 'font-medium text-amber-900' : 'text-slate-700'}`}
+                    >
+                      {cellValues[columnIndex]}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </TableSearch>
   );
 }
