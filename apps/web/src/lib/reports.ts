@@ -377,7 +377,7 @@ export const reports: ReportConfig[] = [
     slug: 'animal-profitability',
     title: 'Hayvan Kârlılık Raporu',
     description:
-      'Aralıkta satılan veya ölen hayvanların yaşam boyu maliyeti (alım + sağlık + gün ağırlıklı yem payı) satış geliriyle karşılaştırılır. TL tutarlar tarihsel/nominal, USD karşılığı işlem tarihindeki TCMB kuruyla hesaplanır. Zarar eden hayvanlar vurgulu.',
+      'Aralıkta satılan veya ölen hayvanların yaşam boyu maliyeti (giriş değeri + sağlık + gün ağırlıklı yem payı) satış geliriyle karşılaştırılır. Giriş değeri, satın alınan hayvanlarda alım tutarı, işletmede doğanlarda ise doğumda biçilen tahmini değerdir - ölen bir hayvanın giriş değeri doğrudan zarar yazılır. TL tutarlar tarihsel/nominal, USD karşılığı işlem tarihindeki TCMB kuruyla hesaplanır. Zarar eden hayvanlar vurgulu.',
     endpoint: '/reports/animal-profitability',
     dateRange: true,
     columns: [
@@ -385,7 +385,7 @@ export const reports: ReportConfig[] = [
       { key: 'name', label: 'İsim', format: formatPlain },
       { key: 'outcome', label: 'Sonuç' },
       { key: 'outcome_date', label: 'Tarih', format: formatDate },
-      { key: 'purchase_cost_try', label: 'Alım Maliyeti (TL)', format: formatCurrency },
+      { key: 'entry_value_try', label: 'Giriş Değeri (TL)', format: formatCurrency },
       { key: 'health_cost_try', label: 'Sağlık Maliyeti (TL)', format: formatCurrency },
       { key: 'feed_cost_try', label: 'Yem Payı (TL)', format: formatCurrency },
       { key: 'total_cost_try', label: 'Toplam Maliyet (TL)', format: formatCurrency },

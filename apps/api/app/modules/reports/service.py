@@ -1087,11 +1087,11 @@ def _build_profitability_row(
 
     feed_cost_try, feed_cost_usd = _feed_cost_share_for_animal(db, animal.id, outcome_date)
 
-    purchase_cost_try = animal.purchase_cost or Decimal("0")
-    purchase_cost_usd = _try_to_usd(db, purchase_cost_try, animal.entry_date)
+    entry_value_try = animal.entry_value or Decimal("0")
+    entry_value_usd = _try_to_usd(db, entry_value_try, animal.entry_date)
 
-    total_cost_try = purchase_cost_try + health_cost_try + feed_cost_try
-    total_cost_usd = purchase_cost_usd + health_cost_usd + feed_cost_usd
+    total_cost_try = entry_value_try + health_cost_try + feed_cost_try
+    total_cost_usd = entry_value_usd + health_cost_usd + feed_cost_usd
 
     revenue_usd = _try_to_usd(db, revenue_try, outcome_date) if revenue_try is not None else None
 
@@ -1104,7 +1104,7 @@ def _build_profitability_row(
         name=animal.name,
         outcome=outcome,
         outcome_date=outcome_date,
-        purchase_cost_try=animal.purchase_cost,
+        entry_value_try=animal.entry_value,
         health_cost_try=_round_money(health_cost_try),
         feed_cost_try=_round_money(feed_cost_try),
         total_cost_try=_round_money(total_cost_try),
@@ -1119,10 +1119,14 @@ def _build_profitability_row(
 def list_animal_profitability(db: Session, start_date: date, end_date: date) -> list[AnimalProfitabilityRead]:
     """Belirtilen tarih araliginda SATILAN veya OLEN (yani 'kapanmis')
     hayvanlarin YASAM BOYU maliyetini (sadece rapor araligindaki degil,
-    girisinden cikisina kadar biriken alim + saglik + yem payi) o donemde
-    gerceklesen gelirle (satildiysa) karsilastirir - gelir/maliyet
-    eslestirmesi standart muhasebe mantigidir. Aktif hayvanlar bu raporda
-    YOKTUR, karliligi henuz gerceklesmedi (Anayasa m.4/m.5)."""
+    girisinden cikisina kadar biriken giris degeri + saglik + yem payi) o
+    donemde gerceklesen gelirle (satildiysa) karsilastirir - gelir/maliyet
+    eslestirmesi standart muhasebe mantigidir. entry_value, satin alinan
+    hayvanlarda odenen tutar, ISLETMEDE DOGANLARDA ise kullanicinin dogum
+    aninda bictigi tahmini deger olabilir (biyolojik varlik muhasebesi -
+    dogan bir buzagi da bir degerle isletmeye giren bir 'urun'dur; olurse
+    bu deger dogrudan zarar yazilir). Aktif hayvanlar bu raporda YOKTUR,
+    karliligi henuz gerceklesmedi (Anayasa m.4/m.5)."""
     rows: list[AnimalProfitabilityRead] = []
 
     sale_stmt = select(Sale).options(joinedload(Sale.animal)).where(
@@ -1165,13 +1169,13 @@ def list_herd_cost_summary(db: Session, start_date: date, end_date: date) -> lis
         health_try += he.cost
         health_usd += _try_to_usd(db, he.cost, he.event_date)
 
-    purchase_try = purchase_usd = Decimal("0")
-    purchase_stmt = select(Animal).where(
-        Animal.entry_date >= start_date, Animal.entry_date <= end_date, Animal.purchase_cost.isnot(None)
+    entry_value_try = entry_value_usd = Decimal("0")
+    entry_value_stmt = select(Animal).where(
+        Animal.entry_date >= start_date, Animal.entry_date <= end_date, Animal.entry_value.isnot(None)
     )
-    for animal in db.scalars(purchase_stmt).all():
-        purchase_try += animal.purchase_cost
-        purchase_usd += _try_to_usd(db, animal.purchase_cost, animal.entry_date)
+    for animal in db.scalars(entry_value_stmt).all():
+        entry_value_try += animal.entry_value
+        entry_value_usd += _try_to_usd(db, animal.entry_value, animal.entry_date)
 
     revenue_try = revenue_usd = Decimal("0")
     sale_stmt = select(Sale).where(Sale.sale_date >= start_date, Sale.sale_date <= end_date)
@@ -1179,8 +1183,8 @@ def list_herd_cost_summary(db: Session, start_date: date, end_date: date) -> lis
         revenue_try += sale.total_amount
         revenue_usd += _try_to_usd(db, sale.total_amount, sale.sale_date)
 
-    total_cost_try = feed_try + health_try + purchase_try
-    total_cost_usd = feed_usd + health_usd + purchase_usd
+    total_cost_try = feed_try + health_try + entry_value_try
+    total_cost_usd = feed_usd + health_usd + entry_value_usd
 
     def row(category: str, try_amount: Decimal, usd_amount: Decimal) -> HerdCostSummaryRead:
         return HerdCostSummaryRead(category=category, amount_try=_round_money(try_amount), amount_usd=_round_money(usd_amount))
@@ -1188,7 +1192,7 @@ def list_herd_cost_summary(db: Session, start_date: date, end_date: date) -> lis
     return [
         row("Yem Maliyeti", feed_try, feed_usd),
         row("Sağlık/Tedavi Maliyeti", health_try, health_usd),
-        row("Alım Maliyeti", purchase_try, purchase_usd),
+        row("Giriş Değeri (Alım/Doğum)", entry_value_try, entry_value_usd),
         row("Toplam Maliyet", total_cost_try, total_cost_usd),
         row("Satış Geliri", revenue_try, revenue_usd),
         row("Net (Gelir - Maliyet)", revenue_try - total_cost_try, revenue_usd - total_cost_usd),

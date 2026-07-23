@@ -53,10 +53,14 @@ class Animal(TimestampMixin, Base):
     entry_date: Mapped[date] = mapped_column(Date, nullable=False)
     source_farm_id: Mapped[int | None] = mapped_column(ForeignKey("source_farms.id"), nullable=True)
     entry_source_id: Mapped[int] = mapped_column(ForeignKey("entry_sources.id"), nullable=False)
-    # Alim maliyeti (TL, tarihsel/nominal - hic degistirilmez). Rapor
-    # katmaninda entry_date uzerinden TCMB kuruyla USD karsiligi da
+    # Giristeki deger (TL, tarihsel/nominal - hic degistirilmez): satin
+    # alindiysa odenen tutar, iSLETMEDE DOGDUYSA kullanicinin o buzagiya
+    # dogum aninda bicti tahmini deger (biyolojik varlik muhasebesi -
+    # dogan hayvan da isletmeye bir degerle giren bir "urun"dur; oluyorsa
+    # bu deger dogrudan zarar yazilir, tipki depoda curuyen stok gibi).
+    # Rapor katmaninda entry_date uzerinden TCMB kuruyla USD karsiligi da
     # hesaplanir (bkz. app/modules/fx) - burada sadece TL fact tutulur.
-    purchase_cost: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    entry_value: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
 
     # --- Statu ---
     # Bu alanlar guncel/anlik durumu tutar; olay gecmisi ileride Sale/Death

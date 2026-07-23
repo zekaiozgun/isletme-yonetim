@@ -123,7 +123,7 @@ const mainResources: ResourceConfig[] = [
       { key: 'age_months', label: 'Yaş', format: formatAgeMonths },
       { key: 'status_id', label: 'Statü', lookup: animalStatuses },
       { key: 'entry_date', label: 'Giriş Tarihi' },
-      { key: 'purchase_cost', label: 'Alım Maliyeti (TL)' },
+      { key: 'entry_value', label: 'Giriş Değeri (TL)' },
     ],
     fields: [
       { name: 'tag_number', label: 'Küpe No', type: 'text', required: true },
@@ -142,7 +142,11 @@ const mainResources: ResourceConfig[] = [
       { name: 'entry_date', label: 'İşletmeye Giriş Tarihi', type: 'date', required: true },
       { name: 'source_farm_id', label: 'Geldiği İşletme', type: 'select', options: sourceFarms },
       { name: 'entry_source_id', label: 'Giriş Kaynağı', type: 'select', options: entrySources, required: true },
-      { name: 'purchase_cost', label: 'Alım Maliyeti (TL)', type: 'decimal' },
+      {
+        name: 'entry_value',
+        label: 'Giriş Değeri (TL) — satın alma tutarı ya da doğumda biçilen tahmini değer',
+        type: 'decimal',
+      },
       { name: 'note', label: 'Not', type: 'textarea' },
     ],
     relatedReports: [

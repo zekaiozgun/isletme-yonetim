@@ -212,7 +212,7 @@ class AnimalProfitabilityRead(BaseModel):
     name: str | None = None
     outcome: str
     outcome_date: date
-    purchase_cost_try: Decimal | None = None
+    entry_value_try: Decimal | None = None
     health_cost_try: Decimal
     feed_cost_try: Decimal
     total_cost_try: Decimal
