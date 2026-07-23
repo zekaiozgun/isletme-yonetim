@@ -193,6 +193,42 @@ class HerdInventoryRead(BaseModel):
     adult_male_count: int
 
 
+class PenEfficiencyRead(BaseModel):
+    pen_id: int
+    code: str
+    name: str
+    total_feed_quantity_kg: float
+    total_feed_cost_try: Decimal
+    total_feed_cost_usd: Decimal
+    total_weight_gain_kg: Decimal
+    feed_conversion_ratio: float | None = None
+    cost_per_kg_gain_try: float | None = None
+    cost_per_kg_gain_usd: float | None = None
+
+
+class AnimalProfitabilityRead(BaseModel):
+    animal_id: uuid.UUID
+    tag_number: str
+    name: str | None = None
+    outcome: str
+    outcome_date: date
+    purchase_cost_try: Decimal | None = None
+    health_cost_try: Decimal
+    feed_cost_try: Decimal
+    total_cost_try: Decimal
+    total_cost_usd: Decimal
+    revenue_try: Decimal | None = None
+    revenue_usd: Decimal | None = None
+    profit_try: Decimal
+    profit_usd: Decimal
+
+
+class HerdCostSummaryRead(BaseModel):
+    category: str
+    amount_try: Decimal
+    amount_usd: Decimal
+
+
 class DashboardSummaryRead(BaseModel):
     active_animal_count: int
     breeding_candidate_count: int

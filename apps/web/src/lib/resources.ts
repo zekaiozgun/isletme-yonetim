@@ -123,6 +123,7 @@ const mainResources: ResourceConfig[] = [
       { key: 'age_months', label: 'Yaş', format: formatAgeMonths },
       { key: 'status_id', label: 'Statü', lookup: animalStatuses },
       { key: 'entry_date', label: 'Giriş Tarihi' },
+      { key: 'purchase_cost', label: 'Alım Maliyeti (TL)' },
     ],
     fields: [
       { name: 'tag_number', label: 'Küpe No', type: 'text', required: true },
@@ -141,6 +142,7 @@ const mainResources: ResourceConfig[] = [
       { name: 'entry_date', label: 'İşletmeye Giriş Tarihi', type: 'date', required: true },
       { name: 'source_farm_id', label: 'Geldiği İşletme', type: 'select', options: sourceFarms },
       { name: 'entry_source_id', label: 'Giriş Kaynağı', type: 'select', options: entrySources, required: true },
+      { name: 'purchase_cost', label: 'Alım Maliyeti (TL)', type: 'decimal' },
       { name: 'note', label: 'Not', type: 'textarea' },
     ],
     relatedReports: [
@@ -319,6 +321,7 @@ const mainResources: ResourceConfig[] = [
       { key: 'event_type_id', label: 'Tip', lookup: healthEventTypes },
       { key: 'event_date', label: 'Tarih' },
       { key: 'medication_id', label: 'İlaç', lookup: medications },
+      { key: 'cost', label: 'Maliyet (TL)' },
     ],
     fields: [
       { name: 'animal_id', label: 'Hayvan', type: 'select', options: animals, required: true },
@@ -329,6 +332,7 @@ const mainResources: ResourceConfig[] = [
       { name: 'dosage_amount', label: 'Doz Miktarı', type: 'decimal' },
       { name: 'dosage_unit_id', label: 'Doz Birimi', type: 'select', options: dosageUnits },
       { name: 'veterinarian_note', label: 'Veteriner Notu', type: 'textarea' },
+      { name: 'cost', label: 'Maliyet (TL)', type: 'decimal' },
       { name: 'note', label: 'Not', type: 'textarea' },
     ],
   },
@@ -382,6 +386,7 @@ const mainResources: ResourceConfig[] = [
       { key: 'feed_item_id', label: 'Yem Ürünü', lookup: feedItems },
       { key: 'distribution_date', label: 'Tarih' },
       { key: 'quantity', label: 'Miktar' },
+      { key: 'total_cost', label: 'Maliyet (TL)' },
     ],
     fields: [
       { name: 'pen_id', label: 'Padok', type: 'select', options: pens, required: true },
@@ -389,6 +394,7 @@ const mainResources: ResourceConfig[] = [
       { name: 'distribution_date', label: 'Tarih', type: 'date', required: true },
       { name: 'quantity', label: 'Miktar', type: 'decimal', required: true },
       { name: 'unit_id', label: 'Birim', type: 'select', options: feedUnits, required: true },
+      { name: 'total_cost', label: 'Maliyet (TL)', type: 'decimal' },
       { name: 'note', label: 'Not', type: 'textarea' },
     ],
   },

@@ -67,6 +67,11 @@ function formatCurrency(value: unknown): string {
   return `${String(value)} ₺`;
 }
 
+function formatUsd(value: unknown): string {
+  if (value === null || value === undefined || value === '') return '—';
+  return `$${String(value)}`;
+}
+
 export const reports: ReportConfig[] = [
   {
     slug: 'calving',
@@ -348,6 +353,63 @@ export const reports: ReportConfig[] = [
       { key: 'occupancy_rate', label: 'Doluluk Oranı', format: formatPercent },
     ],
     rowHighlight: (row) => typeof row.occupancy_rate === 'number' && row.occupancy_rate >= 100,
+  },
+  {
+    slug: 'pen-efficiency',
+    title: 'Padok Maliyet-Verimlilik Raporu',
+    description:
+      'Aralıkta padoğa dağıtılan yem (miktar, TL ve TCMB kuruyla USD) ile o padoktaki hayvanların gerçek kilo artışı karşılaştırılır: yem dönüşüm oranı (FCR) ve kg canlı ağırlık başına maliyet.',
+    endpoint: '/reports/pen-efficiency',
+    dateRange: true,
+    columns: [
+      { key: 'code', label: 'Padok Kodu' },
+      { key: 'name', label: 'Padok Adı' },
+      { key: 'total_feed_quantity_kg', label: 'Toplam Yem', format: formatKg },
+      { key: 'total_feed_cost_try', label: 'Yem Maliyeti (TL)', format: formatCurrency },
+      { key: 'total_feed_cost_usd', label: 'Yem Maliyeti ($)', format: formatUsd },
+      { key: 'total_weight_gain_kg', label: 'Toplam Kilo Artışı', format: formatKg },
+      { key: 'feed_conversion_ratio', label: 'Yem Dönüşüm Oranı (FCR)', format: formatPlain },
+      { key: 'cost_per_kg_gain_try', label: 'Kg Artış Başına Maliyet (TL)', format: formatCurrency },
+      { key: 'cost_per_kg_gain_usd', label: 'Kg Artış Başına Maliyet ($)', format: formatUsd },
+    ],
+  },
+  {
+    slug: 'animal-profitability',
+    title: 'Hayvan Kârlılık Raporu',
+    description:
+      'Aralıkta satılan veya ölen hayvanların yaşam boyu maliyeti (alım + sağlık + gün ağırlıklı yem payı) satış geliriyle karşılaştırılır. TL tutarlar tarihsel/nominal, USD karşılığı işlem tarihindeki TCMB kuruyla hesaplanır. Zarar eden hayvanlar vurgulu.',
+    endpoint: '/reports/animal-profitability',
+    dateRange: true,
+    columns: [
+      { key: 'tag_number', label: 'Küpe No' },
+      { key: 'name', label: 'İsim', format: formatPlain },
+      { key: 'outcome', label: 'Sonuç' },
+      { key: 'outcome_date', label: 'Tarih', format: formatDate },
+      { key: 'purchase_cost_try', label: 'Alım Maliyeti (TL)', format: formatCurrency },
+      { key: 'health_cost_try', label: 'Sağlık Maliyeti (TL)', format: formatCurrency },
+      { key: 'feed_cost_try', label: 'Yem Payı (TL)', format: formatCurrency },
+      { key: 'total_cost_try', label: 'Toplam Maliyet (TL)', format: formatCurrency },
+      { key: 'total_cost_usd', label: 'Toplam Maliyet ($)', format: formatUsd },
+      { key: 'revenue_try', label: 'Satış Geliri (TL)', format: formatCurrency },
+      { key: 'revenue_usd', label: 'Satış Geliri ($)', format: formatUsd },
+      { key: 'profit_try', label: 'Kâr/Zarar (TL)', format: formatCurrency },
+      { key: 'profit_usd', label: 'Kâr/Zarar ($)', format: formatUsd },
+    ],
+    rowHighlight: (row) => typeof row.profit_try === 'number' && row.profit_try < 0,
+  },
+  {
+    slug: 'herd-cost-summary',
+    title: 'Sürü Genel Maliyet-Gelir Özeti',
+    description:
+      'Aralıkta gerçekleşen yem, sağlık ve alım maliyeti ile satış gelirinin TL ve USD (her kalemin kendi tarihindeki TCMB kuruyla) genel özeti - planlama için.',
+    endpoint: '/reports/herd-cost-summary',
+    dateRange: true,
+    columns: [
+      { key: 'category', label: 'Kalem' },
+      { key: 'amount_try', label: 'Tutar (TL)', format: formatCurrency },
+      { key: 'amount_usd', label: 'Tutar ($)', format: formatUsd },
+    ],
+    rowHighlight: (row) => row.category === 'Net (Gelir - Maliyet)',
   },
 ];
 

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.modules.reports import service
 from app.modules.reports.schemas import (
+    AnimalProfitabilityRead,
     BredAnimalRead,
     BreedingCandidateRead,
     BreedingPerformanceRead,
@@ -19,8 +20,10 @@ from app.modules.reports.schemas import (
     DeathLossReportRead,
     FeedConsumptionRead,
     HealthEventReportRead,
+    HerdCostSummaryRead,
     HerdFlowReportRead,
     HerdInventoryRead,
+    PenEfficiencyRead,
     PenOccupancyRead,
     PregnancyCheckResultRead,
     PregnantAnimalRead,
@@ -167,3 +170,30 @@ def herd_inventory(db: Session = Depends(get_db)) -> HerdInventoryRead:
 @router.get("/dashboard-summary", response_model=DashboardSummaryRead)
 def dashboard_summary(db: Session = Depends(get_db)) -> DashboardSummaryRead:
     return service.get_dashboard_summary(db)
+
+
+@router.get("/pen-efficiency", response_model=list[PenEfficiencyRead])
+def pen_efficiency(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    db: Session = Depends(get_db),
+) -> list[PenEfficiencyRead]:
+    return service.list_pen_efficiency(db, start_date, end_date)
+
+
+@router.get("/animal-profitability", response_model=list[AnimalProfitabilityRead])
+def animal_profitability(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    db: Session = Depends(get_db),
+) -> list[AnimalProfitabilityRead]:
+    return service.list_animal_profitability(db, start_date, end_date)
+
+
+@router.get("/herd-cost-summary", response_model=list[HerdCostSummaryRead])
+def herd_cost_summary(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    db: Session = Depends(get_db),
+) -> list[HerdCostSummaryRead]:
+    return service.list_herd_cost_summary(db, start_date, end_date)

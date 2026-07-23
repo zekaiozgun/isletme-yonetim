@@ -33,11 +33,13 @@ from app.modules.breeding.models import BreedingEvent, PregnancyCheck
 from app.modules.genetic_resource.models import SemenBatch
 from app.modules.death.models import Death
 from app.modules.feed.models import FeedDistribution, FeedItem
+from app.modules.fx import service as fx_service
 from app.modules.health.models import HealthEvent
 from app.modules.sale.models import Sale
 from app.modules.weight.models import WeightRecord
 from app.modules.pen.models import Pen, PenAssignment
 from app.modules.reports.schemas import (
+    AnimalProfitabilityRead,
     BredAnimalRead,
     BreedingCandidateRead,
     BreedingPerformanceRead,
@@ -47,8 +49,10 @@ from app.modules.reports.schemas import (
     DeathLossReportRead,
     FeedConsumptionRead,
     HealthEventReportRead,
+    HerdCostSummaryRead,
     HerdFlowReportRead,
     HerdInventoryRead,
+    PenEfficiencyRead,
     PenOccupancyRead,
     PregnancyCheckResultRead,
     PregnantAnimalRead,
@@ -917,3 +921,275 @@ def get_dashboard_summary(db: Session, today: date | None = None) -> DashboardSu
         average_calving_interval_days=average_calving_interval,
         annual_loss_rate=annual_loss_rate,
     )
+
+
+# --- Maliyet / Verimlilik / Kârlılık ---
+#
+# Bu bolumdeki raporlar, TL tutarlarin yaninda TCMB'nin gunluk kur XML
+# servisinden (bkz. app/modules/fx) turetilen USD karsiliklarini da
+# dondurur. Her TL tutari KENDI GERCEK TARIHINDEKI kurla cevrilir (bugunun
+# kuruyla degil) - boylece tarihsel maliyet hic degistirilmeden, yuksek TL
+# enflasyonuna ragmen donemler arasi karsilastirilabilir hale gelir. Kur
+# bulunamazsa (ag hatasi) o kalem USD toplamina 0 katkida bulunur - rapor
+# yine de TL rakamlariyla eksiksiz kalir (Anayasa m.4/m.5: hicbir USD
+# degeri saklanmaz, her istek burada yeniden hesaplanir).
+
+_MONEY_QUANTIZE = Decimal("0.01")
+
+
+def _round_money(value: Decimal) -> Decimal:
+    return value.quantize(_MONEY_QUANTIZE)
+
+
+def _try_to_usd(db: Session, try_amount: Decimal, on_date: date) -> Decimal:
+    if try_amount == 0:
+        return Decimal("0")
+    rate = fx_service.get_usd_try_rate(db, on_date)
+    if not rate:
+        return Decimal("0")
+    return try_amount / rate
+
+
+@dataclass
+class _PenEfficiencyBucket:
+    code: str
+    name: str
+    total_feed_quantity_kg: float = 0.0
+    total_feed_cost_try: Decimal = field(default_factory=lambda: Decimal("0"))
+    total_feed_cost_usd: Decimal = field(default_factory=lambda: Decimal("0"))
+    total_weight_gain_kg: Decimal = field(default_factory=lambda: Decimal("0"))
+
+
+def list_pen_efficiency(db: Session, start_date: date, end_date: date) -> list[PenEfficiencyRead]:
+    """Padok bazinda yem donusum orani (FCR) ve kg canli agirlik basina
+    maliyet. Toplam yem (miktar + maliyet, TL/USD), padoga dagitilan
+    feed_distributions satirlarindan; toplam kilo artisi ise pen_assignments
+    araliklariyla KESISEN weight_records ciftlerinden (ilk/son tarti farki)
+    turetilir - bir hayvan donem icinde padok degistirse bile kilosu dogru
+    padoga yazilir (Anayasa m.4/m.5: hicbir yerde saklanmaz)."""
+    buckets: dict[int, _PenEfficiencyBucket] = {}
+
+    feed_stmt = (
+        select(FeedDistribution)
+        .options(joinedload(FeedDistribution.pen), joinedload(FeedDistribution.unit))
+        .where(FeedDistribution.distribution_date >= start_date, FeedDistribution.distribution_date <= end_date)
+    )
+    for dist in db.scalars(feed_stmt).all():
+        bucket = buckets.get(dist.pen_id)
+        if bucket is None:
+            bucket = _PenEfficiencyBucket(code=dist.pen.code, name=dist.pen.name)
+            buckets[dist.pen_id] = bucket
+        bucket.total_feed_quantity_kg += float(dist.quantity) * (1000 if dist.unit.code == FEED_TON_UNIT_CODE else 1)
+        if dist.total_cost is not None:
+            bucket.total_feed_cost_try += dist.total_cost
+            bucket.total_feed_cost_usd += _try_to_usd(db, dist.total_cost, dist.distribution_date)
+
+    assignment_stmt = select(PenAssignment).where(
+        PenAssignment.assigned_date <= end_date,
+        (PenAssignment.removed_date.is_(None)) | (PenAssignment.removed_date >= start_date),
+    )
+    for assignment in db.scalars(assignment_stmt).all():
+        window_start = max(assignment.assigned_date, start_date)
+        window_end = min(assignment.removed_date or end_date, end_date)
+        if window_start > window_end:
+            continue
+        weight_stmt = (
+            select(WeightRecord)
+            .where(
+                WeightRecord.animal_id == assignment.animal_id,
+                WeightRecord.weigh_date >= window_start,
+                WeightRecord.weigh_date <= window_end,
+            )
+            .order_by(WeightRecord.weigh_date)
+        )
+        records = list(db.scalars(weight_stmt).all())
+        if len(records) < 2:
+            continue
+        bucket = buckets.get(assignment.pen_id)
+        if bucket is None:
+            pen = db.get(Pen, assignment.pen_id)
+            if pen is None:
+                continue
+            bucket = _PenEfficiencyBucket(code=pen.code, name=pen.name)
+            buckets[assignment.pen_id] = bucket
+        bucket.total_weight_gain_kg += records[-1].weight_kg - records[0].weight_kg
+
+    rows: list[PenEfficiencyRead] = []
+    for pen_id, bucket in buckets.items():
+        gain = float(bucket.total_weight_gain_kg)
+        fcr = round(bucket.total_feed_quantity_kg / gain, 2) if gain > 0 else None
+        cost_per_kg_try = round(float(bucket.total_feed_cost_try) / gain, 2) if gain > 0 else None
+        cost_per_kg_usd = round(float(bucket.total_feed_cost_usd) / gain, 2) if gain > 0 else None
+        rows.append(
+            PenEfficiencyRead(
+                pen_id=pen_id,
+                code=bucket.code,
+                name=bucket.name,
+                total_feed_quantity_kg=round(bucket.total_feed_quantity_kg, 2),
+                total_feed_cost_try=_round_money(bucket.total_feed_cost_try),
+                total_feed_cost_usd=_round_money(bucket.total_feed_cost_usd),
+                total_weight_gain_kg=bucket.total_weight_gain_kg,
+                feed_conversion_ratio=fcr,
+                cost_per_kg_gain_try=cost_per_kg_try,
+                cost_per_kg_gain_usd=cost_per_kg_usd,
+            )
+        )
+    rows.sort(key=lambda r: r.code)
+    return rows
+
+
+def _feed_cost_share_for_animal(db: Session, animal_id: uuid.UUID, outcome_date: date) -> tuple[Decimal, Decimal]:
+    """Bir hayvanin pen_assignments gecmisindeki (girisinden cikis tarihine
+    kadar) her gunku yem dagitimindan payini GUN AGIRLIKLI ORANTIYLA
+    hesaplar: her feed_distributions satiri, O GUN o padokta kayitli kac
+    hayvan varsa o kadar hayvana esit bolunur, bu hayvanin payi toplanir.
+    Cikistan (satis/olum) sonraki hicbir gun bu hesaba dahil edilmez."""
+    total_try = Decimal("0")
+    total_usd = Decimal("0")
+    assignments = list(db.scalars(select(PenAssignment).where(PenAssignment.animal_id == animal_id)).all())
+    for assignment in assignments:
+        window_end = min(assignment.removed_date or outcome_date, outcome_date)
+        if assignment.assigned_date > window_end:
+            continue
+        dist_stmt = select(FeedDistribution).where(
+            FeedDistribution.pen_id == assignment.pen_id,
+            FeedDistribution.distribution_date >= assignment.assigned_date,
+            FeedDistribution.distribution_date <= window_end,
+            FeedDistribution.total_cost.isnot(None),
+        )
+        for dist in db.scalars(dist_stmt).all():
+            occupant_count = (
+                db.scalar(
+                    select(func.count(PenAssignment.id)).where(
+                        PenAssignment.pen_id == dist.pen_id,
+                        PenAssignment.assigned_date <= dist.distribution_date,
+                        (PenAssignment.removed_date.is_(None)) | (PenAssignment.removed_date >= dist.distribution_date),
+                    )
+                )
+                or 1
+            )
+            share_try = dist.total_cost / occupant_count
+            total_try += share_try
+            total_usd += _try_to_usd(db, share_try, dist.distribution_date)
+    return total_try, total_usd
+
+
+def _build_profitability_row(
+    db: Session, animal: Animal, outcome: str, outcome_date: date, revenue_try: Decimal | None
+) -> AnimalProfitabilityRead:
+    health_events = list(
+        db.scalars(
+            select(HealthEvent).where(HealthEvent.animal_id == animal.id, HealthEvent.cost.isnot(None))
+        ).all()
+    )
+    health_cost_try = sum((he.cost for he in health_events), Decimal("0"))
+    health_cost_usd = sum((_try_to_usd(db, he.cost, he.event_date) for he in health_events), Decimal("0"))
+
+    feed_cost_try, feed_cost_usd = _feed_cost_share_for_animal(db, animal.id, outcome_date)
+
+    purchase_cost_try = animal.purchase_cost or Decimal("0")
+    purchase_cost_usd = _try_to_usd(db, purchase_cost_try, animal.entry_date)
+
+    total_cost_try = purchase_cost_try + health_cost_try + feed_cost_try
+    total_cost_usd = purchase_cost_usd + health_cost_usd + feed_cost_usd
+
+    revenue_usd = _try_to_usd(db, revenue_try, outcome_date) if revenue_try is not None else None
+
+    profit_try = (revenue_try or Decimal("0")) - total_cost_try
+    profit_usd = (revenue_usd or Decimal("0")) - total_cost_usd
+
+    return AnimalProfitabilityRead(
+        animal_id=animal.id,
+        tag_number=animal.tag_number,
+        name=animal.name,
+        outcome=outcome,
+        outcome_date=outcome_date,
+        purchase_cost_try=animal.purchase_cost,
+        health_cost_try=_round_money(health_cost_try),
+        feed_cost_try=_round_money(feed_cost_try),
+        total_cost_try=_round_money(total_cost_try),
+        total_cost_usd=_round_money(total_cost_usd),
+        revenue_try=revenue_try,
+        revenue_usd=_round_money(revenue_usd) if revenue_usd is not None else None,
+        profit_try=_round_money(profit_try),
+        profit_usd=_round_money(profit_usd),
+    )
+
+
+def list_animal_profitability(db: Session, start_date: date, end_date: date) -> list[AnimalProfitabilityRead]:
+    """Belirtilen tarih araliginda SATILAN veya OLEN (yani 'kapanmis')
+    hayvanlarin YASAM BOYU maliyetini (sadece rapor araligindaki degil,
+    girisinden cikisina kadar biriken alim + saglik + yem payi) o donemde
+    gerceklesen gelirle (satildiysa) karsilastirir - gelir/maliyet
+    eslestirmesi standart muhasebe mantigidir. Aktif hayvanlar bu raporda
+    YOKTUR, karliligi henuz gerceklesmedi (Anayasa m.4/m.5)."""
+    rows: list[AnimalProfitabilityRead] = []
+
+    sale_stmt = select(Sale).options(joinedload(Sale.animal)).where(
+        Sale.sale_date >= start_date, Sale.sale_date <= end_date
+    )
+    for sale in db.scalars(sale_stmt).all():
+        rows.append(_build_profitability_row(db, sale.animal, "Satıldı", sale.sale_date, sale.total_amount))
+
+    death_stmt = select(Death).options(joinedload(Death.animal)).where(
+        Death.death_date >= start_date, Death.death_date <= end_date
+    )
+    for death in db.scalars(death_stmt).all():
+        rows.append(_build_profitability_row(db, death.animal, "Öldü", death.death_date, None))
+
+    rows.sort(key=lambda r: r.profit_try)
+    return rows
+
+
+def list_herd_cost_summary(db: Session, start_date: date, end_date: date) -> list[HerdCostSummaryRead]:
+    """Belirtilen tarih araliginda GERCEKLESEN (dagitilan/kaydedilen/satilan)
+    tum maliyet ve gelir kalemlerini TL ve USD olarak ozetler - donemsel
+    genel bakis/planlama icindir (Hayvan Kârlılık Raporu'ndaki 'yasam boyu'
+    eslestirmesinden farkli olarak, burada sadece SECILEN DONEMDE olusan
+    tutarlar toplanir)."""
+    feed_try = feed_usd = Decimal("0")
+    feed_stmt = select(FeedDistribution).where(
+        FeedDistribution.distribution_date >= start_date,
+        FeedDistribution.distribution_date <= end_date,
+        FeedDistribution.total_cost.isnot(None),
+    )
+    for dist in db.scalars(feed_stmt).all():
+        feed_try += dist.total_cost
+        feed_usd += _try_to_usd(db, dist.total_cost, dist.distribution_date)
+
+    health_try = health_usd = Decimal("0")
+    health_stmt = select(HealthEvent).where(
+        HealthEvent.event_date >= start_date, HealthEvent.event_date <= end_date, HealthEvent.cost.isnot(None)
+    )
+    for he in db.scalars(health_stmt).all():
+        health_try += he.cost
+        health_usd += _try_to_usd(db, he.cost, he.event_date)
+
+    purchase_try = purchase_usd = Decimal("0")
+    purchase_stmt = select(Animal).where(
+        Animal.entry_date >= start_date, Animal.entry_date <= end_date, Animal.purchase_cost.isnot(None)
+    )
+    for animal in db.scalars(purchase_stmt).all():
+        purchase_try += animal.purchase_cost
+        purchase_usd += _try_to_usd(db, animal.purchase_cost, animal.entry_date)
+
+    revenue_try = revenue_usd = Decimal("0")
+    sale_stmt = select(Sale).where(Sale.sale_date >= start_date, Sale.sale_date <= end_date)
+    for sale in db.scalars(sale_stmt).all():
+        revenue_try += sale.total_amount
+        revenue_usd += _try_to_usd(db, sale.total_amount, sale.sale_date)
+
+    total_cost_try = feed_try + health_try + purchase_try
+    total_cost_usd = feed_usd + health_usd + purchase_usd
+
+    def row(category: str, try_amount: Decimal, usd_amount: Decimal) -> HerdCostSummaryRead:
+        return HerdCostSummaryRead(category=category, amount_try=_round_money(try_amount), amount_usd=_round_money(usd_amount))
+
+    return [
+        row("Yem Maliyeti", feed_try, feed_usd),
+        row("Sağlık/Tedavi Maliyeti", health_try, health_usd),
+        row("Alım Maliyeti", purchase_try, purchase_usd),
+        row("Toplam Maliyet", total_cost_try, total_cost_usd),
+        row("Satış Geliri", revenue_try, revenue_usd),
+        row("Net (Gelir - Maliyet)", revenue_try - total_cost_try, revenue_usd - total_cost_usd),
+    ]

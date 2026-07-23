@@ -25,6 +25,7 @@ from app.modules.sale import lookups as _sale_lookups  # noqa: F401
 from app.modules.sale import models as _sale_models  # noqa: F401
 from app.modules.death import lookups as _death_lookups  # noqa: F401
 from app.modules.death import models as _death_models  # noqa: F401
+from app.modules.fx import models as _fx_models  # noqa: F401
 
 config = context.config
 

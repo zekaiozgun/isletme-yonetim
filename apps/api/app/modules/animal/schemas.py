@@ -37,6 +37,7 @@ class AnimalBase(BaseModel):
     entry_date: date
     source_farm_id: int | None = None
     entry_source_id: int
+    purchase_cost: Decimal | None = None
 
     note: str | None = None
 

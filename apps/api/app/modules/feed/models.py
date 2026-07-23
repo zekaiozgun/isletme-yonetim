@@ -35,6 +35,10 @@ class FeedDistribution(TimestampMixin, Base):
     distribution_date: Mapped[date] = mapped_column(Date, nullable=False)
     quantity: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False)
     unit_id: Mapped[int] = mapped_column(ForeignKey("feed_units.id"), nullable=False)
+    # Bu dagitimin gercek maliyeti (TL, fatura/fis tutari fact olarak
+    # girilir - miktar x birim fiyat sistem tarafindan HESAPLANMAZ, fiyat
+    # pazarlikli/degisken olabilir; Anayasa m.4).
+    total_cost: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     note: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     pen = relationship("Pen")

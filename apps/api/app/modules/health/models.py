@@ -42,6 +42,8 @@ class HealthEvent(TimestampMixin, Base):
     dosage_amount: Mapped[Decimal | None] = mapped_column(Numeric(8, 2), nullable=True)
     dosage_unit_id: Mapped[int | None] = mapped_column(ForeignKey("dosage_units.id"), nullable=True)
     veterinarian_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Bu olayin toplam maliyeti (ilac + varsa veteriner ucreti dahil tek tutar, TL).
+    cost: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     note: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     animal = relationship("Animal")

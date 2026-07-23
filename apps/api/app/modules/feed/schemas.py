@@ -24,6 +24,7 @@ class FeedDistributionCreate(BaseModel):
     distribution_date: date
     quantity: Decimal
     unit_id: int
+    total_cost: Decimal | None = None
     note: str | None = None
 
 

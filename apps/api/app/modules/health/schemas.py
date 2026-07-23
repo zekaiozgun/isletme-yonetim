@@ -29,6 +29,7 @@ class HealthEventCreate(BaseModel):
     dosage_amount: Decimal | None = None
     dosage_unit_id: int | None = None
     veterinarian_note: str | None = None
+    cost: Decimal | None = None
     note: str | None = None
 
 
