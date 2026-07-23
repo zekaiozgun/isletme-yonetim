@@ -53,7 +53,7 @@ SEED_DATA: dict[type, list[tuple[str, str]]] = {
         ("ALINMIS", "Boynuzu Alinmis (Dehorned)"),
     ],
     EntrySource: [
-        ("DOGUM", "Isletmede Dogum"),
+        ("DOGUM", "Doğum"),
         ("SATIN_ALMA", "Satin Alma"),
         ("DEVIR", "Devir / Nakil"),
         ("KIRALAMA", "Kiralama"),
