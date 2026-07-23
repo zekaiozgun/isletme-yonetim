@@ -294,6 +294,20 @@ export const reports: ReportConfig[] = [
     rowHighlight: (row) => typeof row.days_until_calving === 'number' && row.days_until_calving <= 14,
   },
   {
+    slug: 'active-animals',
+    title: 'Aktif Hayvanlar',
+    description: 'Tüm aktif hayvanlar, yaş (ay) dahil.',
+    endpoint: '/reports/active-animals',
+    columns: [
+      { key: 'tag_number', label: 'Küpe No' },
+      { key: 'name', label: 'İsim', format: formatPlain },
+      { key: 'gender_name', label: 'Cinsiyet' },
+      { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate },
+      { key: 'age_months', label: 'Yaş', format: formatMonths },
+      { key: 'mother_tag_number', label: 'Anne Küpe No', format: formatPlain },
+    ],
+  },
+  {
     slug: 'calves',
     title: 'Buzağı Listesi (0-7 Ay)',
     description: '0-7 ay yaşındaki aktif hayvanlar.',

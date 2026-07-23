@@ -755,6 +755,35 @@ def _active_animals_with_age(db: Session, today: date) -> list[tuple[Animal, int
     return [(a, full_months_between(a.birth_date, today)) for a in db.scalars(stmt).all()]
 
 
+def list_active_animals(db: Session, today: date | None = None) -> list[YoungAnimalRead]:
+    """Tum aktif hayvanlar (dogum tarihi bilinmeyenler dahil) - calves/
+    heifers-steers'in aksine yas araligina gore filtrelemez."""
+    today = today or date.today()
+    active_id = get_lookup_by_code(db, AnimalStatus, ACTIVE_STATUS_CODE).id
+    stmt = (
+        select(Animal)
+        .options(joinedload(Animal.gender), joinedload(Animal.mother))
+        .where(Animal.status_id == active_id)
+        .order_by(Animal.tag_number)
+    )
+    rows: list[YoungAnimalRead] = []
+    for animal in db.scalars(stmt).all():
+        age_months = full_months_between(animal.birth_date, today) if animal.birth_date else None
+        rows.append(
+            YoungAnimalRead(
+                animal_id=animal.id,
+                tag_number=animal.tag_number,
+                name=animal.name,
+                gender_name=animal.gender.name,
+                birth_date=animal.birth_date,
+                age_months=age_months,
+                age_days=(today - animal.birth_date).days if animal.birth_date else None,
+                mother_tag_number=animal.mother.tag_number if animal.mother else None,
+            )
+        )
+    return rows
+
+
 def list_calves(db: Session, today: date | None = None) -> list[YoungAnimalRead]:
     today = today or date.today()
     rows: list[YoungAnimalRead] = []

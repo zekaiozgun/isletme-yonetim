@@ -139,6 +139,11 @@ def calving_intervals(db: Session = Depends(get_db)) -> list[CalvingIntervalRead
     return service.list_calving_intervals(db)
 
 
+@router.get("/active-animals", response_model=list[YoungAnimalRead])
+def active_animals(db: Session = Depends(get_db)) -> list[YoungAnimalRead]:
+    return service.list_active_animals(db)
+
+
 @router.get("/calves", response_model=list[YoungAnimalRead])
 def calves(db: Session = Depends(get_db)) -> list[YoungAnimalRead]:
     return service.list_calves(db)
