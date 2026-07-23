@@ -27,7 +27,7 @@ class AnimalBase(BaseModel):
     litter_type_id: int | None = None
 
     mother_id: uuid.UUID | None = None
-    father_id: uuid.UUID | None = None
+    father_sire_id: int | None = None
     breed_id: int | None = None
     crossbreed_ratio: Decimal | None = None
 
@@ -52,5 +52,6 @@ class AnimalRead(AnimalBase):
     status_id: int
     status_date: date | None = None
     death_reason_id: int | None = None
+    age_months: int | None = None
     created_at: datetime
     updated_at: datetime

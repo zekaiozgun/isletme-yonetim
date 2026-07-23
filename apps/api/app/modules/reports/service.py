@@ -25,6 +25,7 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
+from app.core.date_utils import full_months_between
 from app.core.lookup_helpers import get_lookup_by_code
 from app.modules.animal.lookups import AnimalStatus, EntrySource, Gender
 from app.modules.animal.models import Animal
@@ -69,16 +70,6 @@ POSTPARTUM_WAIT_DAYS = 45
 PREGNANCY_CHECK_DUE_DAYS = 45
 CALF_MAX_MONTHS = 7
 GESTATION_DAYS = 283
-
-
-def full_months_between(start: date, end: date) -> int:
-    """iki tarih arasindaki TAM (takvim) ay sayisi. dateutil'e gerek yok."""
-    if end < start:
-        return 0
-    months = (end.year - start.year) * 12 + (end.month - start.month)
-    if end.day < start.day:
-        months -= 1
-    return max(months, 0)
 
 
 def _latest_breeding_by_dam(db: Session) -> dict[uuid.UUID, BreedingEvent]:

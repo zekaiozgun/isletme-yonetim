@@ -26,6 +26,8 @@ async function buildLookupMaps(columns: ColumnConfig[]): Promise<Map<string, Map
 function formatCell(row: ApiRecord, column: ColumnConfig, lookupMaps: Map<string, Map<string, string>>): string {
   const raw = row[column.key];
 
+  if (column.format) return column.format(raw, row);
+
   if (raw === null || raw === undefined || raw === '') return '—';
 
   if (column.boolean) return raw ? 'Evet' : 'Hayır';

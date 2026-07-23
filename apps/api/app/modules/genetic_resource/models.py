@@ -32,7 +32,10 @@ class Sire(TimestampMixin, Base):
     note: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     breed = relationship("Breed")
-    animal = relationship("Animal")
+    # foreign_keys gerekli: animals.father_sire_id de sires.id'ye referans
+    # veriyor, iki tablo arasinda birden fazla FK yolu var (belirsizligi
+    # gidermek icin bu iliskinin hangi sutunu kullandigini acikca belirtiyoruz).
+    animal = relationship("Animal", foreign_keys=[animal_id])
 
 
 class SemenBatch(TimestampMixin, Base):

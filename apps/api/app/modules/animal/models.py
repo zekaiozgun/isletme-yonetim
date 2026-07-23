@@ -13,6 +13,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+from app.core.date_utils import full_months_between
 from app.core.orm import TimestampMixin
 
 
@@ -34,7 +35,12 @@ class Animal(TimestampMixin, Base):
 
     # --- Soy ---
     mother_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("animals.id"), nullable=True, index=True)
-    father_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("animals.id"), nullable=True, index=True)
+    # Baba, bir Animal kaydina degil Genetic Resource modulundeki Sire (Boga)
+    # katalogruna referans verir - suruye ait fiziki bogalar ile yalnizca
+    # suni tohumlama icin kayitli dis kaynakli bogalar orada zaten birlikte
+    # tutuluyor; bir bogayi Baba secebilmek icin ayrica tam bir Animal kaydi
+    # acmaya gerek yok.
+    father_sire_id: Mapped[int | None] = mapped_column(ForeignKey("sires.id"), nullable=True, index=True)
     breed_id: Mapped[int | None] = mapped_column(ForeignKey("breeds.id"), nullable=True, index=True)
     # Melez Orani: kayitli soy sertifikasindan girilen saf kan yuzdesi (orn. 87.50). Sistem hesaplamaz, fact olarak girilir.
     crossbreed_ratio: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
@@ -59,7 +65,7 @@ class Animal(TimestampMixin, Base):
     note: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     mother = relationship("Animal", remote_side=[id], foreign_keys=[mother_id])
-    father = relationship("Animal", remote_side=[id], foreign_keys=[father_id])
+    father_sire = relationship("Sire", foreign_keys=[father_sire_id])
     breed = relationship("Breed")
     gender = relationship("Gender")
     birth_type = relationship("BirthType")
@@ -69,3 +75,10 @@ class Animal(TimestampMixin, Base):
     entry_source = relationship("EntrySource")
     status = relationship("AnimalStatus")
     death_reason = relationship("DeathReason")
+
+    @property
+    def age_months(self) -> int | None:
+        """Anayasa m.4/m.5: yas hicbir yerde saklanmaz, birth_date'ten turetilir."""
+        if self.birth_date is None:
+            return None
+        return full_months_between(self.birth_date, date.today())

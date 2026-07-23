@@ -1,7 +1,7 @@
 """Breeding: astirma (service) olaylari ve gebelik kontrolleri.
 
 Buzagilama (calving) icin ayri bir tablo yoktur - buzagi, Animal
-tablosunda mother_id/father_id ve dogum alanlariyla temsil edilir
+tablosunda mother_id/father_sire_id ve dogum alanlariyla temsil edilir
 (Anayasa m.7). breeding_events sadece gebelik donemini baslatan olayi
 belgeler.
 """

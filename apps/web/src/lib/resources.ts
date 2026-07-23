@@ -25,6 +25,8 @@ export interface ColumnConfig {
   lookup?: OptionSource;
   /** true ise değer bool olarak "Evet"/"Hayır" gösterilir. */
   boolean?: boolean;
+  /** Ham değeri (örn. age_months) görüntülenecek metne çevirir. */
+  format?: (value: unknown, row: ApiRecord) => string;
 }
 
 export interface ResourceConfig {
@@ -44,6 +46,11 @@ const label =
   (key: string) =>
   (item: ApiRecord): string =>
     String(item[key] ?? '');
+
+function formatAgeMonths(value: unknown): string {
+  if (typeof value !== 'number') return '—';
+  return `${value} ay`;
+}
 
 // --- Master Data (lookup) kaynakları ---
 const breeds: OptionSource = { endpoint: '/animals/breeds', label: label('name') };
@@ -113,6 +120,7 @@ const mainResources: ResourceConfig[] = [
       { key: 'name', label: 'İsim' },
       { key: 'breed_id', label: 'Irk', lookup: breeds },
       { key: 'gender_id', label: 'Cinsiyet', lookup: genders },
+      { key: 'age_months', label: 'Yaş', format: formatAgeMonths },
       { key: 'status_id', label: 'Statü', lookup: animalStatuses },
       { key: 'entry_date', label: 'Giriş Tarihi' },
     ],
@@ -125,7 +133,7 @@ const mainResources: ResourceConfig[] = [
       { name: 'birth_weight_kg', label: 'Doğum Ağırlığı (kg)', type: 'decimal' },
       { name: 'litter_type_id', label: 'Doğum Tipi', type: 'select', options: litterTypes },
       { name: 'mother_id', label: 'Anne', type: 'select', options: animals },
-      { name: 'father_id', label: 'Baba', type: 'select', options: animals },
+      { name: 'father_sire_id', label: 'Baba (Boğa)', type: 'select', options: sires },
       { name: 'breed_id', label: 'Irk', type: 'select', options: breeds },
       { name: 'crossbreed_ratio', label: 'Melez Oranı (%)', type: 'decimal' },
       { name: 'gender_id', label: 'Cinsiyet', type: 'select', options: genders, required: true },
