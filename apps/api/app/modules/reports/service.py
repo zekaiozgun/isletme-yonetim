@@ -1047,12 +1047,20 @@ def list_pen_efficiency(db: Session, start_date: date, end_date: date) -> list[P
     return rows
 
 
-def _feed_cost_share_for_animal(db: Session, animal_id: uuid.UUID, outcome_date: date) -> tuple[Decimal, Decimal]:
+def _feed_cost_share_for_animal(
+    db: Session, animal_id: uuid.UUID, outcome_date: date, convert_usd: bool = True
+) -> tuple[Decimal, Decimal]:
     """Bir hayvanin pen_assignments gecmisindeki (girisinden cikis tarihine
     kadar) her gunku yem dagitimindan payini GUN AGIRLIKLI ORANTIYLA
     hesaplar: her feed_distributions satiri, O GUN o padokta kayitli kac
     hayvan varsa o kadar hayvana esit bolunur, bu hayvanin payi toplanir.
-    Cikistan (satis/olum) sonraki hicbir gun bu hesaba dahil edilmez."""
+    Cikistan (satis/olum) sonraki hicbir gun bu hesaba dahil edilmez.
+
+    convert_usd=False ise USD kismi hesaplanmaz (0 doner) - her dagitim
+    satiri KENDI tarihinde ayri bir TCMB sorgusu tetikleyebildiginden, cok
+    sayida hayvan/kayit uzerinde tek bir istekte calisan raporlarda (orn.
+    Suru Varlik Degeri) performans/timeout riski olusturur; öyle bir
+    ihtiyacta USD, tek bir toplu kurla ayrica hesaplanir (bkz. _asset_book_value)."""
     total_try = Decimal("0")
     total_usd = Decimal("0")
     assignments = list(db.scalars(select(PenAssignment).where(PenAssignment.animal_id == animal_id)).all())
@@ -1079,14 +1087,17 @@ def _feed_cost_share_for_animal(db: Session, animal_id: uuid.UUID, outcome_date:
             )
             share_try = dist.total_cost / occupant_count
             total_try += share_try
-            total_usd += _try_to_usd(db, share_try, dist.distribution_date)
+            if convert_usd:
+                total_usd += _try_to_usd(db, share_try, dist.distribution_date)
     return total_try, total_usd
 
 
-def _health_cost_try_usd(db: Session, animal_id: uuid.UUID, as_of_date: date) -> tuple[Decimal, Decimal]:
+def _health_cost_try_usd(
+    db: Session, animal_id: uuid.UUID, as_of_date: date, convert_usd: bool = True
+) -> tuple[Decimal, Decimal]:
     """Bir hayvanin as_of_date'e kadar (o tarih dahil) kayitli tum
     HealthEvent.cost toplami - TL ve USD (her olayin kendi event_date'indeki
-    TCMB kuruyla)."""
+    TCMB kuruyla). convert_usd=False ise USD 0 doner (bkz. _feed_cost_share_for_animal)."""
     health_events = list(
         db.scalars(
             select(HealthEvent).where(
@@ -1097,21 +1108,33 @@ def _health_cost_try_usd(db: Session, animal_id: uuid.UUID, as_of_date: date) ->
         ).all()
     )
     total_try = sum((he.cost for he in health_events), Decimal("0"))
-    total_usd = sum((_try_to_usd(db, he.cost, he.event_date) for he in health_events), Decimal("0"))
+    total_usd = (
+        sum((_try_to_usd(db, he.cost, he.event_date) for he in health_events), Decimal("0"))
+        if convert_usd
+        else Decimal("0")
+    )
     return total_try, total_usd
 
 
-def _accumulated_cost_try_usd(db: Session, animal: Animal, as_of_date: date) -> tuple[Decimal, Decimal]:
+def _accumulated_cost_try_usd(
+    db: Session, animal: Animal, as_of_date: date, convert_usd: bool = True
+) -> tuple[Decimal, Decimal]:
     """Bir hayvanin girisinden as_of_date'e kadar biriken toplam maliyetini
     (giris degeri + saglik + gun agirlikli yem payi) TL ve USD olarak
     dondurur - "malzeme/stok" durumundaki bir hayvanin defter degeridir
     (bkz. _asset_book_value). Hem Hayvan Karlilik Raporu (_build_profitability_row,
     outcome_date ile) hem Suru Varlik Degeri raporu (herhangi bir as_of_date
-    ile) bu ortak hesaplamayi kullanir."""
-    health_cost_try, health_cost_usd = _health_cost_try_usd(db, animal.id, as_of_date)
-    feed_cost_try, feed_cost_usd = _feed_cost_share_for_animal(db, animal.id, as_of_date)
+    ile) bu ortak hesaplamayi kullanir.
+
+    convert_usd=False ise hicbir alt-fact kendi tarihinde TCMB'ye sorulmaz
+    (USD 0 doner, sadece TL toplanir) - Suru Varlik Degeri raporu gibi
+    SURUDEKI TUM hayvanlari tek istekte gezen caller'lar bunu kullanip
+    USD'yi TEK bir as_of_date kuruyla toplu hesaplar (performans/timeout
+    riskini onlemek icin - bkz. _asset_book_value)."""
+    health_cost_try, health_cost_usd = _health_cost_try_usd(db, animal.id, as_of_date, convert_usd)
+    feed_cost_try, feed_cost_usd = _feed_cost_share_for_animal(db, animal.id, as_of_date, convert_usd)
     entry_value_try = animal.entry_value or Decimal("0")
-    entry_value_usd = _try_to_usd(db, entry_value_try, animal.entry_date)
+    entry_value_usd = (_try_to_usd(db, entry_value_try, animal.entry_date)) if convert_usd else Decimal("0")
     total_try = entry_value_try + health_cost_try + feed_cost_try
     total_usd = entry_value_usd + health_cost_usd + feed_cost_usd
     return total_try, total_usd
@@ -1282,23 +1305,41 @@ def _asset_transition_date(db: Session, animal: Animal) -> date | None:
     return None
 
 
-def _asset_book_value(db: Session, animal: Animal, as_of_date: date) -> tuple[Decimal, Decimal, str]:
+def _asset_book_value(
+    db: Session, animal: Animal, as_of_date: date, as_of_rate: Decimal | None = None
+) -> tuple[Decimal, Decimal, str]:
     """Bir hayvanin as_of_date'teki defter degerini (TL, USD) ve durumunu
     ("Demirbaş" | "Malzeme") dondurur.
 
-    Malzeme: _accumulated_cost_try_usd (giris degeri + saglik + yem payi).
+    Malzeme: _accumulated_cost_try_usd (giris degeri + saglik + yem payi),
+    TEK bir as_of_date kuruyla USD'ye cevrilir.
 
     Demirbaş: transition anindaki malzeme maliyeti (USD'ye o gunun TCMB
     kuruyla cevrilir) acilis degeri olur; %50 hurda deger, 10 yil faydali
     omur ile duz-hat (straight-line) amortisman USD uzerinden islenir;
     TL karsiligi as_of_date'teki (aciliftaki degil) GUNCEL kurla verilir -
-    "bu hayvan bugun TL olarak ne degerde" sorusuna cevap versin diye."""
+    "bu hayvan bugun TL olarak ne degerde" sorusuna cevap versin diye.
+
+    PERFORMANS: Hayvan Kârlılık Raporu'nun aksine (orada her fact kendi
+    tarihindeki kurla cevrilir - bkz. _accumulated_cost_try_usd docstring),
+    bu fonksiyon SURUDEKI TUM hayvanlar icin tek istekte cagrildigindan
+    (list_herd_asset_value) alt-fact'lerin USD donusumu KAPATILIR
+    (convert_usd=False) ve yerine TEK bir as_of_date kuru kullanilir -
+    aksi halde her hayvanin her giris/saglik/yem tarihi icin ayri bir TCMB
+    sorgusu tetiklenip rapor onlarca-yuzlerce ag cagrisiyla zaman asimina
+    ugrar (gercek bir prodüksiyon hatasi olarak gözlemlendi). as_of_rate
+    caller tarafindan onceden cekilip tum hayvanlar icin yeniden kullanilir
+    (verilmezse burada tek seferlik cekilir)."""
+    if as_of_rate is None:
+        as_of_rate = fx_service.get_usd_try_rate(db, as_of_date)
+
     transition_date = _asset_transition_date(db, animal)
     if transition_date is None or as_of_date < transition_date:
-        total_try, total_usd = _accumulated_cost_try_usd(db, animal, as_of_date)
+        total_try, _ = _accumulated_cost_try_usd(db, animal, as_of_date, convert_usd=False)
+        total_usd = total_try / as_of_rate if as_of_rate else Decimal("0")
         return _round_money(total_try), _round_money(total_usd), "Malzeme"
 
-    acquisition_try, _ = _accumulated_cost_try_usd(db, animal, transition_date)
+    acquisition_try, _ = _accumulated_cost_try_usd(db, animal, transition_date, convert_usd=False)
     transition_rate = fx_service.get_usd_try_rate(db, transition_date)
     acquisition_usd = acquisition_try / transition_rate if transition_rate else Decimal("0")
 
@@ -1309,8 +1350,6 @@ def _asset_book_value(db: Session, animal: Animal, as_of_date: date) -> tuple[De
         depreciable_usd * years_elapsed / DEPRECIATION_USEFUL_LIFE_YEARS, depreciable_usd
     )
     book_value_usd = acquisition_usd - accumulated_depreciation_usd
-
-    as_of_rate = fx_service.get_usd_try_rate(db, as_of_date)
     book_value_try = book_value_usd * as_of_rate if as_of_rate else Decimal("0")
 
     return _round_money(book_value_try), _round_money(book_value_usd), "Demirbaş"
@@ -1344,9 +1383,12 @@ def list_herd_asset_value(db: Session, start_date: date, end_date: date) -> list
     toplam değer değişimini (gerçekleşmemiş dahil) gösterir."""
 
     def total_value(as_of_date: date) -> tuple[Decimal, Decimal]:
+        # as_of_rate TEK seferde cekilir, tum hayvanlar icin yeniden
+        # kullanilir (bkz. _asset_book_value performans notu).
+        as_of_rate = fx_service.get_usd_try_rate(db, as_of_date)
         total_try = total_usd = Decimal("0")
         for animal in _animals_alive_at(db, as_of_date):
-            book_try, book_usd, _ = _asset_book_value(db, animal, as_of_date)
+            book_try, book_usd, _ = _asset_book_value(db, animal, as_of_date, as_of_rate)
             total_try += book_try
             total_usd += book_usd
         return total_try, total_usd
