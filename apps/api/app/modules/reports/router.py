@@ -20,6 +20,7 @@ from app.modules.reports.schemas import (
     DeathLossReportRead,
     FeedConsumptionRead,
     HealthEventReportRead,
+    HerdAssetValueRead,
     HerdCostSummaryRead,
     HerdFlowReportRead,
     HerdInventoryRead,
@@ -197,3 +198,12 @@ def herd_cost_summary(
     db: Session = Depends(get_db),
 ) -> list[HerdCostSummaryRead]:
     return service.list_herd_cost_summary(db, start_date, end_date)
+
+
+@router.get("/herd-asset-value", response_model=list[HerdAssetValueRead])
+def herd_asset_value(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    db: Session = Depends(get_db),
+) -> list[HerdAssetValueRead]:
+    return service.list_herd_asset_value(db, start_date, end_date)

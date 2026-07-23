@@ -29,6 +29,7 @@ from app.core.date_utils import full_months_between
 from app.core.lookup_helpers import get_lookup_by_code
 from app.modules.animal.lookups import AnimalStatus, EntrySource, Gender
 from app.modules.animal.models import Animal
+from app.modules.breeding.lookups import PregnancyResult
 from app.modules.breeding.models import BreedingEvent, PregnancyCheck
 from app.modules.genetic_resource.models import SemenBatch
 from app.modules.death.models import Death
@@ -49,6 +50,7 @@ from app.modules.reports.schemas import (
     DeathLossReportRead,
     FeedConsumptionRead,
     HealthEventReportRead,
+    HerdAssetValueRead,
     HerdCostSummaryRead,
     HerdFlowReportRead,
     HerdInventoryRead,
@@ -73,6 +75,13 @@ BREEDING_AGE_MONTHS = 12
 POSTPARTUM_WAIT_DAYS = 45
 PREGNANCY_CHECK_DUE_DAYS = 45
 CALF_MAX_MONTHS = 7
+
+CONFIRMED_PREGNANCY_RESULT_CODE = "GEBE"
+PURCHASE_ENTRY_SOURCE_CODE = "SATIN_ALMA"
+# Demirbas (inek/damizlik boga) amortisman parametreleri - USD bazinda
+# (TL enflasyonundan etkilenmesin diye, bkz. Suru Varlik Degeri raporu).
+DEPRECIATION_USEFUL_LIFE_YEARS = 10
+DEPRECIATION_RESIDUAL_RATIO = Decimal("0.5")
 GESTATION_DAYS = 283
 
 
@@ -1074,17 +1083,44 @@ def _feed_cost_share_for_animal(db: Session, animal_id: uuid.UUID, outcome_date:
     return total_try, total_usd
 
 
+def _health_cost_try_usd(db: Session, animal_id: uuid.UUID, as_of_date: date) -> tuple[Decimal, Decimal]:
+    """Bir hayvanin as_of_date'e kadar (o tarih dahil) kayitli tum
+    HealthEvent.cost toplami - TL ve USD (her olayin kendi event_date'indeki
+    TCMB kuruyla)."""
+    health_events = list(
+        db.scalars(
+            select(HealthEvent).where(
+                HealthEvent.animal_id == animal_id,
+                HealthEvent.cost.isnot(None),
+                HealthEvent.event_date <= as_of_date,
+            )
+        ).all()
+    )
+    total_try = sum((he.cost for he in health_events), Decimal("0"))
+    total_usd = sum((_try_to_usd(db, he.cost, he.event_date) for he in health_events), Decimal("0"))
+    return total_try, total_usd
+
+
+def _accumulated_cost_try_usd(db: Session, animal: Animal, as_of_date: date) -> tuple[Decimal, Decimal]:
+    """Bir hayvanin girisinden as_of_date'e kadar biriken toplam maliyetini
+    (giris degeri + saglik + gun agirlikli yem payi) TL ve USD olarak
+    dondurur - "malzeme/stok" durumundaki bir hayvanin defter degeridir
+    (bkz. _asset_book_value). Hem Hayvan Karlilik Raporu (_build_profitability_row,
+    outcome_date ile) hem Suru Varlik Degeri raporu (herhangi bir as_of_date
+    ile) bu ortak hesaplamayi kullanir."""
+    health_cost_try, health_cost_usd = _health_cost_try_usd(db, animal.id, as_of_date)
+    feed_cost_try, feed_cost_usd = _feed_cost_share_for_animal(db, animal.id, as_of_date)
+    entry_value_try = animal.entry_value or Decimal("0")
+    entry_value_usd = _try_to_usd(db, entry_value_try, animal.entry_date)
+    total_try = entry_value_try + health_cost_try + feed_cost_try
+    total_usd = entry_value_usd + health_cost_usd + feed_cost_usd
+    return total_try, total_usd
+
+
 def _build_profitability_row(
     db: Session, animal: Animal, outcome: str, outcome_date: date, revenue_try: Decimal | None
 ) -> AnimalProfitabilityRead:
-    health_events = list(
-        db.scalars(
-            select(HealthEvent).where(HealthEvent.animal_id == animal.id, HealthEvent.cost.isnot(None))
-        ).all()
-    )
-    health_cost_try = sum((he.cost for he in health_events), Decimal("0"))
-    health_cost_usd = sum((_try_to_usd(db, he.cost, he.event_date) for he in health_events), Decimal("0"))
-
+    health_cost_try, health_cost_usd = _health_cost_try_usd(db, animal.id, outcome_date)
     feed_cost_try, feed_cost_usd = _feed_cost_share_for_animal(db, animal.id, outcome_date)
 
     entry_value_try = animal.entry_value or Decimal("0")
@@ -1196,4 +1232,134 @@ def list_herd_cost_summary(db: Session, start_date: date, end_date: date) -> lis
         row("Toplam Maliyet", total_cost_try, total_cost_usd),
         row("Satış Geliri", revenue_try, revenue_usd),
         row("Net (Gelir - Maliyet)", revenue_try - total_cost_try, revenue_usd - total_cost_usd),
+    ]
+
+
+# --- Demirbaş (amortisman) / Malzeme sınıflandırması ve Sürü Varlık Değeri ---
+#
+# Biyolojik varlık muhasebesi (IAS 41 pratiği): inek/damızlık boğa bir
+# DURAN VARLIK (demirbaş) gibi amortismana tabidir; büyümekte olan bir
+# buzağı ise bir STOK/MALZEME gibi sadece maliyet biriktirir (bkz.
+# _accumulated_cost_try_usd). Sınıflandırma hiçbir yerde SAKLANMAZ -
+# PregnancyCheck/BreedingEvent gecmisinden her istek aninda turetilir
+# (Anayasa m.4/m.5).
+
+
+def _first_confirmed_pregnancy_date(db: Session, animal_id: uuid.UUID) -> date | None:
+    """Bir disi hayvana (dam) ait TUM PregnancyCheck kayitlari arasinda
+    sonucu 'GEBE' olan EN ERKEN check_date - bu, hayvanin 'malzeme'den
+    'demirbasa' gectigi andir. _classify_female'in aksine yalnizca AKTIF
+    tohumlama dongusune degil hayvanin TUM gecmisine bakar: bir kez gebe
+    kaldiysa (o dongu daha sonra bos/kaybedilmis olsa bile) bir daha
+    malzemeye donmez."""
+    stmt = (
+        select(func.min(PregnancyCheck.check_date))
+        .select_from(PregnancyCheck)
+        .join(BreedingEvent, PregnancyCheck.breeding_event_id == BreedingEvent.id)
+        .join(PregnancyResult, PregnancyCheck.result_id == PregnancyResult.id)
+        .where(BreedingEvent.dam_id == animal_id, PregnancyResult.code == CONFIRMED_PREGNANCY_RESULT_CODE)
+    )
+    return db.scalar(stmt)
+
+
+def _bull_transition_date(db: Session, animal: Animal) -> date | None:
+    """Bir erkek hayvanin 'malzeme'den 'demirbasa' (damizlik boga) gectigi
+    an: satin alindiysa giristen itibaren (Satin Alma = zaten boga olarak
+    alindigi varsayilir); suruden dogduysa, ilk kez bir Tohumlama kaydinda
+    dogal asim bogasi (sire_animal_id) olarak kullanildigi tarih."""
+    if animal.entry_source.code == PURCHASE_ENTRY_SOURCE_CODE:
+        return animal.entry_date
+    return db.scalar(
+        select(func.min(BreedingEvent.service_date)).where(BreedingEvent.sire_animal_id == animal.id)
+    )
+
+
+def _asset_transition_date(db: Session, animal: Animal) -> date | None:
+    if animal.gender.code == FEMALE_GENDER_CODE:
+        return _first_confirmed_pregnancy_date(db, animal.id)
+    if animal.gender.code == MALE_GENDER_CODE:
+        return _bull_transition_date(db, animal)
+    return None
+
+
+def _asset_book_value(db: Session, animal: Animal, as_of_date: date) -> tuple[Decimal, Decimal, str]:
+    """Bir hayvanin as_of_date'teki defter degerini (TL, USD) ve durumunu
+    ("Demirbaş" | "Malzeme") dondurur.
+
+    Malzeme: _accumulated_cost_try_usd (giris degeri + saglik + yem payi).
+
+    Demirbaş: transition anindaki malzeme maliyeti (USD'ye o gunun TCMB
+    kuruyla cevrilir) acilis degeri olur; %50 hurda deger, 10 yil faydali
+    omur ile duz-hat (straight-line) amortisman USD uzerinden islenir;
+    TL karsiligi as_of_date'teki (aciliftaki degil) GUNCEL kurla verilir -
+    "bu hayvan bugun TL olarak ne degerde" sorusuna cevap versin diye."""
+    transition_date = _asset_transition_date(db, animal)
+    if transition_date is None or as_of_date < transition_date:
+        total_try, total_usd = _accumulated_cost_try_usd(db, animal, as_of_date)
+        return _round_money(total_try), _round_money(total_usd), "Malzeme"
+
+    acquisition_try, _ = _accumulated_cost_try_usd(db, animal, transition_date)
+    transition_rate = fx_service.get_usd_try_rate(db, transition_date)
+    acquisition_usd = acquisition_try / transition_rate if transition_rate else Decimal("0")
+
+    residual_usd = acquisition_usd * DEPRECIATION_RESIDUAL_RATIO
+    depreciable_usd = acquisition_usd - residual_usd
+    years_elapsed = Decimal((as_of_date - transition_date).days) / Decimal("365")
+    accumulated_depreciation_usd = min(
+        depreciable_usd * years_elapsed / DEPRECIATION_USEFUL_LIFE_YEARS, depreciable_usd
+    )
+    book_value_usd = acquisition_usd - accumulated_depreciation_usd
+
+    as_of_rate = fx_service.get_usd_try_rate(db, as_of_date)
+    book_value_try = book_value_usd * as_of_rate if as_of_rate else Decimal("0")
+
+    return _round_money(book_value_try), _round_money(book_value_usd), "Demirbaş"
+
+
+def _animals_alive_at(db: Session, as_of_date: date) -> list[Animal]:
+    """as_of_date'te (o tarihte) yasayan hayvanlar. Animal.status_id sadece
+    GUNCEL durumu tutar (Anayasa m.8 - anlik yansima), gecmis bir tarihteki
+    durumu degil - bu yuzden dogrudan Sale/Death tablolarinin tarihlerine
+    bakilir: entry_date <= as_of_date VE o tarihe kadar satilmamis/olmemis."""
+    sold_ids = set(
+        db.scalars(select(Sale.animal_id).where(Sale.sale_date <= as_of_date)).all()
+    )
+    dead_ids = set(
+        db.scalars(select(Death.animal_id).where(Death.death_date <= as_of_date)).all()
+    )
+    closed_ids = sold_ids | dead_ids
+    stmt = select(Animal).options(joinedload(Animal.gender), joinedload(Animal.entry_source)).where(
+        Animal.entry_date <= as_of_date
+    )
+    return [a for a in db.scalars(stmt).all() if a.id not in closed_ids]
+
+
+def list_herd_asset_value(db: Session, start_date: date, end_date: date) -> list[HerdAssetValueRead]:
+    """Dönem başı ve dönem sonu itibarıyla YAŞAYAN tüm hayvanların (demirbaş
+    + malzeme karışık) toplam defter değerini karşılaştırıp net değişimi
+    verir - "bilanço yaklaşımıyla kâr/zarar" (Aktif değişimi = Özkaynak
+    değişimi, borç izlenmediği için). Bu, Hayvan Kârlılık Raporu'ndaki
+    GERÇEKLEŞMİŞ (satış/ölüm) kâr/zararla BİREBİR TOPLANMAZ - iki farklı
+    KPI'dir: o rapor sadece kapanmış hayvanları, bu rapor yaşayan sürünün
+    toplam değer değişimini (gerçekleşmemiş dahil) gösterir."""
+
+    def total_value(as_of_date: date) -> tuple[Decimal, Decimal]:
+        total_try = total_usd = Decimal("0")
+        for animal in _animals_alive_at(db, as_of_date):
+            book_try, book_usd, _ = _asset_book_value(db, animal, as_of_date)
+            total_try += book_try
+            total_usd += book_usd
+        return total_try, total_usd
+
+    start_try, start_usd = total_value(start_date)
+    end_try, end_usd = total_value(end_date)
+
+    return [
+        HerdAssetValueRead(category="Dönem Başı Varlık Değeri", amount_try=start_try, amount_usd=start_usd),
+        HerdAssetValueRead(category="Dönem Sonu Varlık Değeri", amount_try=end_try, amount_usd=end_usd),
+        HerdAssetValueRead(
+            category="Net Değişim (Varlık Değeri Artışı/Azalışı)",
+            amount_try=end_try - start_try,
+            amount_usd=end_usd - start_usd,
+        ),
     ]

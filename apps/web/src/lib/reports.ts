@@ -411,6 +411,20 @@ export const reports: ReportConfig[] = [
     ],
     rowHighlight: (row) => row.category === 'Net (Gelir - Maliyet)',
   },
+  {
+    slug: 'herd-asset-value',
+    title: 'Sürü Varlık Değeri Değişimi',
+    description:
+      'Bilanço yaklaşımıyla kârlılık: dönem başı ve dönem sonu itibarıyla yaşayan tüm hayvanların (demirbaş: inek/damızlık boğa amortismanlı, malzeme: buzağı/besi hayvanı birikmiş maliyetli) toplam defter değeri karşılaştırılır. Hayvan Kârlılık Raporu\'ndaki gerçekleşmiş (satış/ölüm) kâr/zararla birebir toplanmaz - farklı bir gösterge, sürünün toplam değer artışını/azalışını gösterir.',
+    endpoint: '/reports/herd-asset-value',
+    dateRange: true,
+    columns: [
+      { key: 'category', label: 'Kalem' },
+      { key: 'amount_try', label: 'Tutar (TL)', format: formatCurrency },
+      { key: 'amount_usd', label: 'Tutar ($)', format: formatUsd },
+    ],
+    rowHighlight: (row) => typeof row.category === 'string' && row.category.startsWith('Net Değişim'),
+  },
 ];
 
 export function getReport(slug: string): ReportConfig | undefined {
@@ -497,5 +511,11 @@ export const generalReportPlans: GeneralReportPlan[] = [
     title: 'Sürü Genel Maliyet-Gelir Özeti',
     description: 'Aralıkta gerçekleşen yem, sağlık ve giriş değeri maliyeti ile satış gelirinin TL/USD genel özeti - planlama için.',
     slug: 'herd-cost-summary',
+  },
+  {
+    title: 'Sürü Varlık Değeri Değişimi',
+    description:
+      'Bilanço yaklaşımıyla kârlılık: yaşayan tüm hayvanların (demirbaş amortismanlı, malzeme birikmiş maliyetli) toplam defter değerindeki dönemsel artış/azalış.',
+    slug: 'herd-asset-value',
   },
 ];

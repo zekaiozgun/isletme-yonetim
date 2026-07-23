@@ -229,6 +229,12 @@ class HerdCostSummaryRead(BaseModel):
     amount_usd: Decimal
 
 
+class HerdAssetValueRead(BaseModel):
+    category: str
+    amount_try: Decimal
+    amount_usd: Decimal
+
+
 class DashboardSummaryRead(BaseModel):
     active_animal_count: int
     breeding_candidate_count: int
