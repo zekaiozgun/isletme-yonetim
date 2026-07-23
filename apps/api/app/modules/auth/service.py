@@ -64,3 +64,26 @@ def activate_user(db: Session, user_id: int) -> User:
     db.commit()
     db.refresh(user)
     return user
+
+
+def change_own_password(db: Session, user: User, current_password: str, new_password: str) -> bool:
+    """Mevcut sifre eslesmezse False doner (router 400'e cevirir) - login'deki
+    authenticate_user ile ayni desen: gecersizlik burada degil router'da HTTP
+    hatasina cevrilir."""
+    if not verify_password(current_password, user.password_hash):
+        return False
+    user.password_hash = hash_password(new_password)
+    db.commit()
+    return True
+
+
+def reset_user_password(db: Session, user_id: int, new_password: str) -> User:
+    """YONETICI'nin baska bir kullanicinin sifresini mevcut sifreyi bilmeden
+    sifirlamasi - unutulan sifre senaryosu."""
+    user = db.get(User, user_id)
+    if user is None:
+        raise NotFoundError(f"Kullanıcı bulunamadı: {user_id}")
+    user.password_hash = hash_password(new_password)
+    db.commit()
+    db.refresh(user)
+    return user

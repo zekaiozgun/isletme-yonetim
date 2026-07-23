@@ -12,18 +12,27 @@ export interface SidebarUser {
   role: 'YONETICI' | 'CALISAN';
 }
 
-function UserBadge({ user }: { user: SidebarUser }) {
+function UserBadge({ user, onNavigate }: { user: SidebarUser; onNavigate?: () => void }) {
   return (
     <div className="mb-4 flex items-center justify-between gap-2 rounded border border-slate-200 bg-white px-3 py-2">
       <div className="min-w-0">
         <div className="truncate text-sm font-medium text-slate-800">{user.fullName || user.username}</div>
         {user.role === 'YONETICI' && <div className="text-xs text-slate-400">Yönetici</div>}
       </div>
-      <form action={logoutAction}>
-        <button type="submit" className="shrink-0 text-xs font-medium text-slate-500 hover:text-slate-800 hover:underline">
-          Çıkış
-        </button>
-      </form>
+      <div className="flex shrink-0 items-center gap-2">
+        <Link
+          href="/profile"
+          onClick={onNavigate}
+          className="text-xs font-medium text-slate-500 hover:text-slate-800 hover:underline"
+        >
+          Şifremi Değiştir
+        </Link>
+        <form action={logoutAction}>
+          <button type="submit" className="text-xs font-medium text-slate-500 hover:text-slate-800 hover:underline">
+            Çıkış
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
@@ -162,7 +171,7 @@ export function Sidebar({ user }: { user: SidebarUser }) {
             </svg>
           </button>
         </div>
-        <UserBadge user={user} />
+        <UserBadge user={user} onNavigate={() => setOpen(false)} />
         <NavLinks onNavigate={() => setOpen(false)} role={user.role} />
       </nav>
 

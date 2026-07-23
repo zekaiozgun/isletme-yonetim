@@ -105,3 +105,44 @@ export async function activateUserAction(
   revalidatePath('/users');
   redirect('/users');
 }
+
+/** Kullanıcının kendi şifresini değiştirmesi - mevcut şifre API tarafında doğrulanır. */
+export async function changePasswordAction(_prevState: LoginFormState, formData: FormData): Promise<LoginFormState> {
+  const currentPassword = String(formData.get('current_password') ?? '');
+  const newPassword = String(formData.get('new_password') ?? '');
+
+  if (!currentPassword || !newPassword) {
+    return { error: 'Mevcut şifre ve yeni şifre gerekli.' };
+  }
+
+  const result = await apiPost<{ id: number }>('/auth/me/change-password', {
+    current_password: currentPassword,
+    new_password: newPassword,
+  });
+  if (result.error !== undefined) {
+    return { error: result.error };
+  }
+
+  redirect('/');
+}
+
+/** YONETICI'nin baska bir kullanicinin sifresini (mevcut sifreyi bilmeden) sifirlamasi. */
+export async function resetUserPasswordAction(
+  userId: number,
+  _prevState: LoginFormState,
+  formData: FormData
+): Promise<LoginFormState> {
+  const newPassword = String(formData.get('new_password') ?? '');
+
+  if (!newPassword) {
+    return { error: 'Yeni şifre gerekli.' };
+  }
+
+  const result = await apiPost<{ id: number }>(`/auth/users/${userId}/reset-password`, { new_password: newPassword });
+  if (result.error !== undefined) {
+    return { error: result.error };
+  }
+
+  revalidatePath('/users');
+  redirect('/users');
+}

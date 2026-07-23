@@ -6,7 +6,14 @@ from app.core.exceptions import ConflictError
 from app.modules.auth import service
 from app.modules.auth.dependencies import get_current_user, require_admin
 from app.modules.auth.models import User
-from app.modules.auth.schemas import LoginRequest, LoginResponse, UserCreate, UserRead
+from app.modules.auth.schemas import (
+    ChangePasswordRequest,
+    LoginRequest,
+    LoginResponse,
+    ResetPasswordRequest,
+    UserCreate,
+    UserRead,
+)
 from app.modules.auth.security import create_access_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -59,3 +66,18 @@ def deactivate_user(user_id: int, db: Session = Depends(get_db)) -> User:
 @router.post("/users/{user_id}/activate", response_model=UserRead, dependencies=[Depends(require_admin)])
 def activate_user(user_id: int, db: Session = Depends(get_db)) -> User:
     return service.activate_user(db, user_id)
+
+
+@router.post("/me/change-password", response_model=UserRead)
+def change_own_password(
+    payload: ChangePasswordRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+) -> User:
+    ok = service.change_own_password(db, user, payload.current_password, payload.new_password)
+    if not ok:
+        raise HTTPException(status_code=400, detail="Mevcut şifre hatalı.")
+    return user
+
+
+@router.post("/users/{user_id}/reset-password", response_model=UserRead, dependencies=[Depends(require_admin)])
+def reset_user_password(user_id: int, payload: ResetPasswordRequest, db: Session = Depends(get_db)) -> User:
+    return service.reset_user_password(db, user_id, payload.new_password)

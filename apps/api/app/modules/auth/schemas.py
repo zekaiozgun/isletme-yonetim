@@ -29,6 +29,20 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class ChangePasswordRequest(BaseModel):
+    """Kullanıcının kendi şifresini değiştirmesi - mevcut şifre dogrulanir."""
+
+    current_password: str
+    new_password: str
+
+
+class ResetPasswordRequest(BaseModel):
+    """YONETICI'nin baska bir kullanicinin sifresini sifirlamasi - mevcut
+    sifre bilgisi istenmez (unutulan sifre senaryosu icindir)."""
+
+    new_password: str
+
+
 class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
