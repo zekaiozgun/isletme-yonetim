@@ -91,3 +91,17 @@ export async function deactivateUserAction(
   revalidatePath('/users');
   redirect('/users');
 }
+
+export async function activateUserAction(
+  userId: number,
+  _prevState: LoginFormState,
+  _formData: FormData
+): Promise<LoginFormState> {
+  const result = await apiPost<{ id: number }>(`/auth/users/${userId}/activate`, {});
+  if (result.error !== undefined) {
+    return { error: result.error };
+  }
+
+  revalidatePath('/users');
+  redirect('/users');
+}

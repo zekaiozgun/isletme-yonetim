@@ -54,3 +54,8 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)) -> User:
 @router.delete("/users/{user_id}", response_model=UserRead, dependencies=[Depends(require_admin)])
 def deactivate_user(user_id: int, db: Session = Depends(get_db)) -> User:
     return service.deactivate_user(db, user_id)
+
+
+@router.post("/users/{user_id}/activate", response_model=UserRead, dependencies=[Depends(require_admin)])
+def activate_user(user_id: int, db: Session = Depends(get_db)) -> User:
+    return service.activate_user(db, user_id)

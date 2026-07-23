@@ -54,3 +54,13 @@ def deactivate_user(db: Session, user_id: int) -> User:
     db.commit()
     db.refresh(user)
     return user
+
+
+def activate_user(db: Session, user_id: int) -> User:
+    user = db.get(User, user_id)
+    if user is None:
+        raise NotFoundError(f"Kullanıcı bulunamadı: {user_id}")
+    user.is_active = True
+    db.commit()
+    db.refresh(user)
+    return user

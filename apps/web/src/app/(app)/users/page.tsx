@@ -1,7 +1,8 @@
 import { apiGet, apiGetSafe, type ApiRecord } from '@/lib/api';
-import { createUserAction, deactivateUserAction } from '@/lib/auth';
+import { activateUserAction, createUserAction, deactivateUserAction } from '@/lib/auth';
 import { ResourceForm, type ClientFieldConfig } from '@/components/ResourceForm';
 import { DeleteButton } from '@/components/DeleteButton';
+import { ActivateButton } from '@/components/ActivateButton';
 
 interface MeResponse {
   role: 'YONETICI' | 'CALISAN';
@@ -77,13 +78,15 @@ export default async function UsersPage() {
                 </td>
                 <td className="whitespace-nowrap px-3 py-2 text-slate-700">{u.is_active ? 'Aktif' : 'Pasif'}</td>
                 <td className="whitespace-nowrap px-3 py-2">
-                  {u.is_active && (
+                  {u.is_active ? (
                     <DeleteButton
                       action={deactivateUserAction.bind(null, u.id)}
                       confirmMessage={`"${u.username}" kullanıcısını pasifleştirmek istediğinize emin misiniz? Giriş yapamaz hâle gelir, kaydı silinmez.`}
                       label="Pasifleştir"
                       pendingLabel="Pasifleştiriliyor..."
                     />
+                  ) : (
+                    <ActivateButton action={activateUserAction.bind(null, u.id)} />
                   )}
                 </td>
               </tr>
