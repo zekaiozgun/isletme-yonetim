@@ -1,3 +1,6 @@
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+
 // Bu deger yalnizca sunucu tarafinda (Server Component / Server Action)
 // okunur - tarayicidan hicbir zaman dogrudan API'ye istek atilmaz, bu
 // yuzden NEXT_PUBLIC_ on eki (build-time inline) GEREKMEZ; normal bir
@@ -5,10 +8,25 @@
 // degistirilebilir).
 const API_URL = process.env.API_URL ?? 'http://localhost:3001';
 
+// httpOnly cookie'de tutulan JWT - tarayici bu cookie'yi API'ye hicbir zaman
+// dogrudan gondermez, sadece Next.js sunucusu (asagidaki getAuthHeader)
+// istekleri API'ye vekaleten yaparken Authorization header'ina ekler.
+export const AUTH_COOKIE_NAME = 'isletme_token';
+
 export type ApiRecord = Record<string, unknown>;
 
+async function getAuthHeader(): Promise<Record<string, string>> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, { cache: 'no-store' });
+  const authHeader = await getAuthHeader();
+  const res = await fetch(`${API_URL}${path}`, { cache: 'no-store', headers: authHeader });
+  if (res.status === 401) {
+    redirect('/login');
+  }
   if (!res.ok) {
     throw new Error(`API isteği başarısız oldu: ${path} (${res.status})`);
   }
@@ -31,15 +49,22 @@ async function apiSend<T>(
   path: string,
   body?: Record<string, unknown>
 ): Promise<ApiResult<T>> {
+  const authHeader = await getAuthHeader();
   let res: Response;
   try {
     res = await fetch(`${API_URL}${path}`, {
       method,
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      headers: { ...authHeader, ...(body ? { 'Content-Type': 'application/json' } : {}) },
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch {
     return { error: `API'ye ulaşılamadı (${API_URL}). Backend çalışıyor mu?` };
+  }
+
+  // /auth/login'in kendisi haric: oradaki 401 "sifre yanlis" gibi normal bir
+  // is hatasidir (login formunda gosterilmeli), oturum suresi dolmasi degil.
+  if (res.status === 401 && path !== '/auth/login') {
+    redirect('/login');
   }
 
   if (!res.ok) {

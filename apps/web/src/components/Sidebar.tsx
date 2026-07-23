@@ -4,6 +4,29 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { groupedResources, quickAccessResources } from '@/lib/resources';
+import { logoutAction } from '@/lib/auth';
+
+export interface SidebarUser {
+  username: string;
+  fullName: string | null;
+  role: 'YONETICI' | 'CALISAN';
+}
+
+function UserBadge({ user }: { user: SidebarUser }) {
+  return (
+    <div className="mb-4 flex items-center justify-between gap-2 rounded border border-slate-200 bg-white px-3 py-2">
+      <div className="min-w-0">
+        <div className="truncate text-sm font-medium text-slate-800">{user.fullName || user.username}</div>
+        <div className="text-xs text-slate-400">{user.role === 'YONETICI' ? 'Yönetici' : 'Çalışan'}</div>
+      </div>
+      <form action={logoutAction}>
+        <button type="submit" className="shrink-0 text-xs font-medium text-slate-500 hover:text-slate-800 hover:underline">
+          Çıkış
+        </button>
+      </form>
+    </div>
+  );
+}
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const quickAccess = quickAccessResources();
@@ -56,7 +79,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ user }: { user: SidebarUser }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
@@ -122,6 +145,7 @@ export function Sidebar() {
             </svg>
           </button>
         </div>
+        <UserBadge user={user} />
         <NavLinks onNavigate={() => setOpen(false)} />
       </nav>
 
@@ -130,6 +154,7 @@ export function Sidebar() {
         <Link href="/" className="mb-6 block text-lg font-semibold text-slate-900">
           İşletme Yönetim
         </Link>
+        <UserBadge user={user} />
         <NavLinks />
       </nav>
     </>
