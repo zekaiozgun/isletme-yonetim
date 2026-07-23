@@ -481,4 +481,21 @@ export const generalReportPlans: GeneralReportPlan[] = [
       'Her inek için son iki doğum arasındaki gün farkı ve sürü ortalaması. Tarih aralığı gerektirmez, hedefi (365/400 gün) aşanlar vurgulu - yavaş değişen ama verimliliği gösteren bir gösterge.',
     slug: 'calving-intervals',
   },
+  {
+    title: 'Padok Maliyet-Verimlilik Raporu',
+    description:
+      'Aralıkta padoğa dağıtılan yem (miktar, TL ve USD) ile o padoktaki hayvanların gerçek kilo artışı karşılaştırılır: yem dönüşüm oranı (FCR) ve kg canlı ağırlık başına maliyet.',
+    slug: 'pen-efficiency',
+  },
+  {
+    title: 'Hayvan Kârlılık Raporu',
+    description:
+      'Aralıkta satılan veya ölen hayvanların yaşam boyu maliyeti (giriş değeri + sağlık + yem payı) satış geliriyle karşılaştırılır. TL ve TCMB kuruyla USD.',
+    slug: 'animal-profitability',
+  },
+  {
+    title: 'Sürü Genel Maliyet-Gelir Özeti',
+    description: 'Aralıkta gerçekleşen yem, sağlık ve giriş değeri maliyeti ile satış gelirinin TL/USD genel özeti - planlama için.',
+    slug: 'herd-cost-summary',
+  },
 ];
