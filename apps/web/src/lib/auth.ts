@@ -1,8 +1,9 @@
 'use server';
 
 import { cookies } from 'next/headers';
+import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { apiPost, AUTH_COOKIE_NAME } from './api';
+import { apiDelete, apiPost, AUTH_COOKIE_NAME } from './api';
 
 export type LoginFormState = { error?: string } | null;
 
@@ -51,4 +52,42 @@ export async function logoutAction(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(AUTH_COOKIE_NAME);
   redirect('/login');
+}
+
+export async function createUserAction(_prevState: LoginFormState, formData: FormData): Promise<LoginFormState> {
+  const username = String(formData.get('username') ?? '').trim();
+  const password = String(formData.get('password') ?? '');
+  const fullNameRaw = String(formData.get('full_name') ?? '').trim();
+  const role = String(formData.get('role') ?? 'CALISAN');
+
+  if (!username || !password) {
+    return { error: 'Kullanıcı adı ve şifre gerekli.' };
+  }
+
+  const result = await apiPost<{ id: number }>('/auth/users', {
+    username,
+    password,
+    full_name: fullNameRaw || null,
+    role,
+  });
+  if (result.error !== undefined) {
+    return { error: result.error };
+  }
+
+  revalidatePath('/users');
+  redirect('/users');
+}
+
+export async function deactivateUserAction(
+  userId: number,
+  _prevState: LoginFormState,
+  _formData: FormData
+): Promise<LoginFormState> {
+  const result = await apiDelete(`/auth/users/${userId}`);
+  if (result.error !== undefined) {
+    return { error: result.error };
+  }
+
+  revalidatePath('/users');
+  redirect('/users');
 }

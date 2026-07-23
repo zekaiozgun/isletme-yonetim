@@ -7,9 +7,12 @@ export type FormState = { error?: string } | null;
 interface DeleteButtonProps {
   action: (prevState: FormState, formData: FormData) => Promise<FormState>;
   confirmMessage: string;
+  /** Varsayılan "Sil" - kalıcı silme olmayan işlemler için (örn. "Pasifleştir") özelleştirilebilir. */
+  label?: string;
+  pendingLabel?: string;
 }
 
-export function DeleteButton({ action, confirmMessage }: DeleteButtonProps) {
+export function DeleteButton({ action, confirmMessage, label = 'Sil', pendingLabel = 'Siliniyor...' }: DeleteButtonProps) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(action, null);
 
   return (
@@ -29,7 +32,7 @@ export function DeleteButton({ action, confirmMessage }: DeleteButtonProps) {
         disabled={pending}
         className="rounded border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
       >
-        {pending ? 'Siliniyor...' : 'Sil'}
+        {pending ? pendingLabel : label}
       </button>
     </form>
   );

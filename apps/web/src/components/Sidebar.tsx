@@ -28,7 +28,7 @@ function UserBadge({ user }: { user: SidebarUser }) {
   );
 }
 
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+function NavLinks({ onNavigate, role }: { onNavigate?: () => void; role: SidebarUser['role'] }) {
   const quickAccess = quickAccessResources();
   const groups = groupedResources();
 
@@ -52,6 +52,23 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
           ))}
         </ul>
       </div>
+
+      {role === 'YONETICI' && (
+        <div className="border-b border-slate-200 pb-5">
+          <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">Yönetim</div>
+          <ul className="space-y-0.5">
+            <li>
+              <Link
+                href="/users"
+                onClick={onNavigate}
+                className="block rounded px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-200"
+              >
+                Kullanıcılar
+              </Link>
+            </li>
+          </ul>
+        </div>
+      )}
 
       <ul className="space-y-5">
         {groups.map((group) => (
@@ -146,7 +163,7 @@ export function Sidebar({ user }: { user: SidebarUser }) {
           </button>
         </div>
         <UserBadge user={user} />
-        <NavLinks onNavigate={() => setOpen(false)} />
+        <NavLinks onNavigate={() => setOpen(false)} role={user.role} />
       </nav>
 
       {/* Masaüstü sabit kenar çubuğu */}
@@ -155,7 +172,7 @@ export function Sidebar({ user }: { user: SidebarUser }) {
           İşletme Yönetim
         </Link>
         <UserBadge user={user} />
-        <NavLinks />
+        <NavLinks role={user.role} />
       </nav>
     </>
   );

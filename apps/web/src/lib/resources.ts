@@ -1,6 +1,6 @@
 import type { ApiRecord } from './api';
 
-export type FieldType = 'text' | 'number' | 'decimal' | 'date' | 'select' | 'checkbox' | 'textarea';
+export type FieldType = 'text' | 'number' | 'decimal' | 'date' | 'select' | 'checkbox' | 'textarea' | 'password';
 
 /** Bir <select> alanını doldurmak için API'den çekilecek liste (lookup ya da başka bir kaynağın kayıtları). */
 export interface OptionSource {

@@ -157,6 +157,18 @@ function FieldInput({
           className={inputClass}
         />
       );
+    case 'password':
+      // Sifre alanlari asla onceki degerden doldurulmaz (yazma-amacli alan).
+      return (
+        <input
+          id={field.name}
+          name={field.name}
+          type="password"
+          autoComplete="new-password"
+          required={field.required}
+          className={inputClass}
+        />
+      );
     default:
       return (
         <input
