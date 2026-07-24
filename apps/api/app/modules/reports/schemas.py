@@ -28,6 +28,11 @@ class BreedingCandidateRead(BaseModel):
     # hayvanlar, aynı sebep) buraya taşındı.
     days_open: int | None = None
     service_method_name: str | None = None
+    # Hayvanin son dogumundan (hic dogurmadiysa girisinden) bu yana kac
+    # kez tohumlandigi - fertilite sorunlarini gormek icin (bkz.
+    # _service_attempt_count). "İlk Tohumlama"/"Doğum Sonrası" satirlarinda
+    # 0'dir (henuz hic denenmedi).
+    service_attempt_count: int = 0
 
 
 class CalvingRead(BaseModel):
@@ -148,6 +153,9 @@ class BredAnimalRead(BaseModel):
     check_status: str
     pregnancy_check_due: bool
     expected_calving_date: date | None = None
+    # Hayvanin son dogumundan (hic dogurmadiysa girisinden) bu yana, bu
+    # dahil, kacinci tohumlama denemesi oldugu (bkz. _service_attempt_count).
+    service_attempt_count: int = 1
 
 
 class PregnantAnimalRead(BaseModel):

@@ -242,7 +242,7 @@ export const reports: ReportConfig[] = [
     slug: 'breeding-candidates',
     title: 'Tohumlanacak Hayvanlar',
     description:
-      '12 ay yaşına ulaşan düveler, doğum sonrası bekleme süresini (45 gün) tamamlamış inekler ve gebelik kontrolünde "Boş" çıkan (tekrar kızgınlık) hayvanlar - üçü tek listede, sebep sütunuyla ayırt edilir. "Boş" çıkanlar en uzun süredir açık olan üstte olacak şekilde sıralanır.',
+      '12 ay yaşına ulaşan düveler, doğum sonrası bekleme süresini (45 gün) tamamlamış inekler ve gebelik kontrolünde "Boş" çıkan (tekrar kızgınlık) hayvanlar - üçü tek listede, sebep sütunuyla ayırt edilir. "Boş" çıkanlar en uzun süredir açık olan üstte olacak şekilde sıralanır. Deneme Sayısı, son doğumundan bu yana kaç kez tohumlandığını gösterir - yüksek sayı fertilite sorununa işaret edebilir.',
     endpoint: '/reports/breeding-candidates',
     columns: [
       { key: 'tag_number', label: 'Küpe No' },
@@ -253,13 +253,15 @@ export const reports: ReportConfig[] = [
       { key: 'last_service_date', label: 'Son Tohumlama Tarihi', format: formatDate },
       { key: 'days_open', label: 'Açık Süre', format: formatDays },
       { key: 'service_method_name', label: 'Yöntem (Boş Çıkanlar)', format: formatPlain },
+      { key: 'service_attempt_count', label: 'Deneme Sayısı' },
     ],
     rowHighlight: (row) => row.reason === 'Tekrar Kızgınlık / Boş',
   },
   {
     slug: 'bred-animals',
     title: 'Tohumlu Hayvanlar',
-    description: 'Tohumlaması yapılmış, aktif üreme döngüsündeki hayvanlar. Gebelik kontrolü gerekenler üstte listelenir.',
+    description:
+      'Tohumlaması yapılmış, aktif üreme döngüsündeki hayvanlar. Gebelik kontrolü gerekenler üstte listelenir. Deneme Sayısı, son doğumundan bu yana (bu tohumlama dahil) kaçıncı deneme olduğunu gösterir.',
     endpoint: '/reports/bred-animals',
     columns: [
       { key: 'tag_number', label: 'Küpe No' },
@@ -269,6 +271,7 @@ export const reports: ReportConfig[] = [
       { key: 'days_since_service', label: 'Geçen Süre', format: formatDays },
       { key: 'check_status', label: 'Durum' },
       { key: 'expected_calving_date', label: 'Beklenen Doğum', format: formatDate },
+      { key: 'service_attempt_count', label: 'Deneme Sayısı' },
     ],
     rowHighlight: (row) => Boolean(row.pregnancy_check_due),
   },

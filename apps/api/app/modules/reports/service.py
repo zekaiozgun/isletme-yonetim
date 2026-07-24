@@ -101,6 +101,17 @@ def _latest_calving_by_dam(db: Session) -> dict[uuid.UUID, date]:
     return {mother_id: birth_date for mother_id, birth_date in db.execute(stmt).all()}
 
 
+def _service_attempt_count(db: Session, dam_id: uuid.UUID, since: date | None) -> int:
+    """Bir hayvanin mevcut üreme döngüsünde (son doğumundan -hiç
+    doğurmadıysa hiçbir sınır olmadan- bugüne kadar) kaç kez tohumlandığını
+    sayar - gebelik gerçekleşmeden tekrarlanan denemeleri görmek için
+    (fertilite sorunu belirtisi olabilir)."""
+    stmt = select(func.count(BreedingEvent.id)).where(BreedingEvent.dam_id == dam_id)
+    if since is not None:
+        stmt = stmt.where(BreedingEvent.service_date > since)
+    return db.scalar(stmt) or 0
+
+
 def _latest_check_by_event(db: Session) -> dict[int, PregnancyCheck]:
     stmt = select(PregnancyCheck).options(joinedload(PregnancyCheck.result)).order_by(PregnancyCheck.check_date)
     latest: dict[int, PregnancyCheck] = {}
@@ -189,6 +200,7 @@ def list_breeding_candidates(db: Session, today: date | None = None) -> list[Bre
     tek rapora birleştirildi - o rapora özgü days_open/service_method_name
     alanları sadece bu reason'da dolar."""
     today = today or date.today()
+    last_calving_by_dam = _latest_calving_by_dam(db)
     entries: list[tuple[int, BreedingCandidateRead]] = []
     for animal, classification in _classify_all_active_females(db, today):
         if classification.kind not in _BREEDING_CANDIDATE_REASONS:
@@ -201,6 +213,7 @@ def list_breeding_candidates(db: Session, today: date | None = None) -> list[Bre
             last_service_date = classification.breeding_event.service_date
             days_open = (today - last_service_date).days
             service_method_name = classification.breeding_event.service_method.name
+        attempt_count = _service_attempt_count(db, animal.id, last_calving_by_dam.get(animal.id))
         row = BreedingCandidateRead(
             animal_id=animal.id,
             tag_number=animal.tag_number,
@@ -212,6 +225,7 @@ def list_breeding_candidates(db: Session, today: date | None = None) -> list[Bre
             last_service_date=last_service_date,
             days_open=days_open,
             service_method_name=service_method_name,
+            service_attempt_count=attempt_count,
         )
         entries.append((_BREEDING_CANDIDATE_REASON_ORDER[classification.kind], row))
 
@@ -230,6 +244,7 @@ def list_breeding_candidates(db: Session, today: date | None = None) -> list[Bre
 
 def list_bred_animals(db: Session, today: date | None = None) -> list[BredAnimalRead]:
     today = today or date.today()
+    last_calving_by_dam = _latest_calving_by_dam(db)
     rows: list[BredAnimalRead] = []
     for animal, classification in _classify_all_active_females(db, today):
         if classification.kind not in ("pending", "suspicious", "pregnant"):
@@ -261,6 +276,7 @@ def list_bred_animals(db: Session, today: date | None = None) -> list[BredAnimal
                 check_status=check_status,
                 pregnancy_check_due=check_due,
                 expected_calving_date=expected_calving,
+                service_attempt_count=_service_attempt_count(db, animal.id, last_calving_by_dam.get(animal.id)),
             )
         )
 
