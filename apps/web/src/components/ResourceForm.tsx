@@ -2,6 +2,7 @@
 
 import { useActionState, useRef, useState } from 'react';
 import type { FieldType } from '@/lib/resources';
+import { formatDateDMY } from '@/lib/format';
 
 export type FormState = { error?: string } | null;
 
@@ -160,6 +161,8 @@ function formatReviewValue(
   const raw = formData.get(field.name);
   const value = raw === null ? '' : String(raw);
   if (!value) return '—';
+
+  if (field.type === 'date') return formatDateDMY(value);
 
   if (field.type === 'select' && field.optionsEndpoint) {
     const match = (options[field.optionsEndpoint] ?? []).find((o) => o.value === value);

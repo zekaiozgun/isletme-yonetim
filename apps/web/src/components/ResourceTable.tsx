@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { apiGetSafe, type ApiRecord } from '@/lib/api';
 import type { ColumnConfig, ResourceConfig } from '@/lib/resources';
+import { formatDateDMY } from '@/lib/format';
 import { TableSearch } from '@/components/TableSearch';
 import { CsvExportButton } from '@/components/CsvExportButton';
 
@@ -33,6 +34,8 @@ function formatCell(row: ApiRecord, column: ColumnConfig, lookupMaps: Map<string
   if (raw === null || raw === undefined || raw === '') return '—';
 
   if (column.boolean) return raw ? 'Evet' : 'Hayır';
+
+  if (column.date) return formatDateDMY(raw);
 
   if (column.lookup) {
     const map = lookupMaps.get(column.lookup.endpoint);

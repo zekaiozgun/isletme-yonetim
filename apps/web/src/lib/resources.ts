@@ -25,6 +25,8 @@ export interface ColumnConfig {
   lookup?: OptionSource;
   /** true ise değer bool olarak "Evet"/"Hayır" gösterilir. */
   boolean?: boolean;
+  /** true ise değer ISO (YYYY-MM-DD) tarihten DD/MM/YYYY olarak gösterilir. */
+  date?: boolean;
   /** Ham değeri (örn. age_months) görüntülenecek metne çevirir. */
   format?: (value: unknown, row: ApiRecord) => string;
 }
@@ -122,7 +124,7 @@ const mainResources: ResourceConfig[] = [
       { key: 'gender_id', label: 'Cinsiyet', lookup: genders },
       { key: 'age_months', label: 'Yaş', format: formatAgeMonths },
       { key: 'status_id', label: 'Statü', lookup: animalStatuses },
-      { key: 'entry_date', label: 'Giriş Tarihi' },
+      { key: 'entry_date', label: 'Giriş Tarihi', date: true },
       { key: 'entry_value', label: 'Giriş Değeri (TL)' },
     ],
     fields: [
@@ -187,8 +189,8 @@ const mainResources: ResourceConfig[] = [
     columns: [
       { key: 'animal_id', label: 'Hayvan', lookup: animals },
       { key: 'pen_id', label: 'Padok', lookup: pens },
-      { key: 'assigned_date', label: 'Atama Tarihi' },
-      { key: 'removed_date', label: 'Çıkış Tarihi' },
+      { key: 'assigned_date', label: 'Atama Tarihi', date: true },
+      { key: 'removed_date', label: 'Çıkış Tarihi', date: true },
       { key: 'reason_id', label: 'Neden', lookup: penAssignmentReasons },
     ],
     fields: [
@@ -231,7 +233,7 @@ const mainResources: ResourceConfig[] = [
     columns: [
       { key: 'sire_id', label: 'Boğa', lookup: sires },
       { key: 'batch_no', label: 'Parti No' },
-      { key: 'purchase_date', label: 'Alım Tarihi' },
+      { key: 'purchase_date', label: 'Alım Tarihi', date: true },
       { key: 'straw_count', label: 'Straw Adedi' },
     ],
     fields: [
@@ -253,7 +255,7 @@ const mainResources: ResourceConfig[] = [
     createEndpoint: '/weight-records',
     columns: [
       { key: 'animal_id', label: 'Hayvan', lookup: animals },
-      { key: 'weigh_date', label: 'Tarih' },
+      { key: 'weigh_date', label: 'Tarih', date: true },
       { key: 'weight_kg', label: 'Ağırlık (kg)' },
       { key: 'weighing_method_id', label: 'Yöntem', lookup: weighingMethods },
     ],
@@ -275,7 +277,7 @@ const mainResources: ResourceConfig[] = [
     columns: [
       { key: 'dam_id', label: 'Anne Adayı', lookup: animals },
       { key: 'service_method_id', label: 'Yöntem', lookup: serviceMethods },
-      { key: 'service_date', label: 'Tarih' },
+      { key: 'service_date', label: 'Tarih', date: true },
     ],
     fields: [
       { name: 'dam_id', label: 'Anne Adayı', type: 'select', options: animals, required: true },
@@ -299,7 +301,7 @@ const mainResources: ResourceConfig[] = [
     createEndpoint: '/breeding-events/pregnancy-checks',
     columns: [
       { key: 'breeding_event_id', label: 'Aşım Kaydı', lookup: breedingEvents },
-      { key: 'check_date', label: 'Kontrol Tarihi' },
+      { key: 'check_date', label: 'Kontrol Tarihi', date: true },
       { key: 'method_id', label: 'Yöntem', lookup: pregnancyCheckMethods },
       { key: 'result_id', label: 'Sonuç', lookup: pregnancyResults },
     ],
@@ -322,7 +324,7 @@ const mainResources: ResourceConfig[] = [
     columns: [
       { key: 'animal_id', label: 'Hayvan', lookup: animals },
       { key: 'event_type_id', label: 'Tip', lookup: healthEventTypes },
-      { key: 'event_date', label: 'Tarih' },
+      { key: 'event_date', label: 'Tarih', date: true },
       { key: 'medication_id', label: 'İlaç', lookup: medications },
       { key: 'cost', label: 'Maliyet (TL)' },
     ],
@@ -387,7 +389,7 @@ const mainResources: ResourceConfig[] = [
     columns: [
       { key: 'pen_id', label: 'Padok', lookup: pens },
       { key: 'feed_item_id', label: 'Yem Ürünü', lookup: feedItems },
-      { key: 'distribution_date', label: 'Tarih' },
+      { key: 'distribution_date', label: 'Tarih', date: true },
       { key: 'quantity', label: 'Miktar' },
       { key: 'total_cost', label: 'Maliyet (TL)' },
     ],
@@ -430,7 +432,7 @@ const mainResources: ResourceConfig[] = [
     createEndpoint: '/sales',
     columns: [
       { key: 'animal_id', label: 'Hayvan', lookup: animals },
-      { key: 'sale_date', label: 'Tarih' },
+      { key: 'sale_date', label: 'Tarih', date: true },
       { key: 'buyer_id', label: 'Alıcı', lookup: buyers },
       { key: 'sale_type_id', label: 'Tip', lookup: saleTypes },
       { key: 'total_amount', label: 'Tutar' },
@@ -454,7 +456,7 @@ const mainResources: ResourceConfig[] = [
     createEndpoint: '/deaths',
     columns: [
       { key: 'animal_id', label: 'Hayvan', lookup: animals },
-      { key: 'death_date', label: 'Tarih' },
+      { key: 'death_date', label: 'Tarih', date: true },
       { key: 'death_reason_id', label: 'Neden', lookup: deathReasons },
       { key: 'disposal_method_id', label: 'İmha Yöntemi', lookup: disposalMethods },
     ],

@@ -1,4 +1,5 @@
 import type { ApiRecord } from './api';
+import { formatDateDMY as formatDate } from './format';
 
 export interface ReportColumn {
   key: string;
@@ -17,13 +18,6 @@ export interface ReportConfig {
   /** true ise rapor sayfası bir başlangıç/bitiş tarihi filtresi gösterir ve
    * bunları `start_date`/`end_date` query param'ı olarak endpoint'e ekler. */
   dateRange?: boolean;
-}
-
-function formatDate(value: unknown): string {
-  if (value === null || value === undefined || value === '') return '—';
-  const [year, month, day] = String(value).split('-');
-  if (!year || !month || !day) return String(value);
-  return `${day}.${month}.${year}`;
 }
 
 function formatDays(value: unknown): string {
