@@ -41,6 +41,17 @@ interface ResourceFormProps {
   requireConfirmation?: boolean;
   /** true ise: form salt-okunur gosterilir (kilitli kayit), kaydetme yok. */
   readOnly?: boolean;
+  /**
+   * Belirli bir select alaninin secilen degeri matchValues icindeyse,
+   * formu ENGELLEMEDEN ustunde bir uyari banner'i gosterir (orn. "bu
+   * hayvan zaten gebe olarak kayitli" - aşım kaydı girerken). Sistem
+   * burada bir sey VARSAYMAZ/ENGELLEMEZ, sadece celiskiyi gorunur kilar.
+   */
+  warningField?: {
+    fieldName: string;
+    matchValues: string[];
+    message: string;
+  };
 }
 
 const inputClass =
@@ -54,10 +65,12 @@ export function ResourceForm({
   initialValues,
   requireConfirmation = false,
   readOnly = false,
+  warningField,
 }: ResourceFormProps) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(action, null);
   const [step, setStep] = useState<'form' | 'review'>('form');
   const [reviewData, setReviewData] = useState<FormData | null>(null);
+  const [activeWarning, setActiveWarning] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   const showingReview = requireConfirmation && step === 'review' && reviewData !== null;
@@ -75,6 +88,12 @@ export function ResourceForm({
         <div className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</div>
       )}
 
+      {warningField && activeWarning && (
+        <div className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
+          {warningField.message}
+        </div>
+      )}
+
       <div className={showingReview ? 'hidden' : 'space-y-4'}>
         {fields.map((field) => (
           <div key={field.name}>
@@ -87,6 +106,11 @@ export function ResourceForm({
               options={field.optionsEndpoint ? (options[field.optionsEndpoint] ?? []) : []}
               initialValue={initialValues ? initialValues[field.name] : undefined}
               disabled={readOnly}
+              onValueChange={
+                warningField && field.name === warningField.fieldName
+                  ? (value) => setActiveWarning(warningField.matchValues.includes(value))
+                  : undefined
+              }
             />
           </div>
         ))}
@@ -177,11 +201,14 @@ function FieldInput({
   options,
   initialValue,
   disabled,
+  onValueChange,
 }: {
   field: ClientFieldConfig;
   options: SelectOption[];
   initialValue?: unknown;
   disabled?: boolean;
+  /** Sadece belirli bir alan icin (bkz. ResourceFormProps.warningField) - degisiklikte cagrilir, secimi kontrol etmez. */
+  onValueChange?: (value: string) => void;
 }) {
   switch (field.type) {
     case 'select':
@@ -192,6 +219,7 @@ function FieldInput({
           required={field.required}
           disabled={disabled}
           defaultValue={asText(initialValue)}
+          onChange={onValueChange ? (e) => onValueChange(e.target.value) : undefined}
           className={inputClass}
         >
           <option value="" disabled>
