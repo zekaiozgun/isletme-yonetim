@@ -58,7 +58,6 @@ from app.modules.reports.schemas import (
     PenOccupancyRead,
     PregnancyCheckResultRead,
     PregnantAnimalRead,
-    RepeatBreederRead,
     SalesReportRead,
     WeightGainRead,
     YoungAnimalRead,
@@ -183,15 +182,25 @@ _BREEDING_CANDIDATE_REASON_ORDER = {"candidate_new": 0, "candidate_postpartum": 
 
 
 def list_breeding_candidates(db: Session, today: date | None = None) -> list[BreedingCandidateRead]:
+    """"Tekrar Kızgınlık / Boş Çıkanlar" burada AYRI bir rapor değildir -
+    üç aday türünden biri (reason="Tekrar Kızgınlık / Boş") olarak bu
+    listenin içindedir; eskiden ayrı bir rapor olarak da sunuluyordu ama
+    bu listenin birebir alt kümesi olduğundan (aynı hayvanlar, aynı sebep)
+    tek rapora birleştirildi - o rapora özgü days_open/service_method_name
+    alanları sadece bu reason'da dolar."""
     today = today or date.today()
     entries: list[tuple[int, BreedingCandidateRead]] = []
     for animal, classification in _classify_all_active_females(db, today):
         if classification.kind not in _BREEDING_CANDIDATE_REASONS:
             continue
         last_service_date = None
+        days_open = None
+        service_method_name = None
         if classification.kind == "open":
             assert classification.breeding_event is not None
             last_service_date = classification.breeding_event.service_date
+            days_open = (today - last_service_date).days
+            service_method_name = classification.breeding_event.service_method.name
         row = BreedingCandidateRead(
             animal_id=animal.id,
             tag_number=animal.tag_number,
@@ -201,9 +210,21 @@ def list_breeding_candidates(db: Session, today: date | None = None) -> list[Bre
             reason=_BREEDING_CANDIDATE_REASONS[classification.kind],
             last_calving_date=classification.last_calving_date,
             last_service_date=last_service_date,
+            days_open=days_open,
+            service_method_name=service_method_name,
         )
         entries.append((_BREEDING_CANDIDATE_REASON_ORDER[classification.kind], row))
-    entries.sort(key=lambda e: (e[0], e[1].tag_number))
+
+    def sort_key(entry: tuple[int, BreedingCandidateRead]) -> tuple[int, object]:
+        order, row = entry
+        # "Tekrar Kızgınlık / Boş" grubu icinde en uzun süredir açık olan
+        # üstte (eski Tekrar Kızgınlık raporunun sıralaması) - diğer iki
+        # grup küpe no'ya göre alfabetik kalır.
+        if row.days_open is not None:
+            return (order, -row.days_open)
+        return (order, row.tag_number)
+
+    entries.sort(key=sort_key)
     return [row for _, row in entries]
 
 
@@ -255,27 +276,6 @@ def list_bred_animals(db: Session, today: date | None = None) -> list[BredAnimal
     rows.sort(key=sort_key)
     return rows
 
-
-def list_repeat_breeders(db: Session, today: date | None = None) -> list[RepeatBreederRead]:
-    today = today or date.today()
-    rows: list[RepeatBreederRead] = []
-    for animal, classification in _classify_all_active_females(db, today):
-        if classification.kind != "open":
-            continue
-        event = classification.breeding_event
-        assert event is not None
-        rows.append(
-            RepeatBreederRead(
-                animal_id=animal.id,
-                tag_number=animal.tag_number,
-                name=animal.name,
-                last_service_date=event.service_date,
-                days_open=(today - event.service_date).days,
-                service_method_name=event.service_method.name,
-            )
-        )
-    rows.sort(key=lambda r: -r.days_open)
-    return rows
 
 
 def list_pregnant_animals(db: Session, today: date | None = None) -> list[PregnantAnimalRead]:
@@ -918,12 +918,14 @@ def get_dashboard_summary(db: Session, today: date | None = None) -> DashboardSu
         else None
     )
 
+    breeding_candidates = list_breeding_candidates(db, today)
+
     return DashboardSummaryRead(
         active_animal_count=inventory.total_active,
-        breeding_candidate_count=len(list_breeding_candidates(db, today)),
+        breeding_candidate_count=len(breeding_candidates),
         pregnancy_check_due_count=sum(1 for b in bred_animals if b.pregnancy_check_due),
         pregnant_count=sum(1 for b in bred_animals if b.check_status == "Gebe"),
-        repeat_breeder_count=len(list_repeat_breeders(db, today)),
+        repeat_breeder_count=sum(1 for c in breeding_candidates if c.reason == "Tekrar Kızgınlık / Boş"),
         calves_count=inventory.calves_count,
         heifers_steers_count=inventory.heifers_steers_count,
         pen_occupancy_rate=pen_occupancy_rate,

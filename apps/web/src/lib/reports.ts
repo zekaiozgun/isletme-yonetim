@@ -242,7 +242,7 @@ export const reports: ReportConfig[] = [
     slug: 'breeding-candidates',
     title: 'Tohumlanacak Hayvanlar',
     description:
-      '12 ay yaşına ulaşan düveler, doğum sonrası bekleme süresini (45 gün) tamamlamış inekler ve gebelik kontrolünde "Boş" çıkan hayvanlar.',
+      '12 ay yaşına ulaşan düveler, doğum sonrası bekleme süresini (45 gün) tamamlamış inekler ve gebelik kontrolünde "Boş" çıkan (tekrar kızgınlık) hayvanlar - üçü tek listede, sebep sütunuyla ayırt edilir. "Boş" çıkanlar en uzun süredir açık olan üstte olacak şekilde sıralanır.',
     endpoint: '/reports/breeding-candidates',
     columns: [
       { key: 'tag_number', label: 'Küpe No' },
@@ -251,6 +251,8 @@ export const reports: ReportConfig[] = [
       { key: 'reason', label: 'Sebep' },
       { key: 'last_calving_date', label: 'Son Doğum Tarihi', format: formatDate },
       { key: 'last_service_date', label: 'Son Tohumlama Tarihi', format: formatDate },
+      { key: 'days_open', label: 'Açık Süre', format: formatDays },
+      { key: 'service_method_name', label: 'Yöntem (Boş Çıkanlar)', format: formatPlain },
     ],
     rowHighlight: (row) => row.reason === 'Tekrar Kızgınlık / Boş',
   },
@@ -269,20 +271,6 @@ export const reports: ReportConfig[] = [
       { key: 'expected_calving_date', label: 'Beklenen Doğum', format: formatDate },
     ],
     rowHighlight: (row) => Boolean(row.pregnancy_check_due),
-  },
-  {
-    slug: 'repeat-breeders',
-    title: 'Tekrar Kızgınlık / Boş Çıkanlar',
-    description: 'Gebelik kontrolünde "Boş" sonucu çıkmış, henüz yeniden tohumlanmamış hayvanlar.',
-    endpoint: '/reports/repeat-breeders',
-    columns: [
-      { key: 'tag_number', label: 'Küpe No' },
-      { key: 'name', label: 'İsim', format: formatPlain },
-      { key: 'last_service_date', label: 'Son Tohumlama Tarihi', format: formatDate },
-      { key: 'days_open', label: 'Açık Süre', format: formatDays },
-      { key: 'service_method_name', label: 'Yöntem' },
-    ],
-    rowHighlight: () => true,
   },
   {
     slug: 'pregnant-animals',

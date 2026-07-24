@@ -28,7 +28,6 @@ from app.modules.reports.schemas import (
     PenOccupancyRead,
     PregnancyCheckResultRead,
     PregnantAnimalRead,
-    RepeatBreederRead,
     SalesReportRead,
     WeightGainRead,
     YoungAnimalRead,
@@ -45,11 +44,6 @@ def breeding_candidates(db: Session = Depends(get_db)) -> list[BreedingCandidate
 @router.get("/bred-animals", response_model=list[BredAnimalRead])
 def bred_animals(db: Session = Depends(get_db)) -> list[BredAnimalRead]:
     return service.list_bred_animals(db)
-
-
-@router.get("/repeat-breeders", response_model=list[RepeatBreederRead])
-def repeat_breeders(db: Session = Depends(get_db)) -> list[RepeatBreederRead]:
-    return service.list_repeat_breeders(db)
 
 
 @router.get("/pregnant-animals", response_model=list[PregnantAnimalRead])

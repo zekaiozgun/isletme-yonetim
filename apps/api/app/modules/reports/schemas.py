@@ -22,6 +22,12 @@ class BreedingCandidateRead(BaseModel):
     reason: str
     last_calving_date: date | None = None
     last_service_date: date | None = None
+    # Yalnizca reason="Tekrar Kızgınlık / Boş" satirlarinda dolu -
+    # eskiden ayri bir "Tekrar Kızgınlık / Boş Çıkanlar" raporunda olan
+    # bu iki alan, o rapor bu listenin bir alt kumesi oldugu icin (aynı
+    # hayvanlar, aynı sebep) buraya taşındı.
+    days_open: int | None = None
+    service_method_name: str | None = None
 
 
 class CalvingRead(BaseModel):
@@ -142,15 +148,6 @@ class BredAnimalRead(BaseModel):
     check_status: str
     pregnancy_check_due: bool
     expected_calving_date: date | None = None
-
-
-class RepeatBreederRead(BaseModel):
-    animal_id: uuid.UUID
-    tag_number: str
-    name: str | None = None
-    last_service_date: date
-    days_open: int
-    service_method_name: str
 
 
 class PregnantAnimalRead(BaseModel):

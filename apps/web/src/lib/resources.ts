@@ -288,7 +288,6 @@ const mainResources: ResourceConfig[] = [
     relatedReports: [
       { slug: 'breeding-candidates', title: 'Tohumlanacak Hayvanlar' },
       { slug: 'bred-animals', title: 'Tohumlu Hayvanlar' },
-      { slug: 'repeat-breeders', title: 'Tekrar Kızgınlık / Boş Çıkanlar' },
     ],
   },
   {

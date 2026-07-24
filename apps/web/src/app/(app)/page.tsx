@@ -52,7 +52,7 @@ export default async function Home() {
         <StatTile
           label="Tekrar Kızgınlık / Boş"
           value={String(repeatBreederCount)}
-          href="/reports/repeat-breeders"
+          href="/reports/breeding-candidates"
           status={repeatBreederCount > 0 ? 'warning' : 'neutral'}
         />
         <StatTile label="Buzağı (0-7 Ay)" value={String(asNumber(summary.calves_count))} href="/reports/calves" />
