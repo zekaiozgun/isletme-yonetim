@@ -92,6 +92,32 @@ def _latest_breeding_by_dam(db: Session) -> dict[uuid.UUID, BreedingEvent]:
     return latest
 
 
+def _returned_from_pregnancy(
+    db: Session, dam_id: uuid.UUID, current_service_date: date, since: date | None
+) -> bool:
+    """Bu hayvanin, MEVCUT (degerlendirilen) tohumlama kaydindan ONCE - ayni
+    üreme döngüsü içinde (son doğumundan bu yana) - başka bir tohumlama
+    kaydında onaylanmış (GEBE) bir gebelik kontrolü var mıydı? Varsa, yeni
+    tohumlama o eski onaylı gebeliğin artık geçerli olmadığını ima eder.
+    Sistem SEBEBİ (düşük mü, yanlış giriş mi) TAHMİN ETMEZ (Anayasa m.4) -
+    sadece bu çelişkiyi görünür kılar, gerçek sebebi kullanıcı not alanına
+    kendisi kaydeder."""
+    stmt = (
+        select(func.count(PregnancyCheck.id))
+        .select_from(PregnancyCheck)
+        .join(BreedingEvent, PregnancyCheck.breeding_event_id == BreedingEvent.id)
+        .join(PregnancyResult, PregnancyCheck.result_id == PregnancyResult.id)
+        .where(
+            BreedingEvent.dam_id == dam_id,
+            BreedingEvent.service_date < current_service_date,
+            PregnancyResult.code == CONFIRMED_PREGNANCY_RESULT_CODE,
+        )
+    )
+    if since is not None:
+        stmt = stmt.where(BreedingEvent.service_date > since)
+    return (db.scalar(stmt) or 0) > 0
+
+
 def _latest_calving_by_dam(db: Session) -> dict[uuid.UUID, date]:
     stmt = (
         select(Animal.mother_id, func.max(Animal.birth_date))
@@ -208,11 +234,15 @@ def list_breeding_candidates(db: Session, today: date | None = None) -> list[Bre
         last_service_date = None
         days_open = None
         service_method_name = None
+        returned_from_pregnancy = False
         if classification.kind == "open":
             assert classification.breeding_event is not None
             last_service_date = classification.breeding_event.service_date
             days_open = (today - last_service_date).days
             service_method_name = classification.breeding_event.service_method.name
+            returned_from_pregnancy = _returned_from_pregnancy(
+                db, animal.id, last_service_date, last_calving_by_dam.get(animal.id)
+            )
         attempt_count = _service_attempt_count(db, animal.id, last_calving_by_dam.get(animal.id))
         row = BreedingCandidateRead(
             animal_id=animal.id,
@@ -226,6 +256,7 @@ def list_breeding_candidates(db: Session, today: date | None = None) -> list[Bre
             days_open=days_open,
             service_method_name=service_method_name,
             service_attempt_count=attempt_count,
+            returned_from_pregnancy=returned_from_pregnancy,
         )
         entries.append((_BREEDING_CANDIDATE_REASON_ORDER[classification.kind], row))
 
@@ -277,6 +308,9 @@ def list_bred_animals(db: Session, today: date | None = None) -> list[BredAnimal
                 pregnancy_check_due=check_due,
                 expected_calving_date=expected_calving,
                 service_attempt_count=_service_attempt_count(db, animal.id, last_calving_by_dam.get(animal.id)),
+                returned_from_pregnancy=_returned_from_pregnancy(
+                    db, animal.id, event.service_date, last_calving_by_dam.get(animal.id)
+                ),
             )
         )
 

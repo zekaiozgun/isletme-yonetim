@@ -45,6 +45,10 @@ function formatKg(value: unknown): string {
   return `${String(value)} kg`;
 }
 
+function formatReturnedFromPregnancy(value: unknown): string {
+  return value === true ? '⚠ Önceden Gebeydi' : '—';
+}
+
 function formatDosage(value: unknown, row: ApiRecord): string {
   if (value === null || value === undefined || value === '') return '—';
   const unit = row.dosage_unit_name;
@@ -248,14 +252,15 @@ export const reports: ReportConfig[] = [
       { key: 'days_open', label: 'Açık Süre', format: formatDays },
       { key: 'service_method_name', label: 'Yöntem (Boş Çıkanlar)', format: formatPlain },
       { key: 'service_attempt_count', label: 'Deneme Sayısı' },
+      { key: 'returned_from_pregnancy', label: 'Uyarı', format: formatReturnedFromPregnancy },
     ],
-    rowHighlight: (row) => row.reason === 'Tekrar Kızgınlık / Boş',
+    rowHighlight: (row) => row.reason === 'Tekrar Kızgınlık / Boş' || row.returned_from_pregnancy === true,
   },
   {
     slug: 'bred-animals',
     title: 'Tohumlu Hayvanlar',
     description:
-      'Tohumlaması yapılmış, aktif üreme döngüsündeki hayvanlar. Gebelik kontrolü gerekenler üstte listelenir. Deneme Sayısı, son doğumundan bu yana (bu tohumlama dahil) kaçıncı deneme olduğunu gösterir.',
+      'Tohumlaması yapılmış, aktif üreme döngüsündeki hayvanlar. Gebelik kontrolü gerekenler üstte listelenir. Deneme Sayısı, son doğumundan bu yana (bu tohumlama dahil) kaçıncı deneme olduğunu gösterir. "⚠ Önceden Gebeydi" uyarısı, bu tohumlamadan önce aynı döngüde onaylı bir gebelik olduğunu ama artık geçerli olmadığını gösterir (sebebi - düşük mü, yanlış giriş mi - not alanına elle kaydedilmelidir).',
     endpoint: '/reports/bred-animals',
     columns: [
       { key: 'tag_number', label: 'Küpe No' },
@@ -266,8 +271,9 @@ export const reports: ReportConfig[] = [
       { key: 'check_status', label: 'Durum' },
       { key: 'expected_calving_date', label: 'Beklenen Doğum', format: formatDate },
       { key: 'service_attempt_count', label: 'Deneme Sayısı' },
+      { key: 'returned_from_pregnancy', label: 'Uyarı', format: formatReturnedFromPregnancy },
     ],
-    rowHighlight: (row) => Boolean(row.pregnancy_check_due),
+    rowHighlight: (row) => Boolean(row.pregnancy_check_due) || row.returned_from_pregnancy === true,
   },
   {
     slug: 'pregnant-animals',

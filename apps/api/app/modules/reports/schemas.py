@@ -33,6 +33,12 @@ class BreedingCandidateRead(BaseModel):
     # _service_attempt_count). "İlk Tohumlama"/"Doğum Sonrası" satirlarinda
     # 0'dir (henuz hic denenmedi).
     service_attempt_count: int = 0
+    # true ise: bu hayvan, bu tohumlamadan ONCE ayni ureme dongusunde baska
+    # bir tohumlamada "Gebe" olarak onaylanmisti - yeni tohumlama o
+    # gebeligin artik gecerli olmadigini ima eder (bkz.
+    # _returned_from_pregnancy). Sistem SEBEBI (dusuk mu, yanlis giris mi)
+    # TAHMIN ETMEZ, sadece celiskiyi gorunur kilar.
+    returned_from_pregnancy: bool = False
 
 
 class CalvingRead(BaseModel):
@@ -156,6 +162,10 @@ class BredAnimalRead(BaseModel):
     # Hayvanin son dogumundan (hic dogurmadiysa girisinden) bu yana, bu
     # dahil, kacinci tohumlama denemesi oldugu (bkz. _service_attempt_count).
     service_attempt_count: int = 1
+    # true ise: bu tohumlamadan ONCE ayni ureme dongusunde baska bir
+    # tohumlamada "Gebe" onayi vardi (bkz. BreedingCandidateRead'deki
+    # ayni alanin aciklamasi / _returned_from_pregnancy).
+    returned_from_pregnancy: bool = False
 
 
 class PregnantAnimalRead(BaseModel):
