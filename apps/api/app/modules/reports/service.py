@@ -251,6 +251,7 @@ def list_breeding_candidates(db: Session, today: date | None = None) -> list[Bre
             birth_date=animal.birth_date,
             age_months=full_months_between(animal.birth_date, today) if animal.birth_date else None,
             reason=_BREEDING_CANDIDATE_REASONS[classification.kind],
+            reason_code=classification.kind,
             last_calving_date=classification.last_calving_date,
             last_service_date=last_service_date,
             days_open=days_open,
@@ -745,14 +746,16 @@ def list_herd_flow(db: Session, start_date: date, end_date: date) -> list[HerdFl
     rows: list[HerdFlowReportRead] = []
     total_in = 0
     for name, count in entry_counts:
-        rows.append(HerdFlowReportRead(category=f"Giriş - {name}", direction="Giriş", count=count))
+        rows.append(HerdFlowReportRead(category=f"Giriş - {name}", direction="Giriş", direction_code="IN", count=count))
         total_in += count
 
-    rows.append(HerdFlowReportRead(category="Çıkış - Satış", direction="Çıkış", count=sale_count))
-    rows.append(HerdFlowReportRead(category="Çıkış - Ölüm", direction="Çıkış", count=death_count))
+    rows.append(HerdFlowReportRead(category="Çıkış - Satış", direction="Çıkış", direction_code="OUT", count=sale_count))
+    rows.append(HerdFlowReportRead(category="Çıkış - Ölüm", direction="Çıkış", direction_code="OUT", count=death_count))
     total_out = sale_count + death_count
 
-    rows.append(HerdFlowReportRead(category="Net Değişim", direction="Net", count=total_in - total_out))
+    rows.append(
+        HerdFlowReportRead(category="Net Değişim", direction="Net", direction_code="NET", count=total_in - total_out)
+    )
     return rows
 
 
@@ -1297,16 +1300,21 @@ def list_herd_cost_summary(db: Session, start_date: date, end_date: date) -> lis
     total_cost_try = feed_try + health_try + entry_value_try
     total_cost_usd = feed_usd + health_usd + entry_value_usd
 
-    def row(category: str, try_amount: Decimal, usd_amount: Decimal) -> HerdCostSummaryRead:
-        return HerdCostSummaryRead(category=category, amount_try=_round_money(try_amount), amount_usd=_round_money(usd_amount))
+    def row(category: str, category_code: str, try_amount: Decimal, usd_amount: Decimal) -> HerdCostSummaryRead:
+        return HerdCostSummaryRead(
+            category=category,
+            category_code=category_code,
+            amount_try=_round_money(try_amount),
+            amount_usd=_round_money(usd_amount),
+        )
 
     return [
-        row("Yem Maliyeti", feed_try, feed_usd),
-        row("Sağlık/Tedavi Maliyeti", health_try, health_usd),
-        row("Giriş Değeri (Alım/Doğum)", entry_value_try, entry_value_usd),
-        row("Toplam Maliyet", total_cost_try, total_cost_usd),
-        row("Satış Geliri", revenue_try, revenue_usd),
-        row("Net (Gelir - Maliyet)", revenue_try - total_cost_try, revenue_usd - total_cost_usd),
+        row("Yem Maliyeti", "FEED", feed_try, feed_usd),
+        row("Sağlık/Tedavi Maliyeti", "HEALTH", health_try, health_usd),
+        row("Giriş Değeri (Alım/Doğum)", "ENTRY_VALUE", entry_value_try, entry_value_usd),
+        row("Toplam Maliyet", "TOTAL_COST", total_cost_try, total_cost_usd),
+        row("Satış Geliri", "REVENUE", revenue_try, revenue_usd),
+        row("Net (Gelir - Maliyet)", "NET", revenue_try - total_cost_try, revenue_usd - total_cost_usd),
     ]
 
 
@@ -1449,10 +1457,18 @@ def list_herd_asset_value(db: Session, start_date: date, end_date: date) -> list
     end_try, end_usd = total_value(end_date)
 
     return [
-        HerdAssetValueRead(category="Dönem Başı Varlık Değeri", amount_try=start_try, amount_usd=start_usd),
-        HerdAssetValueRead(category="Dönem Sonu Varlık Değeri", amount_try=end_try, amount_usd=end_usd),
+        HerdAssetValueRead(
+            category="Dönem Başı Varlık Değeri",
+            category_code="period_start",
+            amount_try=start_try,
+            amount_usd=start_usd,
+        ),
+        HerdAssetValueRead(
+            category="Dönem Sonu Varlık Değeri", category_code="period_end", amount_try=end_try, amount_usd=end_usd
+        ),
         HerdAssetValueRead(
             category="Net Değişim (Varlık Değeri Artışı/Azalışı)",
+            category_code="net_change",
             amount_try=end_try - start_try,
             amount_usd=end_usd - start_usd,
         ),

@@ -20,6 +20,10 @@ class BreedingCandidateRead(BaseModel):
     birth_date: date | None = None
     age_months: int | None = None
     reason: str
+    # Makine-okunabilir sabit deger: "candidate_new" | "candidate_postpartum"
+    # | "open" - frontend'in gorunum metnine (reason) gore degil buna gore
+    # mantik kurmasi icin (bkz. reports/service.py _BREEDING_CANDIDATE_REASONS).
+    reason_code: str
     last_calving_date: date | None = None
     last_service_date: date | None = None
     # Yalnizca reason="Tekrar Kızgınlık / Boş" satirlarinda dolu -
@@ -86,6 +90,10 @@ class FeedConsumptionRead(BaseModel):
 class HerdFlowReportRead(BaseModel):
     category: str
     direction: str
+    # Makine-okunabilir sabit deger: "IN" | "OUT" | "NET" - frontend'in
+    # gorunum metnine (direction) gore degil buna gore mantik kurmasi icin
+    # (bkz. reports/service.py list_herd_flow).
+    direction_code: str
     count: int
 
 
@@ -240,12 +248,21 @@ class AnimalProfitabilityRead(BaseModel):
 
 class HerdCostSummaryRead(BaseModel):
     category: str
+    # Makine-okunabilir sabit deger - frontend'in gorunum metnine (category)
+    # gore degil buna gore mantik kurmasi icin (bkz. reports/service.py
+    # list_herd_cost_summary).
+    category_code: str
     amount_try: Decimal
     amount_usd: Decimal
 
 
 class HerdAssetValueRead(BaseModel):
     category: str
+    # Makine-okunabilir sabit deger: "period_start" | "period_end" |
+    # "net_change" - frontend'in gorunum metnine (category) gore degil
+    # buna gore mantik kurmasi icin (bkz. reports/service.py
+    # list_herd_asset_value).
+    category_code: str
     amount_try: Decimal
     amount_usd: Decimal
 

@@ -1,0 +1,7 @@
+# Bu proje simdiye kadar hicbir ruff yapilandirmasi olmadan gelistirildi -
+# yani ruff'in belgelenen varsayilan kural seti (E4, E7, E9, F) kullanildi.
+# Bu dosya, kurulu ruff surumu degisse bile (orn. daha yeni bir surumun
+# farkli varsayilanlari secmesi ihtimaline karsi) AYNI davranisi acikca
+# sabitler - "289 hata" gibi surpriz kural genislemelerini onler.
+[lint]
+select = ["E4", "E7", "E9", "F"]

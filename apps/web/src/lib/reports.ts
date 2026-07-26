@@ -203,7 +203,7 @@ export const reports: ReportConfig[] = [
       { key: 'category', label: 'Hareket' },
       { key: 'count', label: 'Hayvan Sayısı' },
     ],
-    rowHighlight: (row) => row.direction === 'Net',
+    rowHighlight: (row) => row.direction_code === 'NET',
   },
   {
     slug: 'feed-consumption',
@@ -254,7 +254,7 @@ export const reports: ReportConfig[] = [
       { key: 'service_attempt_count', label: 'Deneme Sayısı' },
       { key: 'returned_from_pregnancy', label: 'Uyarı', format: formatReturnedFromPregnancy },
     ],
-    rowHighlight: (row) => row.reason === 'Tekrar Kızgınlık / Boş' || row.returned_from_pregnancy === true,
+    rowHighlight: (row) => row.reason_code === 'open' || row.returned_from_pregnancy === true,
   },
   {
     slug: 'bred-animals',
@@ -400,7 +400,7 @@ export const reports: ReportConfig[] = [
       { key: 'amount_try', label: 'Tutar (TL)', format: formatCurrency },
       { key: 'amount_usd', label: 'Tutar ($)', format: formatUsd },
     ],
-    rowHighlight: (row) => row.category === 'Net (Gelir - Maliyet)',
+    rowHighlight: (row) => row.category_code === 'NET',
   },
   {
     slug: 'herd-asset-value',
@@ -414,7 +414,7 @@ export const reports: ReportConfig[] = [
       { key: 'amount_try', label: 'Tutar (TL)', format: formatCurrency },
       { key: 'amount_usd', label: 'Tutar ($)', format: formatUsd },
     ],
-    rowHighlight: (row) => typeof row.category === 'string' && row.category.startsWith('Net Değişim'),
+    rowHighlight: (row) => row.category_code === 'net_change',
   },
 ];
 
@@ -422,91 +422,7 @@ export function getReport(slug: string): ReportConfig | undefined {
   return reports.find((r) => r.slug === slug);
 }
 
-/**
- * İki tarih arasında filtrelenebilecek, henüz yapım aşamasındaki genel
- * raporların planı (bkz. /reports hub sayfası). `slug` bir rapor
- * uygulandığında dolar; o zamana kadar hub sayfasında "Yakında" gösterilir.
- */
-export interface GeneralReportPlan {
-  title: string;
-  description: string;
-  slug: string | null;
+/** /reports hub sayfasında listelenen (tarih aralıklı) raporlar - reports[]'ten türetilir. */
+export function dateRangeReports(): ReportConfig[] {
+  return reports.filter((r) => r.dateRange);
 }
-
-export const generalReportPlans: GeneralReportPlan[] = [
-  {
-    title: 'Doğum/Buzağılama Raporu',
-    description:
-      'Belirtilen tarih aralığında doğum yapan hayvanlar; buzağı sayısı, cinsiyet dağılımı, tekiz/ikiz oranı ve güç doğum (distoni) vakaları vurgulu.',
-    slug: 'calving',
-  },
-  {
-    title: 'Tohumlama Performans Raporu',
-    description: 'Aralıktaki aşım kayıtları; doğal/suni tohumlama dağılımı, boğa veya sperma partisi bazında gebe kalma oranı.',
-    slug: 'breeding-performance',
-  },
-  {
-    title: 'Gebelik Kontrol Sonuçları Özeti',
-    description: 'Aralıkta yapılan gebelik kontrolleri; gebe/boş/şüpheli sonuç oranı.',
-    slug: 'pregnancy-check-results',
-  },
-  {
-    title: 'Sağlık Olayları Raporu',
-    description: 'Aralıktaki hastalık/tedavi kayıtları; hastalık dağılımı, ilaç kullanım sıklığı.',
-    slug: 'health-events',
-  },
-  {
-    title: 'Kilo Alım (ADG) Raporu',
-    description: 'Aralıktaki tartı kayıtlarından günlük ortalama kilo alımı, hayvan veya padok bazında.',
-    slug: 'weight-gains',
-  },
-  {
-    title: 'Satış Raporu',
-    description: 'Aralıktaki satışlar; toplam gelir, ortalama satış ağırlığı/fiyatı, alıcı bazında kırılım.',
-    slug: 'sales',
-  },
-  {
-    title: 'Ölüm/Kayıp Raporu',
-    description: 'Aralıktaki ölümler; buzağı (0-7 ay) ve yetişkin kaybı ayrı ayrı, neden dağılımı ve kayıp oranı.',
-    slug: 'deaths',
-  },
-  {
-    title: 'Sürü Giriş-Çıkış Özeti',
-    description: 'Aralıkta işletmeye giren (doğum/satın alma) ve çıkan (satış/ölüm) hayvan sayıları; net büyüme.',
-    slug: 'herd-flow',
-  },
-  {
-    title: 'Yem Tüketim Raporu',
-    description: 'Aralıkta dağıtılan yem miktarı, padok/yem tipi bazında.',
-    slug: 'feed-consumption',
-  },
-  {
-    title: 'Yavrulama Aralığı (Calving Interval) Raporu',
-    description:
-      'Her inek için son iki doğum arasındaki gün farkı ve sürü ortalaması. Tarih aralığı gerektirmez, hedefi (365/400 gün) aşanlar vurgulu - yavaş değişen ama verimliliği gösteren bir gösterge.',
-    slug: 'calving-intervals',
-  },
-  {
-    title: 'Padok Maliyet-Verimlilik Raporu',
-    description:
-      'Aralıkta padoğa dağıtılan yem (miktar, TL ve USD) ile o padoktaki hayvanların gerçek kilo artışı karşılaştırılır: yem dönüşüm oranı (FCR) ve kg canlı ağırlık başına maliyet.',
-    slug: 'pen-efficiency',
-  },
-  {
-    title: 'Hayvan Kârlılık Raporu',
-    description:
-      'Aralıkta satılan veya ölen hayvanların yaşam boyu maliyeti (giriş değeri + sağlık + yem payı) satış geliriyle karşılaştırılır. TL ve TCMB kuruyla USD.',
-    slug: 'animal-profitability',
-  },
-  {
-    title: 'Sürü Genel Maliyet-Gelir Özeti',
-    description: 'Aralıkta gerçekleşen yem, sağlık ve giriş değeri maliyeti ile satış gelirinin TL/USD genel özeti - planlama için.',
-    slug: 'herd-cost-summary',
-  },
-  {
-    title: 'Sürü Varlık Değeri Değişimi',
-    description:
-      'Bilanço yaklaşımıyla kârlılık: yaşayan tüm hayvanların (demirbaş amortismanlı, malzeme birikmiş maliyetli) toplam defter değerindeki dönemsel artış/azalış.',
-    slug: 'herd-asset-value',
-  },
-];
