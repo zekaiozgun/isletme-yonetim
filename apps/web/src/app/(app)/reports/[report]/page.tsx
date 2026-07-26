@@ -21,7 +21,7 @@ export default async function ReportPage({
   searchParams,
 }: {
   params: Promise<{ report: string }>;
-  searchParams: Promise<{ start?: string; end?: string; as_of_date?: string; granularity?: string; animal_id?: string }>;
+  searchParams: Promise<{ start?: string; end?: string; as_of_date?: string; granularity?: string }>;
 }) {
   const { report: slug } = await params;
   const report = getReport(slug);
@@ -39,31 +39,15 @@ export default async function ReportPage({
   const asOfDate = report.singleDate ? sp.as_of_date || todayIso() : undefined;
   const granularity = report.granularity ? sp.granularity || 'monthly' : undefined;
 
-  let animalId: string | undefined;
-  let animalOptions: { id: string; label: string }[] = [];
-  if (report.animalFilter) {
-    animalId = sp.animal_id || undefined;
-    const animals = await apiGetSafe<ApiRecord[]>('/reports/active-animals', []);
-    animalOptions = animals.map((animal) => ({
-      id: String(animal.animal_id),
-      label: animal.name ? `${String(animal.tag_number)} - ${String(animal.name)}` : String(animal.tag_number),
-    }));
-  }
+  const query = new URLSearchParams();
+  if (rangeStart) query.set('start_date', rangeStart);
+  if (rangeEnd) query.set('end_date', rangeEnd);
+  if (asOfDate) query.set('as_of_date', asOfDate);
+  if (granularity) query.set('granularity', granularity);
+  const separator = report.endpoint.includes('?') ? '&' : '?';
+  const rows = await apiGetSafe<ApiRecord[]>(`${report.endpoint}${separator}${query.toString()}`, []);
 
-  const canFetch = !report.animalFilter || Boolean(animalId);
-  let rows: ApiRecord[] = [];
-  if (canFetch) {
-    const query = new URLSearchParams();
-    if (rangeStart) query.set('start_date', rangeStart);
-    if (rangeEnd) query.set('end_date', rangeEnd);
-    if (asOfDate) query.set('as_of_date', asOfDate);
-    if (granularity) query.set('granularity', granularity);
-    if (animalId) query.set('animal_id', animalId);
-    const separator = report.endpoint.includes('?') ? '&' : '?';
-    rows = await apiGetSafe<ApiRecord[]>(`${report.endpoint}${separator}${query.toString()}`, []);
-  }
-
-  const showCustomFilter = report.granularity || report.animalFilter || report.singleDate;
+  const showCustomFilter = report.granularity || report.singleDate;
 
   return (
     <div>
@@ -85,24 +69,17 @@ export default async function ReportPage({
           end={rangeEnd}
           asOfDate={asOfDate}
           granularity={granularity}
-          animalId={animalId}
-          animals={report.animalFilter ? animalOptions : undefined}
           showDateRange={Boolean(report.dateRange)}
           showSingleDate={Boolean(report.singleDate)}
           showGranularity={Boolean(report.granularity)}
-          showAnimalPicker={Boolean(report.animalFilter)}
         />
       ) : (
         report.dateRange && rangeStart && rangeEnd && <DateRangeFilter start={rangeStart} end={rangeEnd} />
       )}
-      {canFetch ? (
-        report.slug === 'herd-animal-market-values' ? (
-          <HerdAnimalValueTable rows={rows} />
-        ) : (
-          <ReportTable report={report} rows={rows} />
-        )
+      {report.slug === 'herd-animal-market-values' ? (
+        <HerdAnimalValueTable rows={rows} />
       ) : (
-        <p className="text-sm text-slate-500">Lütfen bir hayvan seçin.</p>
+        <ReportTable report={report} rows={rows} />
       )}
     </div>
   );

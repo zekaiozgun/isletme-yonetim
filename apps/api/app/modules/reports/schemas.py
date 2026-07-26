@@ -256,17 +256,6 @@ class HerdCostSummaryRead(BaseModel):
     amount_usd: Decimal
 
 
-class HerdAssetValueRead(BaseModel):
-    category: str
-    # Makine-okunabilir sabit deger: "period_start" | "period_end" |
-    # "net_change" - frontend'in gorunum metnine (category) gore degil
-    # buna gore mantik kurmasi icin (bkz. reports/service.py
-    # list_herd_asset_value).
-    category_code: str
-    amount_try: Decimal
-    amount_usd: Decimal
-
-
 class AnimalMarketValueRead(BaseModel):
     animal_id: uuid.UUID
     tag_number: str

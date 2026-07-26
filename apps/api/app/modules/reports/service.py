@@ -26,7 +26,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.date_utils import full_months_between
-from app.core.exceptions import DomainError, NotFoundError
+from app.core.exceptions import DomainError
 from app.core.lookup_helpers import get_lookup_by_code
 from app.modules.animal.lookups import AnimalStatus, EntrySource, Gender
 from app.modules.animal.models import Animal
@@ -53,7 +53,6 @@ from app.modules.reports.schemas import (
     DeathLossReportRead,
     FeedConsumptionRead,
     HealthEventReportRead,
-    HerdAssetValueRead,
     HerdCostSummaryRead,
     HerdFlowReportRead,
     HerdInventoryRead,
@@ -82,7 +81,7 @@ CALF_MAX_MONTHS = 7
 CONFIRMED_PREGNANCY_RESULT_CODE = "GEBE"
 PURCHASE_ENTRY_SOURCE_CODE = "SATIN_ALMA"
 # Demirbas (inek/damizlik boga) amortisman parametreleri - USD bazinda
-# (TL enflasyonundan etkilenmesin diye, bkz. Suru Varlik Degeri raporu).
+# (TL enflasyonundan etkilenmesin diye, bkz. _asset_book_value).
 DEPRECIATION_USEFUL_LIFE_YEARS = 10
 DEPRECIATION_RESIDUAL_RATIO = Decimal("0.5")
 GESTATION_DAYS = 283
@@ -96,8 +95,8 @@ GROWTH_CHECKPOINT_DAYS_PER_MONTH = 30
 # ureteceigi maksimum nokta sayisi - suru bazli seride her nokta TUM
 # suruyu tek tek gezdiginden (bkz. list_herd_market_value_series), asiri
 # genis araligi/gunluk granulerligi sinirlamazsak istek suresiz uzayabilir
-# (Suru Varlik Degeri raporunda daha once yasanan TCMB cagri patlamasiyla
-# ayni performans riski sinifi).
+# (surudeki tum hayvanlari tek istekte gezen raporlarda daha once yasanan
+# TCMB cagri patlamasiyla ayni performans riski sinifi).
 MAX_SERIES_POINTS = 100
 
 
@@ -1130,9 +1129,9 @@ def _feed_cost_share_for_animal(
 
     convert_usd=False ise USD kismi hesaplanmaz (0 doner) - her dagitim
     satiri KENDI tarihinde ayri bir TCMB sorgusu tetikleyebildiginden, cok
-    sayida hayvan/kayit uzerinde tek bir istekte calisan raporlarda (orn.
-    Suru Varlik Degeri) performans/timeout riski olusturur; öyle bir
-    ihtiyacta USD, tek bir toplu kurla ayrica hesaplanir (bkz. _asset_book_value)."""
+    sayida hayvan/kayit uzerinde tek bir istekte calisan raporlarda (surudeki
+    tum hayvanlari gezen raporlar) performans/timeout riski olusturur; öyle
+    bir ihtiyacta USD, tek bir toplu kurla ayrica hesaplanir (bkz. _asset_book_value)."""
     total_try = Decimal("0")
     total_usd = Decimal("0")
     assignments = list(db.scalars(select(PenAssignment).where(PenAssignment.animal_id == animal_id)).all())
@@ -1195,14 +1194,14 @@ def _accumulated_cost_try_usd(
     (giris degeri + saglik + gun agirlikli yem payi) TL ve USD olarak
     dondurur - "malzeme/stok" durumundaki bir hayvanin defter degeridir
     (bkz. _asset_book_value). Hem Hayvan Karlilik Raporu (_build_profitability_row,
-    outcome_date ile) hem Suru Varlik Degeri raporu (herhangi bir as_of_date
-    ile) bu ortak hesaplamayi kullanir.
+    outcome_date ile) hem _asset_book_value (herhangi bir as_of_date ile)
+    bu ortak hesaplamayi kullanir.
 
     convert_usd=False ise hicbir alt-fact kendi tarihinde TCMB'ye sorulmaz
-    (USD 0 doner, sadece TL toplanir) - Suru Varlik Degeri raporu gibi
-    SURUDEKI TUM hayvanlari tek istekte gezen caller'lar bunu kullanip
-    USD'yi TEK bir as_of_date kuruyla toplu hesaplar (performans/timeout
-    riskini onlemek icin - bkz. _asset_book_value)."""
+    (USD 0 doner, sadece TL toplanir) - _asset_book_value gibi SURUDEKI
+    TUM hayvanlari tek istekte gezen caller'lar bunu kullanip USD'yi TEK
+    bir as_of_date kuruyla toplu hesaplar (performans/timeout riskini
+    onlemek icin)."""
     health_cost_try, health_cost_usd = _health_cost_try_usd(db, animal.id, as_of_date, convert_usd)
     feed_cost_try, feed_cost_usd = _feed_cost_share_for_animal(db, animal.id, as_of_date, convert_usd)
     entry_value_try = animal.entry_value or Decimal("0")
@@ -1335,7 +1334,7 @@ def list_herd_cost_summary(db: Session, start_date: date, end_date: date) -> lis
     ]
 
 
-# --- Demirbaş (amortisman) / Malzeme sınıflandırması ve Sürü Varlık Değeri ---
+# --- Demirbaş (amortisman) / Malzeme sınıflandırması ---
 #
 # Biyolojik varlık muhasebesi (IAS 41 pratiği): inek/damızlık boğa bir
 # DURAN VARLIK (demirbaş) gibi amortismana tabidir; büyümekte olan bir
@@ -1400,8 +1399,9 @@ def _asset_book_value(
     PERFORMANS: Hayvan Kârlılık Raporu'nun aksine (orada her fact kendi
     tarihindeki kurla cevrilir - bkz. _accumulated_cost_try_usd docstring),
     bu fonksiyon SURUDEKI TUM hayvanlar icin tek istekte cagrildigindan
-    (list_herd_asset_value) alt-fact'lerin USD donusumu KAPATILIR
-    (convert_usd=False) ve yerine TEK bir as_of_date kuru kullanilir -
+    (bkz. list_herd_market_value_series/list_herd_animal_market_values)
+    alt-fact'lerin USD donusumu KAPATILIR (convert_usd=False) ve yerine
+    TEK bir as_of_date kuru kullanilir -
     aksi halde her hayvanin her giris/saglik/yem tarihi icin ayri bir TCMB
     sorgusu tetiklenip rapor onlarca-yuzlerce ag cagrisiyla zaman asimina
     ugrar (gercek bir prodüksiyon hatasi olarak gözlemlendi). as_of_rate
@@ -1450,52 +1450,10 @@ def _animals_alive_at(db: Session, as_of_date: date) -> list[Animal]:
     return [a for a in db.scalars(stmt).all() if a.id not in closed_ids]
 
 
-def list_herd_asset_value(db: Session, start_date: date, end_date: date) -> list[HerdAssetValueRead]:
-    """Dönem başı ve dönem sonu itibarıyla YAŞAYAN tüm hayvanların (demirbaş
-    + malzeme karışık) toplam defter değerini karşılaştırıp net değişimi
-    verir - "bilanço yaklaşımıyla kâr/zarar" (Aktif değişimi = Özkaynak
-    değişimi, borç izlenmediği için). Bu, Hayvan Kârlılık Raporu'ndaki
-    GERÇEKLEŞMİŞ (satış/ölüm) kâr/zararla BİREBİR TOPLANMAZ - iki farklı
-    KPI'dir: o rapor sadece kapanmış hayvanları, bu rapor yaşayan sürünün
-    toplam değer değişimini (gerçekleşmemiş dahil) gösterir."""
-
-    def total_value(as_of_date: date) -> tuple[Decimal, Decimal]:
-        # as_of_rate TEK seferde cekilir, tum hayvanlar icin yeniden
-        # kullanilir (bkz. _asset_book_value performans notu).
-        as_of_rate = fx_service.get_usd_try_rate(db, as_of_date)
-        total_try = total_usd = Decimal("0")
-        for animal in _animals_alive_at(db, as_of_date):
-            book_try, book_usd, _ = _asset_book_value(db, animal, as_of_date, as_of_rate)
-            total_try += book_try
-            total_usd += book_usd
-        return total_try, total_usd
-
-    start_try, start_usd = total_value(start_date)
-    end_try, end_usd = total_value(end_date)
-
-    return [
-        HerdAssetValueRead(
-            category="Dönem Başı Varlık Değeri",
-            category_code="period_start",
-            amount_try=start_try,
-            amount_usd=start_usd,
-        ),
-        HerdAssetValueRead(
-            category="Dönem Sonu Varlık Değeri", category_code="period_end", amount_try=end_try, amount_usd=end_usd
-        ),
-        HerdAssetValueRead(
-            category="Net Değişim (Varlık Değeri Artışı/Azalışı)",
-            category_code="net_change",
-            amount_try=end_try - start_try,
-            amount_usd=end_usd - start_usd,
-        ),
-    ]
-
-
 # --- Tahmini Piyasa Değeri (büyüme çıpaları) ---
 #
-# list_herd_asset_value (yukarida) SAF MALIYET muhasebesidir ve bu
-# bolumden ETKILENMEZ. Burasi ona PARALEL, ayri bir gosterge:
+# _asset_book_value (yukarida) SAF MALIYET muhasebesidir. Burasi ona
+# PARALEL, ayri bir gosterge:
 #   - Malzeme durumundaki (henuz Demirbasa gecmemis) genc hayvanlar icin,
 #     kullanicinin GrowthValuationCheckpoint olarak TL cinsinden girdigi
 #     yas-bazli piyasa fiyatlari (AGE_3/6/9/12) arasinda lineer
@@ -1649,36 +1607,11 @@ def _series_dates(start_date: date, end_date: date, granularity: str) -> list[da
     return dates
 
 
-def list_animal_market_value_series(
-    db: Session, animal_id: uuid.UUID, start_date: date, end_date: date, granularity: str
-) -> list[MarketValueSeriesPointRead]:
-    """Tek bir hayvanin, start_date-end_date araliginda 'Tahmini Piyasa
-    Değeri'nin zaman icindeki seyri - buyume cipalari + gerektiginde
-    maliyet-bazli deger (bkz. _estimated_market_value_usd_try)."""
-    animal = db.get(Animal, animal_id, options=[joinedload(Animal.gender), joinedload(Animal.entry_source)])
-    if animal is None:
-        raise NotFoundError(f"Hayvan bulunamadi: {animal_id}")
-
-    growth_checkpoints_by_gender, mature_checkpoints_by_gender = _checkpoint_maps(db)
-    rows: list[MarketValueSeriesPointRead] = []
-    for as_of_date in _series_dates(start_date, end_date, granularity):
-        rate = fx_service.get_usd_try_rate(db, as_of_date)
-        amount_try, amount_usd, source_code = _estimated_market_value_usd_try(
-            db, animal, as_of_date, growth_checkpoints_by_gender, mature_checkpoints_by_gender, rate
-        )
-        rows.append(
-            MarketValueSeriesPointRead(
-                date=as_of_date, amount_try=amount_try, amount_usd=amount_usd, source_code=source_code
-            )
-        )
-    return rows
-
-
 def list_herd_market_value_series(
     db: Session, start_date: date, end_date: date, granularity: str
 ) -> list[MarketValueSeriesPointRead]:
     """Yaşayan tüm sürünün toplam 'Tahmini Piyasa Değeri'nin start_date-
-    end_date araliginda zaman icindeki seyri (bkz. list_animal_market_value_series).
+    end_date araliginda zaman icindeki seyri (bkz. _estimated_market_value_usd_try).
     Sürüde çıpasız/Demirbaş hayvanlar için maliyet-bazlı değer kullanılır,
     bu yuzden her nokta karma bir kaynaktan olusabilir - source_code bu
     noktalarda 'mixed' olarak isaretlenir."""
