@@ -152,7 +152,7 @@ const mainResources: ResourceConfig[] = [
       { name: 'note', label: 'Not', type: 'textarea' },
     ],
     relatedReports: [
-      { slug: 'active-animals', title: 'Aktif Hayvanlar' },
+      { slug: 'active-animals', title: 'Hayvan Listesi (Durum Filtresi)' },
       { slug: 'calves', title: 'Buzağı Listesi (0-7 Ay)' },
       { slug: 'heifers-steers', title: 'Düve ve Dana Listesi (7-12 Ay)' },
     ],

@@ -1,22 +1,52 @@
+interface StatusOption {
+  id: number;
+  name: string;
+}
+
 export function MarketValueSeriesFilter({
   start,
   end,
   asOfDate,
   granularity,
+  statuses,
+  selectedStatusIds,
   showDateRange,
   showSingleDate,
   showGranularity,
+  showStatusFilter,
 }: {
   start?: string;
   end?: string;
   asOfDate?: string;
   granularity?: string;
+  statuses?: StatusOption[];
+  selectedStatusIds?: number[];
   showDateRange: boolean;
   showSingleDate?: boolean;
   showGranularity: boolean;
+  showStatusFilter?: boolean;
 }) {
   return (
     <form method="get" className="mb-4 flex flex-wrap items-end gap-3 rounded border border-slate-200 bg-slate-50 p-3">
+      {showStatusFilter && (
+        <div>
+          <input type="hidden" name="filtered" value="1" />
+          <span className="mb-1 block text-xs font-medium text-slate-600">Statü</span>
+          <div className="flex flex-wrap gap-3 py-1">
+            {(statuses ?? []).map((status) => (
+              <label key={status.id} className="flex items-center gap-1.5 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  name="status_ids"
+                  value={status.id}
+                  defaultChecked={(selectedStatusIds ?? []).includes(status.id)}
+                />
+                {status.name}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
       {showDateRange && (
         <>
           <div>

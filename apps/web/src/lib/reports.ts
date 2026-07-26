@@ -24,6 +24,11 @@ export interface ReportConfig {
   /** true ise rapor sayfası tek bir "tarih itibariyle" filtresi gösterir
    * (aralık değil) ve bunu `as_of_date` query param'ı olarak endpoint'e ekler. */
   singleDate?: boolean;
+  /** true ise rapor sayfası hayvan statüsü (Aktif/Satıldı/Öldü vb.) için
+   * çoklu seçim checkbox filtresi gösterir; hiçbiri seçilmemiş ve form hiç
+   * gönderilmemişse varsayılan olarak "Aktif" seçili gelir. Seçilenler
+   * `status_ids` query param'ı olarak (tekrarlı) endpoint'e eklenir. */
+  statusFilter?: boolean;
   /** true ise rapor sayfasının üstünde Büyüme Değerleme Çıpalarını
    * düzenleme sayfasına giden bir link gösterilir (bu rapor o verilere
    * dayandığı için). */
@@ -308,9 +313,11 @@ export const reports: ReportConfig[] = [
   },
   {
     slug: 'active-animals',
-    title: 'Aktif Hayvanlar',
-    description: 'Tüm aktif hayvanlar, yaş (ay) dahil.',
+    title: 'Hayvan Listesi (Durum Filtresi)',
+    description:
+      'Seçilen statülerdeki (varsayılan: Aktif) hayvanlar, yaş (ay) dahil. Satılan/ölen hayvanları da görmek için ilgili statüleri işaretleyin. CSV olarak indirilebilir.',
     endpoint: '/reports/active-animals',
+    statusFilter: true,
     columns: [
       { key: 'tag_number', label: 'Küpe No' },
       { key: 'name', label: 'İsim', format: formatPlain },
@@ -459,7 +466,7 @@ export function getReport(slug: string): ReportConfig | undefined {
   return reports.find((r) => r.slug === slug);
 }
 
-/** /reports hub sayfasında listelenen (tarih aralıklı VEYA tek tarihli) raporlar - reports[]'ten türetilir. */
+/** /reports hub sayfasında listelenen (filtreli) raporlar - reports[]'ten türetilir. */
 export function dateRangeReports(): ReportConfig[] {
-  return reports.filter((r) => r.dateRange || r.singleDate);
+  return reports.filter((r) => r.dateRange || r.singleDate || r.statusFilter);
 }
