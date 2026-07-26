@@ -267,6 +267,18 @@ class HerdAssetValueRead(BaseModel):
     amount_usd: Decimal
 
 
+class MarketValueSeriesPointRead(BaseModel):
+    date: date
+    amount_try: Decimal
+    amount_usd: Decimal
+    # "market_estimate" (büyüme çıpalarından interpolasyon) |
+    # "cost_basis" (mevcut maliyet-bazlı defter değeri - hiç çıpa
+    # girilmemiş VEYA hayvan zaten Demirbaşa geçmiş) - hangi rakamın
+    # gerçek piyasa gözlemine mi yoksa harcama kaydına mı dayandığını
+    # gizlemeden gösterir (bkz. reports/service.py _estimated_market_value_usd_try).
+    source_code: str
+
+
 class DashboardSummaryRead(BaseModel):
     active_animal_count: int
     breeding_candidate_count: int

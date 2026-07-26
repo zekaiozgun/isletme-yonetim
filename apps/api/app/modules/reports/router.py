@@ -2,6 +2,7 @@
 (Anayasa m.2). Her endpoint app/modules/reports/service.py'deki turetme
 mantigini cagirir; hicbir hesaplama burada yapilmaz."""
 
+import uuid
 from datetime import date
 
 from fastapi import APIRouter, Depends, Query
@@ -24,6 +25,7 @@ from app.modules.reports.schemas import (
     HerdCostSummaryRead,
     HerdFlowReportRead,
     HerdInventoryRead,
+    MarketValueSeriesPointRead,
     PenEfficiencyRead,
     PenOccupancyRead,
     PregnancyCheckResultRead,
@@ -201,3 +203,24 @@ def herd_asset_value(
     db: Session = Depends(get_db),
 ) -> list[HerdAssetValueRead]:
     return service.list_herd_asset_value(db, start_date, end_date)
+
+
+@router.get("/animal-market-value-series", response_model=list[MarketValueSeriesPointRead])
+def animal_market_value_series(
+    animal_id: uuid.UUID = Query(...),
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    granularity: str = Query("monthly"),
+    db: Session = Depends(get_db),
+) -> list[MarketValueSeriesPointRead]:
+    return service.list_animal_market_value_series(db, animal_id, start_date, end_date, granularity)
+
+
+@router.get("/herd-market-value-series", response_model=list[MarketValueSeriesPointRead])
+def herd_market_value_series(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    granularity: str = Query("monthly"),
+    db: Session = Depends(get_db),
+) -> list[MarketValueSeriesPointRead]:
+    return service.list_herd_market_value_series(db, start_date, end_date, granularity)

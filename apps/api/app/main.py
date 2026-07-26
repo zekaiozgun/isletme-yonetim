@@ -19,6 +19,7 @@ from app.modules.health.router import router as health_router
 from app.modules.pen.router import router as pen_router
 from app.modules.reports.router import router as reports_router
 from app.modules.sale.router import router as sale_router
+from app.modules.valuation.router import router as valuation_router
 from app.modules.weight.router import router as weight_router
 
 settings = get_settings()
@@ -69,6 +70,7 @@ for router in (
     sale_router,
     death_router,
     reports_router,
+    valuation_router,
 ):
     app.include_router(router, dependencies=[Depends(get_current_user)])
 

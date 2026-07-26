@@ -469,6 +469,33 @@ const mainResources: ResourceConfig[] = [
       { name: 'note', label: 'Not', type: 'textarea' },
     ],
   },
+  {
+    slug: 'growth-valuation-checkpoints',
+    title: 'Büyüme Değerleme Çıpaları',
+    singularTitle: 'Değerleme Çıpası',
+    group: 'Değerleme',
+    listEndpoint: '/growth-valuation-checkpoints',
+    createEndpoint: '/growth-valuation-checkpoints',
+    columns: [
+      { key: 'gender_id', label: 'Cinsiyet', lookup: genders },
+      { key: 'age_months', label: 'Yaş (Ay)' },
+      { key: 'value_usd', label: 'Piyasa Değeri ($)' },
+    ],
+    fields: [
+      { name: 'gender_id', label: 'Cinsiyet', type: 'select', options: genders, required: true },
+      {
+        name: 'age_months',
+        label: 'Yaş (Ay) - yalnızca 3, 6, 9 veya 12 girilebilir. Dişi için 12 ay: Tohumlanmış/Gebe Düve fiyatı; Erkek için 12 ay: Besilik Erkek Dana fiyatı.',
+        type: 'number',
+        required: true,
+      },
+      { name: 'value_usd', label: 'Piyasa Değeri ($)', type: 'decimal', required: true },
+    ],
+    relatedReports: [
+      { slug: 'animal-market-value-series', title: 'Hayvan Bazlı Tahmini Piyasa Değeri' },
+      { slug: 'herd-market-value-series', title: 'Sürü Tahmini Piyasa Değeri' },
+    ],
+  },
 ];
 
 // --- Master Data (lookup) tablolarinin tam CRUD kaynaklari ---

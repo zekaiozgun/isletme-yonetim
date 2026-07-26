@@ -26,6 +26,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.date_utils import full_months_between
+from app.core.exceptions import DomainError, NotFoundError
 from app.core.lookup_helpers import get_lookup_by_code
 from app.modules.animal.lookups import AnimalStatus, EntrySource, Gender
 from app.modules.animal.models import Animal
@@ -37,6 +38,7 @@ from app.modules.feed.models import FeedDistribution, FeedItem
 from app.modules.fx import service as fx_service
 from app.modules.health.models import HealthEvent
 from app.modules.sale.models import Sale
+from app.modules.valuation.models import GrowthValuationCheckpoint
 from app.modules.weight.models import WeightRecord
 from app.modules.pen.models import Pen, PenAssignment
 from app.modules.reports.schemas import (
@@ -54,6 +56,7 @@ from app.modules.reports.schemas import (
     HerdCostSummaryRead,
     HerdFlowReportRead,
     HerdInventoryRead,
+    MarketValueSeriesPointRead,
     PenEfficiencyRead,
     PenOccupancyRead,
     PregnancyCheckResultRead,
@@ -82,6 +85,19 @@ PURCHASE_ENTRY_SOURCE_CODE = "SATIN_ALMA"
 DEPRECIATION_USEFUL_LIFE_YEARS = 10
 DEPRECIATION_RESIDUAL_RATIO = Decimal("0.5")
 GESTATION_DAYS = 283
+
+# Buyume degerleme cipalari (bkz. app/modules/valuation) - ay -> gun
+# yaklasik donusumu, sadece iki cipa arasi lineer interpolasyonun GUNLUK
+# granulerlikte puruzsuz olmasi icin (takvim ay uzunlugu degil, sabit bir
+# yaklasiklik - full_months_between'in aksine burada kesirli gun onemli).
+GROWTH_CHECKPOINT_DAYS_PER_MONTH = 30
+# Zaman serisi raporlarinin (hayvan/suru bazli tahmini piyasa degeri)
+# ureteceigi maksimum nokta sayisi - suru bazli seride her nokta TUM
+# suruyu tek tek gezdiginden (bkz. list_herd_market_value_series), asiri
+# genis araligi/gunluk granulerligi sinirlamazsak istek suresiz uzayabilir
+# (Suru Varlik Degeri raporunda daha once yasanan TCMB cagri patlamasiyla
+# ayni performans riski sinifi).
+MAX_SERIES_POINTS = 100
 
 
 def _latest_breeding_by_dam(db: Session) -> dict[uuid.UUID, BreedingEvent]:
@@ -1473,3 +1489,167 @@ def list_herd_asset_value(db: Session, start_date: date, end_date: date) -> list
             amount_usd=end_usd - start_usd,
         ),
     ]
+
+
+# --- Tahmini Piyasa Değeri (büyüme çıpaları) ---
+#
+# list_herd_asset_value (yukarida) SAF MALIYET muhasebesidir ve bu
+# bolumden ETKILENMEZ. Burasi ona PARALEL, ayri bir gosterge: Malzeme
+# durumundaki hayvanlar icin, kullanicinin GrowthValuationCheckpoint
+# olarak girdigi gercek piyasa fiyatlari arasinda lineer interpolasyon
+# yapar (Anayasa m.4 - sistem bir buyume orani TAHMIN ETMEZ, kullanicinin
+# gozlemledigi degerleri toplar/aralar). Cipa girilmemis veya hayvan
+# zaten Demirbasa gecmisse, mevcut maliyet-bazli _asset_book_value'ya
+# geri duser (kaynagi source_code alaninda acikca belirtilir).
+
+
+def _checkpoint_map(db: Session) -> dict[str, dict[int, Decimal]]:
+    """gender_code -> {age_months: value_usd} sozlugu (bkz.
+    GrowthValuationCheckpoint)."""
+    stmt = select(GrowthValuationCheckpoint).options(joinedload(GrowthValuationCheckpoint.gender))
+    result: dict[str, dict[int, Decimal]] = {}
+    for checkpoint in db.scalars(stmt).all():
+        result.setdefault(checkpoint.gender.code, {})[checkpoint.age_months] = checkpoint.value_usd
+    return result
+
+
+def _interpolate_market_value_usd(
+    entry_value_usd: Decimal, checkpoints: dict[int, Decimal], age_days: int
+) -> Decimal:
+    """(0 gun, entry_value_usd) noktasini ve doldurulmus yas cipalarini
+    (kucukten buyuge) gezip age_days'e karsilik gelen degeri lineer
+    interpolasyonla dondurur. Son doldurulan cipadan sonra deger sabit
+    tutulur - ileriye tahmin yapilmaz (bkz. modul docstring'i)."""
+    points = sorted((age_months * GROWTH_CHECKPOINT_DAYS_PER_MONTH, value) for age_months, value in checkpoints.items())
+    prev_days, prev_value = 0, entry_value_usd
+    for days, value in points:
+        if age_days <= days:
+            if days == prev_days:
+                return value
+            ratio = Decimal(age_days - prev_days) / Decimal(days - prev_days)
+            return prev_value + (value - prev_value) * ratio
+        prev_days, prev_value = days, value
+    return prev_value
+
+
+def _market_value_estimate_usd(
+    db: Session, animal: Animal, as_of_date: date, checkpoints_by_gender: dict[str, dict[int, Decimal]]
+) -> Decimal | None:
+    """Malzeme durumundaki bir hayvanin buyume cipalarina gore tahmini
+    piyasa degeri (USD); hayvan zaten Demirbasa gectiyse VEYA cinsiyeti
+    icin hic cipa girilmemisse None doner (caller maliyet-bazli degere
+    geri duser)."""
+    transition_date = _asset_transition_date(db, animal)
+    if transition_date is not None and as_of_date >= transition_date:
+        return None
+    checkpoints = checkpoints_by_gender.get(animal.gender.code)
+    if not checkpoints:
+        return None
+    age_days = (as_of_date - animal.entry_date).days
+    if age_days < 0:
+        return None
+    entry_value_try = animal.entry_value or Decimal("0")
+    entry_value_usd = _try_to_usd(db, entry_value_try, animal.entry_date)
+    return _interpolate_market_value_usd(entry_value_usd, checkpoints, age_days)
+
+
+def _estimated_market_value_usd_try(
+    db: Session,
+    animal: Animal,
+    as_of_date: date,
+    checkpoints_by_gender: dict[str, dict[int, Decimal]],
+    as_of_rate: Decimal | None,
+) -> tuple[Decimal, Decimal, str]:
+    """'Tahmini Piyasa Değeri' göstergesi (TL, USD, kaynak). Büyüme çıpası
+    üzerinden hesaplanabiliyorsa onu, aksi halde mevcut maliyet-bazlı
+    _asset_book_value'yu kullanır - source_code hangisinin kullanıldığını
+    açıkça belirtir."""
+    if as_of_rate is None:
+        as_of_rate = fx_service.get_usd_try_rate(db, as_of_date)
+
+    market_usd = _market_value_estimate_usd(db, animal, as_of_date, checkpoints_by_gender)
+    if market_usd is not None:
+        market_try = market_usd * as_of_rate if as_of_rate else Decimal("0")
+        return _round_money(market_try), _round_money(market_usd), "market_estimate"
+
+    book_try, book_usd, _ = _asset_book_value(db, animal, as_of_date, as_of_rate)
+    return book_try, book_usd, "cost_basis"
+
+
+def _series_dates(start_date: date, end_date: date, granularity: str) -> list[date]:
+    """start_date'ten end_date'e (dahil) 'daily' | 'weekly' | 'monthly'
+    adimlarla tarih listesi uretir; MAX_SERIES_POINTS asilirsa DomainError
+    firlatir (kullanici araligi daraltmali ya da granulerligi kabalastirmali)."""
+    step_days = {"daily": 1, "weekly": 7, "monthly": 30}.get(granularity)
+    if step_days is None:
+        raise DomainError(f"Gecersiz granularity: {granularity!r} (daily | weekly | monthly olmali)")
+    if end_date < start_date:
+        raise DomainError("end_date, start_date'ten once olamaz")
+
+    dates: list[date] = []
+    current = start_date
+    while current < end_date:
+        dates.append(current)
+        if len(dates) > MAX_SERIES_POINTS:
+            raise DomainError(
+                f"Tarih araligi ve granularity cok fazla nokta uretiyor (maks. {MAX_SERIES_POINTS}) - "
+                "araligi daraltin veya granularity'yi kabalastirin (orn. gunluk yerine haftalik/aylik)."
+            )
+        current += timedelta(days=step_days)
+    dates.append(end_date)
+    return dates
+
+
+def list_animal_market_value_series(
+    db: Session, animal_id: uuid.UUID, start_date: date, end_date: date, granularity: str
+) -> list[MarketValueSeriesPointRead]:
+    """Tek bir hayvanin, start_date-end_date araliginda 'Tahmini Piyasa
+    Değeri'nin zaman icindeki seyri - buyume cipalari + gerektiginde
+    maliyet-bazli deger (bkz. _estimated_market_value_usd_try)."""
+    animal = db.get(Animal, animal_id, options=[joinedload(Animal.gender), joinedload(Animal.entry_source)])
+    if animal is None:
+        raise NotFoundError(f"Hayvan bulunamadi: {animal_id}")
+
+    checkpoints_by_gender = _checkpoint_map(db)
+    rows: list[MarketValueSeriesPointRead] = []
+    for as_of_date in _series_dates(start_date, end_date, granularity):
+        rate = fx_service.get_usd_try_rate(db, as_of_date)
+        amount_try, amount_usd, source_code = _estimated_market_value_usd_try(
+            db, animal, as_of_date, checkpoints_by_gender, rate
+        )
+        rows.append(
+            MarketValueSeriesPointRead(
+                date=as_of_date, amount_try=amount_try, amount_usd=amount_usd, source_code=source_code
+            )
+        )
+    return rows
+
+
+def list_herd_market_value_series(
+    db: Session, start_date: date, end_date: date, granularity: str
+) -> list[MarketValueSeriesPointRead]:
+    """Yaşayan tüm sürünün toplam 'Tahmini Piyasa Değeri'nin start_date-
+    end_date araliginda zaman icindeki seyri (bkz. list_animal_market_value_series).
+    Sürüde çıpasız/Demirbaş hayvanlar için maliyet-bazlı değer kullanılır,
+    bu yuzden her nokta karma bir kaynaktan olusabilir - source_code bu
+    noktalarda 'mixed' olarak isaretlenir."""
+    checkpoints_by_gender = _checkpoint_map(db)
+    rows: list[MarketValueSeriesPointRead] = []
+    for as_of_date in _series_dates(start_date, end_date, granularity):
+        rate = fx_service.get_usd_try_rate(db, as_of_date)
+        total_try = total_usd = Decimal("0")
+        sources: set[str] = set()
+        for animal in _animals_alive_at(db, as_of_date):
+            amount_try, amount_usd, source_code = _estimated_market_value_usd_try(
+                db, animal, as_of_date, checkpoints_by_gender, rate
+            )
+            total_try += amount_try
+            total_usd += amount_usd
+            sources.add(source_code)
+        source_code = sources.pop() if len(sources) == 1 else "mixed" if sources else "cost_basis"
+        rows.append(
+            MarketValueSeriesPointRead(
+                date=as_of_date, amount_try=_round_money(total_try), amount_usd=_round_money(total_usd), source_code=source_code
+            )
+        )
+    return rows

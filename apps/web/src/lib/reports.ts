@@ -18,6 +18,12 @@ export interface ReportConfig {
   /** true ise rapor sayfası bir başlangıç/bitiş tarihi filtresi gösterir ve
    * bunları `start_date`/`end_date` query param'ı olarak endpoint'e ekler. */
   dateRange?: boolean;
+  /** true ise rapor sayfası bir granülerlik (günlük/haftalık/aylık) seçici
+   * gösterir ve bunu `granularity` query param'ı olarak endpoint'e ekler. */
+  granularity?: boolean;
+  /** true ise rapor sayfası bir hayvan seçici gösterir; hayvan seçilene
+   * kadar rapor çağrılmaz, seçilen id `animal_id` query param'ı olarak eklenir. */
+  animalFilter?: boolean;
 }
 
 function formatDays(value: unknown): string {
@@ -68,6 +74,13 @@ function formatCurrency(value: unknown): string {
 function formatUsd(value: unknown): string {
   if (value === null || value === undefined || value === '') return '—';
   return `$${String(value)}`;
+}
+
+function formatSourceCode(value: unknown): string {
+  if (value === 'market_estimate') return 'Piyasa Tahmini';
+  if (value === 'cost_basis') return 'Maliyet Bazlı';
+  if (value === 'mixed') return 'Karışık';
+  return '—';
 }
 
 export const reports: ReportConfig[] = [
@@ -415,6 +428,37 @@ export const reports: ReportConfig[] = [
       { key: 'amount_usd', label: 'Tutar ($)', format: formatUsd },
     ],
     rowHighlight: (row) => row.category_code === 'net_change',
+  },
+  {
+    slug: 'animal-market-value-series',
+    title: 'Hayvan Bazlı Tahmini Piyasa Değeri',
+    description:
+      'Seçilen bir hayvanın, Büyüme Değerleme Çıpalarına (Erkek/Dişi + 3/6/9/12 aylık piyasa fiyatları) göre tahmini piyasa değerinin zaman içindeki seyri. Çıpa girilmemişse veya hayvan zaten Demirbaşa geçmişse (gebe/damızlık) mevcut maliyet-bazlı defter değeri kullanılır - Kaynak sütunu hangisinin kullanıldığını gösterir. Sürü Varlık Değeri raporundaki maliyet-bazlı hesaplamadan bağımsız, ona ek bir göstergedir.',
+    endpoint: '/reports/animal-market-value-series',
+    dateRange: true,
+    granularity: true,
+    animalFilter: true,
+    columns: [
+      { key: 'date', label: 'Tarih', format: formatDate },
+      { key: 'amount_try', label: 'Tutar (TL)', format: formatCurrency },
+      { key: 'amount_usd', label: 'Tutar ($)', format: formatUsd },
+      { key: 'source_code', label: 'Kaynak', format: formatSourceCode },
+    ],
+  },
+  {
+    slug: 'herd-market-value-series',
+    title: 'Sürü Tahmini Piyasa Değeri',
+    description:
+      'Yaşayan tüm sürünün toplam tahmini piyasa değerinin zaman içindeki seyri - büyüme çıpası girilmiş genç hayvanlar için piyasa tahmini, diğerleri için maliyet-bazlı defter değeri toplanır (bkz. Hayvan Bazlı Tahmini Piyasa Değeri). Sürü Varlık Değeri raporundaki maliyet-bazlı hesaplamadan bağımsız, ona ek bir göstergedir.',
+    endpoint: '/reports/herd-market-value-series',
+    dateRange: true,
+    granularity: true,
+    columns: [
+      { key: 'date', label: 'Tarih', format: formatDate },
+      { key: 'amount_try', label: 'Tutar (TL)', format: formatCurrency },
+      { key: 'amount_usd', label: 'Tutar ($)', format: formatUsd },
+      { key: 'source_code', label: 'Kaynak', format: formatSourceCode },
+    ],
   },
 ];
 
