@@ -29,6 +29,20 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
     return { try_, usd };
   }, [rows, selected]);
 
+  // Tum sürünün toplamı (seçime bakmaksızın) - aynı as_of_date için Sürü
+  // Tahmini Piyasa Değeri raporundaki nokta ile BİREBİR AYNI olması
+  // gerekir, çünkü ikisi de aynı _estimated_market_value_usd_try
+  // hesaplamasının üzerine kuruludur.
+  const grandTotal = useMemo(() => {
+    let try_ = 0;
+    let usd = 0;
+    for (const row of rows) {
+      try_ += Number(row.amount_try ?? 0);
+      usd += Number(row.amount_usd ?? 0);
+    }
+    return { try_, usd };
+  }, [rows]);
+
   if (rows.length === 0) {
     return <p className="text-sm text-slate-500">Bu tarihte yaşayan hayvan bulunamadı.</p>;
   }
@@ -59,6 +73,11 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
 
   return (
     <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-3 rounded border border-slate-300 bg-slate-100 px-3 py-2 text-sm">
+        <span className="font-medium text-slate-700">Sürü Toplamı ({rows.length} hayvan):</span>
+        <span className="font-semibold text-slate-900">{formatCurrency(grandTotal.try_)}</span>
+        <span className="font-semibold text-slate-900">{formatUsd(grandTotal.usd)}</span>
+      </div>
       {selected.size > 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded border border-slate-300 bg-slate-50 px-3 py-2 text-sm">
           <span className="font-medium text-slate-700">Seçilenler ({selected.size} hayvan):</span>
@@ -122,6 +141,18 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
                 );
               })}
             </tbody>
+            <tfoot>
+              <tr className="border-t border-slate-300 bg-slate-50 font-semibold text-slate-900">
+                <td className="px-3 py-2" />
+                <td className="px-3 py-2" colSpan={3}>
+                  TOPLAM ({rows.length} hayvan)
+                </td>
+                <td className="px-3 py-2" />
+                <td className="whitespace-nowrap px-3 py-2">{formatCurrency(grandTotal.try_)}</td>
+                <td className="whitespace-nowrap px-3 py-2">{formatUsd(grandTotal.usd)}</td>
+                <td className="px-3 py-2" />
+              </tr>
+            </tfoot>
           </table>
         </div>
       </TableSearch>
