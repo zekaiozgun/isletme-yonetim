@@ -1,6 +1,6 @@
 export function DateRangeFilter({ start, end }: { start: string; end: string }) {
   return (
-    <form method="get" className="mb-4 flex flex-wrap items-end gap-3 rounded border border-slate-200 bg-slate-50 p-3">
+    <form method="get" className="mb-4 flex flex-wrap items-end gap-3 rounded border border-slate-200 bg-slate-50 p-3 print:hidden">
       <div>
         <label htmlFor="start" className="mb-1 block text-xs font-medium text-slate-600">
           Başlangıç

@@ -19,3 +19,12 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
 }
+
+/* Rapor tabloları A4 kağıda basılabilir olsun diye - bkz. ReportTable/
+   Sidebar/(app)/layout.tsx'teki print:hidden kullanımları. */
+@media print {
+  @page {
+    size: A4;
+    margin: 15mm 12mm;
+  }
+}

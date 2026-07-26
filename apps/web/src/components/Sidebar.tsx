@@ -133,7 +133,7 @@ export function Sidebar({ user }: { user: SidebarUser }) {
   return (
     <>
       {/* Mobil üst çubuk */}
-      <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 lg:hidden">
+      <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 lg:hidden print:hidden">
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -153,7 +153,7 @@ export function Sidebar({ user }: { user: SidebarUser }) {
       {/* Mobil karartma katmanı */}
       {open && (
         <div
-          className="fixed inset-0 z-40 bg-slate-900/40 lg:hidden"
+          className="fixed inset-0 z-40 bg-slate-900/40 lg:hidden print:hidden"
           onClick={() => setOpen(false)}
           aria-hidden
         />
@@ -161,7 +161,7 @@ export function Sidebar({ user }: { user: SidebarUser }) {
 
       {/* Mobil çekmece menü */}
       <nav
-        className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] transform overflow-y-auto border-r border-slate-200 bg-slate-50 p-4 transition-transform duration-200 ease-in-out lg:hidden ${
+        className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] transform overflow-y-auto border-r border-slate-200 bg-slate-50 p-4 transition-transform duration-200 ease-in-out lg:hidden print:hidden ${
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -185,7 +185,7 @@ export function Sidebar({ user }: { user: SidebarUser }) {
       </nav>
 
       {/* Masaüstü sabit kenar çubuğu */}
-      <nav className="hidden w-64 shrink-0 border-r border-slate-200 bg-slate-50 p-4 lg:block">
+      <nav className="hidden w-64 shrink-0 border-r border-slate-200 bg-slate-50 p-4 lg:block print:hidden">
         <Link href="/" className="mb-6 block text-lg font-semibold text-slate-900">
           İşletme Yönetim
         </Link>

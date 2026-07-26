@@ -27,7 +27,7 @@ export function MarketValueSeriesFilter({
   showStatusFilter?: boolean;
 }) {
   return (
-    <form method="get" className="mb-4 flex flex-wrap items-end gap-3 rounded border border-slate-200 bg-slate-50 p-3">
+    <form method="get" className="mb-4 flex flex-wrap items-end gap-3 rounded border border-slate-200 bg-slate-50 p-3 print:hidden">
       {showStatusFilter && (
         <div>
           <input type="hidden" name="filtered" value="1" />

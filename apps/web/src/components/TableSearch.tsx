@@ -42,7 +42,7 @@ export function TableSearch({
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-center gap-3">
+      <div className="mb-3 flex flex-wrap items-center gap-3 print:hidden">
         <input
           type="search"
           value={query}

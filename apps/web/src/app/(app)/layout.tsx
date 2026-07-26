@@ -16,9 +16,9 @@ export default async function AppLayout({
   const user: SidebarUser = { username: me.username, fullName: me.full_name, role: me.role };
 
   return (
-    <div className="flex min-h-full flex-col lg:flex-row">
+    <div className="flex min-h-full flex-col lg:flex-row print:block">
       <Sidebar user={user} />
-      <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>
+      <main className="min-w-0 flex-1 p-4 sm:p-6 print:p-0">{children}</main>
     </div>
   );
 }

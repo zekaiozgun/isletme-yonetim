@@ -78,7 +78,7 @@ export default async function ReportPage({
         {report.usesGrowthCheckpoints && (
           <Link
             href="/growth-valuation-checkpoints"
-            className="text-sm font-medium text-slate-500 hover:text-slate-800 hover:underline"
+            className="text-sm font-medium text-slate-500 hover:text-slate-800 hover:underline print:hidden"
           >
             Büyüme Değerleme Çıpalarını Düzenle →
           </Link>
