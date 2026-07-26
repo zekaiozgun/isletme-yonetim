@@ -1494,34 +1494,48 @@ def list_herd_asset_value(db: Session, start_date: date, end_date: date) -> list
 # --- Tahmini Piyasa Değeri (büyüme çıpaları) ---
 #
 # list_herd_asset_value (yukarida) SAF MALIYET muhasebesidir ve bu
-# bolumden ETKILENMEZ. Burasi ona PARALEL, ayri bir gosterge: Malzeme
-# durumundaki hayvanlar icin, kullanicinin GrowthValuationCheckpoint
-# olarak girdigi gercek piyasa fiyatlari arasinda lineer interpolasyon
-# yapar (Anayasa m.4 - sistem bir buyume orani TAHMIN ETMEZ, kullanicinin
-# gozlemledigi degerleri toplar/aralar). Cipa girilmemis veya hayvan
-# zaten Demirbasa gecmisse, mevcut maliyet-bazli _asset_book_value'ya
-# geri duser (kaynagi source_code alaninda acikca belirtilir).
+# bolumden ETKILENMEZ. Burasi ona PARALEL, ayri bir gosterge:
+#   - Malzeme durumundaki (henuz Demirbasa gecmemis) genc hayvanlar icin,
+#     kullanicinin GrowthValuationCheckpoint olarak TL cinsinden girdigi
+#     yas-bazli piyasa fiyatlari (AGE_3/6/9/12) arasinda lineer
+#     interpolasyon yapilir.
+#   - Demirbasa gecmis (olgun) bir DISI icin, GUNCEL ureme durumuna
+#     (Gebe/Bos) gore GEBE/BOS cipasi kullanilir.
+# Ikisinde de sistem bir oran/egri TAHMIN ETMEZ (Anayasa m.4) - sadece
+# kullanicinin girdigi TL degerleri arasinda toplar/aralar; USD karsiligi
+# rapor uretilirken as_of_date'teki TCMB kuruyla turetilir (Anayasa m.5 -
+# tipki entry_value/saglik/yem maliyetleri gibi). Cipa girilmemisse
+# (veya erkek icin Demirbas donemindeyse - erkek/boga icin olgun-donem
+# piyasa cipasi yoktur), mevcut maliyet-bazli _asset_book_value'ya geri
+# duser (kaynagi source_code alaninda acikca belirtilir).
+
+_AGE_CATEGORY_TO_MONTHS = {"AGE_3": 3, "AGE_6": 6, "AGE_9": 9, "AGE_12": 12}
+_MATURE_FEMALE_STATUS_CODES = ("GEBE", "BOS")
 
 
-def _checkpoint_map(db: Session) -> dict[str, dict[int, Decimal]]:
-    """gender_code -> {age_months: value_usd} sozlugu (bkz.
-    GrowthValuationCheckpoint)."""
+def _checkpoint_maps(db: Session) -> tuple[dict[str, dict[int, Decimal]], dict[str, dict[str, Decimal]]]:
+    """(buyume_cipalari, olgun_disi_cipalari) dondurur - ikisi de
+    gender_code anahtarlidir. buyume_cipalari: {age_months: value_try};
+    olgun_disi_cipalari: {"GEBE"|"BOS": value_try} (bkz. modul docstring'i)."""
     stmt = select(GrowthValuationCheckpoint).options(joinedload(GrowthValuationCheckpoint.gender))
-    result: dict[str, dict[int, Decimal]] = {}
+    growth: dict[str, dict[int, Decimal]] = {}
+    mature: dict[str, dict[str, Decimal]] = {}
     for checkpoint in db.scalars(stmt).all():
-        result.setdefault(checkpoint.gender.code, {})[checkpoint.age_months] = checkpoint.value_usd
-    return result
+        gender_code = checkpoint.gender.code
+        if checkpoint.category_code in _AGE_CATEGORY_TO_MONTHS:
+            growth.setdefault(gender_code, {})[_AGE_CATEGORY_TO_MONTHS[checkpoint.category_code]] = checkpoint.value_try
+        elif checkpoint.category_code in _MATURE_FEMALE_STATUS_CODES:
+            mature.setdefault(gender_code, {})[checkpoint.category_code] = checkpoint.value_try
+    return growth, mature
 
 
-def _interpolate_market_value_usd(
-    entry_value_usd: Decimal, checkpoints: dict[int, Decimal], age_days: int
-) -> Decimal:
-    """(0 gun, entry_value_usd) noktasini ve doldurulmus yas cipalarini
-    (kucukten buyuge) gezip age_days'e karsilik gelen degeri lineer
+def _interpolate_market_value_try(entry_value_try: Decimal, checkpoints: dict[int, Decimal], age_days: int) -> Decimal:
+    """(0 gun, entry_value_try) noktasini ve doldurulmus yas cipalarini
+    (kucukten buyuge) gezip age_days'e karsilik gelen TL degerini lineer
     interpolasyonla dondurur. Son doldurulan cipadan sonra deger sabit
     tutulur - ileriye tahmin yapilmaz (bkz. modul docstring'i)."""
     points = sorted((age_months * GROWTH_CHECKPOINT_DAYS_PER_MONTH, value) for age_months, value in checkpoints.items())
-    prev_days, prev_value = 0, entry_value_usd
+    prev_days, prev_value = 0, entry_value_try
     for days, value in points:
         if age_days <= days:
             if days == prev_days:
@@ -1532,44 +1546,78 @@ def _interpolate_market_value_usd(
     return prev_value
 
 
-def _market_value_estimate_usd(
-    db: Session, animal: Animal, as_of_date: date, checkpoints_by_gender: dict[str, dict[int, Decimal]]
+def _is_currently_pregnant(db: Session, animal_id: uuid.UUID) -> bool:
+    """Hayvanin en son tohumlama dongusunde onaylanmis (GEBE) bir gebelik
+    kontrolu var mi - bkz. _classify_female'deki ayni kontrolun sadelestirilmis
+    hali. NOT: zaman serisi raporlarinda GECMIS tarihler icin de bu GUNCEL
+    durum kullanilir (kasitli basitlestirme) - o tarihte gercekten gebe/acik
+    olup olmadigini yeniden insa etmek ayri bir tarihsel siniflandirma
+    gerektirir; bkz. _market_value_estimate_try caller'i."""
+    latest_event = db.scalar(
+        select(BreedingEvent).where(BreedingEvent.dam_id == animal_id).order_by(BreedingEvent.service_date.desc()).limit(1)
+    )
+    if latest_event is None:
+        return False
+    latest_check = db.scalar(
+        select(PregnancyCheck)
+        .options(joinedload(PregnancyCheck.result))
+        .where(PregnancyCheck.breeding_event_id == latest_event.id)
+        .order_by(PregnancyCheck.check_date.desc())
+        .limit(1)
+    )
+    return latest_check is not None and latest_check.result.code == CONFIRMED_PREGNANCY_RESULT_CODE
+
+
+def _market_value_estimate_try(
+    db: Session,
+    animal: Animal,
+    as_of_date: date,
+    growth_checkpoints_by_gender: dict[str, dict[int, Decimal]],
+    mature_checkpoints_by_gender: dict[str, dict[str, Decimal]],
 ) -> Decimal | None:
-    """Malzeme durumundaki bir hayvanin buyume cipalarina gore tahmini
-    piyasa degeri (USD); hayvan zaten Demirbasa gectiyse VEYA cinsiyeti
-    icin hic cipa girilmemisse None doner (caller maliyet-bazli degere
-    geri duser)."""
+    """Bir hayvanin buyume cipalarina (veya olgun disi icin Gebe/Bos
+    cipasina) gore tahmini piyasa degeri (TL); cipa girilmemisse VEYA
+    (erkek + Demirbas donemi gibi) uygulanamaz bir durumsa None doner
+    (caller maliyet-bazli degere geri duser)."""
     transition_date = _asset_transition_date(db, animal)
     if transition_date is not None and as_of_date >= transition_date:
-        return None
-    checkpoints = checkpoints_by_gender.get(animal.gender.code)
+        if animal.gender.code != FEMALE_GENDER_CODE:
+            return None
+        mature_checkpoints = mature_checkpoints_by_gender.get(FEMALE_GENDER_CODE)
+        if not mature_checkpoints:
+            return None
+        status_code = "GEBE" if _is_currently_pregnant(db, animal.id) else "BOS"
+        return mature_checkpoints.get(status_code)
+
+    checkpoints = growth_checkpoints_by_gender.get(animal.gender.code)
     if not checkpoints:
         return None
     age_days = (as_of_date - animal.entry_date).days
     if age_days < 0:
         return None
     entry_value_try = animal.entry_value or Decimal("0")
-    entry_value_usd = _try_to_usd(db, entry_value_try, animal.entry_date)
-    return _interpolate_market_value_usd(entry_value_usd, checkpoints, age_days)
+    return _interpolate_market_value_try(entry_value_try, checkpoints, age_days)
 
 
 def _estimated_market_value_usd_try(
     db: Session,
     animal: Animal,
     as_of_date: date,
-    checkpoints_by_gender: dict[str, dict[int, Decimal]],
+    growth_checkpoints_by_gender: dict[str, dict[int, Decimal]],
+    mature_checkpoints_by_gender: dict[str, dict[str, Decimal]],
     as_of_rate: Decimal | None,
 ) -> tuple[Decimal, Decimal, str]:
-    """'Tahmini Piyasa Değeri' göstergesi (TL, USD, kaynak). Büyüme çıpası
-    üzerinden hesaplanabiliyorsa onu, aksi halde mevcut maliyet-bazlı
-    _asset_book_value'yu kullanır - source_code hangisinin kullanıldığını
-    açıkça belirtir."""
+    """'Tahmini Piyasa Değeri' göstergesi (TL, USD, kaynak). Çıpa
+    üzerinden hesaplanabiliyorsa onu (TL, kullanıcının girdiği gibi - USD
+    karşılığı as_of_date'teki TCMB kuruyla TEK seferde türetilir), aksi
+    halde mevcut maliyet-bazlı _asset_book_value'yu kullanır - source_code
+    hangisinin kullanıldığını açıkça belirtir."""
     if as_of_rate is None:
         as_of_rate = fx_service.get_usd_try_rate(db, as_of_date)
 
-    market_usd = _market_value_estimate_usd(db, animal, as_of_date, checkpoints_by_gender)
-    if market_usd is not None:
-        market_try = market_usd * as_of_rate if as_of_rate else Decimal("0")
+    market_try = _market_value_estimate_try(db, animal, as_of_date, growth_checkpoints_by_gender, mature_checkpoints_by_gender)
+    if market_try is not None:
+        market_usd = market_try / as_of_rate if as_of_rate else Decimal("0")
         return _round_money(market_try), _round_money(market_usd), "market_estimate"
 
     book_try, book_usd, _ = _asset_book_value(db, animal, as_of_date, as_of_rate)
@@ -1610,12 +1658,12 @@ def list_animal_market_value_series(
     if animal is None:
         raise NotFoundError(f"Hayvan bulunamadi: {animal_id}")
 
-    checkpoints_by_gender = _checkpoint_map(db)
+    growth_checkpoints_by_gender, mature_checkpoints_by_gender = _checkpoint_maps(db)
     rows: list[MarketValueSeriesPointRead] = []
     for as_of_date in _series_dates(start_date, end_date, granularity):
         rate = fx_service.get_usd_try_rate(db, as_of_date)
         amount_try, amount_usd, source_code = _estimated_market_value_usd_try(
-            db, animal, as_of_date, checkpoints_by_gender, rate
+            db, animal, as_of_date, growth_checkpoints_by_gender, mature_checkpoints_by_gender, rate
         )
         rows.append(
             MarketValueSeriesPointRead(
@@ -1633,7 +1681,7 @@ def list_herd_market_value_series(
     Sürüde çıpasız/Demirbaş hayvanlar için maliyet-bazlı değer kullanılır,
     bu yuzden her nokta karma bir kaynaktan olusabilir - source_code bu
     noktalarda 'mixed' olarak isaretlenir."""
-    checkpoints_by_gender = _checkpoint_map(db)
+    growth_checkpoints_by_gender, mature_checkpoints_by_gender = _checkpoint_maps(db)
     rows: list[MarketValueSeriesPointRead] = []
     for as_of_date in _series_dates(start_date, end_date, granularity):
         rate = fx_service.get_usd_try_rate(db, as_of_date)
@@ -1641,7 +1689,7 @@ def list_herd_market_value_series(
         sources: set[str] = set()
         for animal in _animals_alive_at(db, as_of_date):
             amount_try, amount_usd, source_code = _estimated_market_value_usd_try(
-                db, animal, as_of_date, checkpoints_by_gender, rate
+                db, animal, as_of_date, growth_checkpoints_by_gender, mature_checkpoints_by_gender, rate
             )
             total_try += amount_try
             total_usd += amount_usd

@@ -4,19 +4,28 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-
-class GrowthValuationCheckpointCreate(BaseModel):
-    gender_id: int
-    # Yalnizca bu dort yas noktasi desteklenir (bkz. models.py CheckConstraint) -
-    # Literal ile burada reddedilir, DB'ye kadar gidip belirsiz bir
-    # IntegrityError/ConflictError'a donusmez.
-    age_months: Literal[3, 6, 9, 12]
-    value_usd: Decimal
+CategoryCode = Literal["AGE_3", "AGE_6", "AGE_9", "AGE_12", "GEBE", "BOS"]
 
 
-class GrowthValuationCheckpointRead(GrowthValuationCheckpointCreate):
+class GrowthValuationCheckpointRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    gender_id: int
+    category_code: CategoryCode
+    value_try: Decimal
     created_at: datetime
     updated_at: datetime
+
+
+class GrowthValuationCheckpointItem(BaseModel):
+    gender_id: int
+    category_code: CategoryCode
+    # None ise (kullanıcı tablo hücresini boş bıraktıysa) bu satır - varsa -
+    # silinir; dolu bir değer ise oluşturulur/güncellenir (bkz. service.py
+    # replace_checkpoints - "tablodaki ne görünüyorsa o kaydedilir" semantiği).
+    value_try: Decimal | None = None
+
+
+class GrowthValuationCheckpointBulkUpdate(BaseModel):
+    items: list[GrowthValuationCheckpointItem]

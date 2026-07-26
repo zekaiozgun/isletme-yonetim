@@ -75,6 +75,15 @@ function NavLinks({ onNavigate, role }: { onNavigate?: () => void; role: Sidebar
                 Kullanıcılar
               </Link>
             </li>
+            <li>
+              <Link
+                href="/growth-valuation-checkpoints"
+                onClick={onNavigate}
+                className="block rounded px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-200"
+              >
+                Büyüme Değerleme Çıpaları
+              </Link>
+            </li>
           </ul>
         </div>
       )}
