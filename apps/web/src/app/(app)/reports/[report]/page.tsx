@@ -85,6 +85,12 @@ export default async function ReportPage({
         )}
       </div>
       <p className="mb-4 text-sm text-slate-500">{report.description}</p>
+      {report.helpNote && (
+        <details className="mb-4 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 print:hidden">
+          <summary className="cursor-pointer font-medium text-slate-700">Bu rapor nasıl çalışır?</summary>
+          <p className="mt-2">{report.helpNote}</p>
+        </details>
+      )}
       {showCustomFilter ? (
         <MarketValueSeriesFilter
           start={rangeStart}

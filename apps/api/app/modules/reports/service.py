@@ -164,7 +164,7 @@ def _latest_check_by_event(db: Session) -> dict[int, PregnancyCheck]:
 
 @dataclass
 class _Classification:
-    kind: str  # "candidate_new" | "candidate_postpartum" | "pending" | "suspicious" | "pregnant" | "open" | "none"
+    kind: str  # "candidate_new" | "postpartum_waiting" | "candidate_postpartum" | "pending" | "suspicious" | "pregnant" | "open" | "none"
     breeding_event: BreedingEvent | None = None
     last_calving_date: date | None = None
 
@@ -187,13 +187,13 @@ def _classify_female(
         days_since_calving = (today - last_calving).days
         if days_since_calving >= POSTPARTUM_WAIT_DAYS:
             return _Classification(kind="candidate_postpartum", last_calving_date=last_calving)
-        return _Classification(kind="none")
+        return _Classification(kind="postpartum_waiting", last_calving_date=last_calving)
 
     if last_calving is not None and last_calving > last_breed.service_date:
         days_since_calving = (today - last_calving).days
         if days_since_calving >= POSTPARTUM_WAIT_DAYS:
             return _Classification(kind="candidate_postpartum", last_calving_date=last_calving)
-        return _Classification(kind="none")
+        return _Classification(kind="postpartum_waiting", last_calving_date=last_calving)
 
     check = latest_check_by_event.get(last_breed.id)
     if check is None:
@@ -228,19 +228,29 @@ def _classify_all_active_females(db: Session, today: date) -> list[tuple[Animal,
 
 _BREEDING_CANDIDATE_REASONS = {
     "candidate_new": "İlk Tohumlama",
-    "candidate_postpartum": "Doğum Sonrası",
+    "candidate_postpartum": "Tohumlanacak",
     "open": "Tekrar Kızgınlık / Boş",
+    # Dogum sonrasi bekleme suresini (POSTPARTUM_WAIT_DAYS) henuz
+    # tamamlamamis, dolayisiyla henuz tohumlanmaya hazir OLMAYAN hayvanlar -
+    # sadece bilgi amacli gorunur (aksiyon gerektirmez), bu yuzden dashboard
+    # ozetindeki breeding_candidate_count'a dahil edilmez (bkz. get_dashboard_summary).
+    "postpartum_waiting": "Post Partum",
 }
-_BREEDING_CANDIDATE_REASON_ORDER = {"candidate_new": 0, "candidate_postpartum": 1, "open": 2}
+_BREEDING_CANDIDATE_REASON_ORDER = {"candidate_new": 0, "candidate_postpartum": 1, "open": 2, "postpartum_waiting": 3}
 
 
 def list_breeding_candidates(db: Session, today: date | None = None) -> list[BreedingCandidateRead]:
     """"Tekrar Kızgınlık / Boş Çıkanlar" burada AYRI bir rapor değildir -
-    üç aday türünden biri (reason="Tekrar Kızgınlık / Boş") olarak bu
+    dört aday türünden biri (reason="Tekrar Kızgınlık / Boş") olarak bu
     listenin içindedir; eskiden ayrı bir rapor olarak da sunuluyordu ama
     bu listenin birebir alt kümesi olduğundan (aynı hayvanlar, aynı sebep)
     tek rapora birleştirildi - o rapora özgü days_open/service_method_name
-    alanları sadece bu reason'da dolar."""
+    alanları sadece bu reason'da dolar.
+
+    Doğum yapan TÜM hayvanlar bu listede görünür - doğum sonrası bekleme
+    süresini (POSTPARTUM_WAIT_DAYS, 45 gün) henüz tamamlamamışlar
+    reason="Post Partum" ile (henüz aksiyon gerektirmez, bilgi amaçlıdır),
+    tamamlamış olanlar reason="Tohumlanacak" ile görünür (bkz. _classify_female)."""
     today = today or date.today()
     last_calving_by_dam = _latest_calving_by_dam(db)
     entries: list[tuple[int, BreedingCandidateRead]] = []
@@ -990,7 +1000,10 @@ def get_dashboard_summary(db: Session, today: date | None = None) -> DashboardSu
 
     return DashboardSummaryRead(
         active_animal_count=inventory.total_active,
-        breeding_candidate_count=len(breeding_candidates),
+        # "Post Partum" (henuz dogum sonrasi bekleme suresini tamamlamamis,
+        # bilgi amacli) haric - bu sayac SADECE gercekten aksiyon gerektiren
+        # (tohumlanmaya hazir) hayvanlari yansitir.
+        breeding_candidate_count=sum(1 for c in breeding_candidates if c.reason_code != "postpartum_waiting"),
         pregnancy_check_due_count=sum(1 for b in bred_animals if b.pregnancy_check_due),
         pregnant_count=sum(1 for b in bred_animals if b.check_status == "Gebe"),
         repeat_breeder_count=sum(1 for c in breeding_candidates if c.reason == "Tekrar Kızgınlık / Boş"),

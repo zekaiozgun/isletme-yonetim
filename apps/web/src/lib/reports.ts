@@ -40,6 +40,11 @@ export interface ReportConfig {
    * düzenleme sayfasına giden bir link gösterilir (bu rapor o verilere
    * dayandığı için). */
   usesGrowthCheckpoints?: boolean;
+  /** Belirtilirse, rapor sayfasının üstünde açılabilir ("Bu rapor nasıl
+   * çalışır?") bir açıklama metni gösterilir - raporun altındaki mantığı
+   * (örn. doğum sonrası bekleme süresi gibi anlık görünmeyebilecek
+   * kuralları) kullanıcıya açık şekilde anlatmak için. */
+  helpNote?: string;
 }
 
 function formatDays(value: unknown): string {
@@ -264,8 +269,10 @@ export const reports: ReportConfig[] = [
     slug: 'breeding-candidates',
     title: 'Tohumlanacak Hayvanlar',
     description:
-      '12 ay yaşına ulaşan düveler, doğum sonrası bekleme süresini (45 gün) tamamlamış inekler ve gebelik kontrolünde "Boş" çıkan (tekrar kızgınlık) hayvanlar - üçü tek listede, sebep sütunuyla ayırt edilir. "Boş" çıkanlar en uzun süredir açık olan üstte olacak şekilde sıralanır. Deneme Sayısı, son doğumundan bu yana kaç kez tohumlandığını gösterir - yüksek sayı fertilite sorununa işaret edebilir.',
+      '12 ay yaşına ulaşan düveler, doğum yapmış inekler (doğum sonrası bekleme süresini tamamlayıp tamamlamadığına göre "Post Partum" veya "Tohumlanacak" olarak ayrılır) ve gebelik kontrolünde "Boş" çıkan (tekrar kızgınlık) hayvanlar - hepsi tek listede, Sebep sütunuyla ayırt edilir. "Boş" çıkanlar en uzun süredir açık olan üstte olacak şekilde sıralanır. Deneme Sayısı, son doğumundan bu yana kaç kez tohumlandığını gösterir - yüksek sayı fertilite sorununa işaret edebilir.',
     endpoint: '/reports/breeding-candidates',
+    helpNote:
+      'Bir hayvan doğurduğunda (buzağısı sisteme anne bilgisiyle kaydedildiğinde), o hayvan ANINDA "Gebe" statüsünden çıkar - bunun için ayrıca bir işlem yapmanıza gerek yoktur. Doğum yapan TÜM hayvanlar bu listede görünür, ama sebep sütunu ikiye ayrılır: doğumdan sonraki ilk 45 gün boyunca (toparlanma süresi) hayvan "Post Partum" olarak görünür - bu sadece bilgilendirme amaçlıdır, henüz bir aksiyon gerektirmez. 45 gün dolduğunda hayvan otomatik olarak "Tohumlanacak" sebebiyle listede görünmeye devam eder - artık tohumlanmaya hazır demektir. Dashboard\'daki "Tohumlanacak Hayvan" sayacı sadece gerçekten aksiyon gerektirenleri (Post Partum hariç) sayar.',
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
       { key: 'age_months', label: 'Yaş', format: formatMonths, width: 'narrow' },
@@ -302,6 +309,8 @@ export const reports: ReportConfig[] = [
     title: 'Gebe Hayvanlar',
     description: 'Gebeliği onaylanmış hayvanlar, beklenen doğum tarihine göre sıralı.',
     endpoint: '/reports/pregnant-animals',
+    helpNote:
+      'Bir hayvan doğurduğunda (buzağısı sisteme anne bilgisiyle kaydedildiğinde) bu listeden ANINDA çıkar - ayrıca bir işlem yapmanıza gerek yoktur. Doğumdan sonra hayvan, Tohumlanacak Hayvanlar raporunda önce "Post Partum" (ilk 45 gün, toparlanma süresi) sonra "Tohumlanacak" (45 gün sonrası, tekrar tohumlamaya hazır) sebebiyle görünmeye devam eder.',
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
       { key: 'service_date', label: 'Tohumlama Tarihi', format: formatDate, width: 'narrow' },
