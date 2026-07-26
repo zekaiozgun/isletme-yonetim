@@ -267,6 +267,18 @@ class HerdAssetValueRead(BaseModel):
     amount_usd: Decimal
 
 
+class AnimalMarketValueRead(BaseModel):
+    animal_id: uuid.UUID
+    tag_number: str
+    name: str | None = None
+    gender_name: str
+    age_months: int | None = None
+    amount_try: Decimal
+    amount_usd: Decimal
+    # "market_estimate" | "cost_basis" - bkz. MarketValueSeriesPointRead.
+    source_code: str
+
+
 class MarketValueSeriesPointRead(BaseModel):
     date: date
     amount_try: Decimal

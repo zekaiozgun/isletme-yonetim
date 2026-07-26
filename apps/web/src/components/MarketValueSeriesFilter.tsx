@@ -6,19 +6,23 @@ interface AnimalOption {
 export function MarketValueSeriesFilter({
   start,
   end,
+  asOfDate,
   granularity,
   animalId,
   animals,
   showDateRange,
+  showSingleDate,
   showGranularity,
   showAnimalPicker,
 }: {
   start?: string;
   end?: string;
+  asOfDate?: string;
   granularity?: string;
   animalId?: string;
   animals?: AnimalOption[];
   showDateRange: boolean;
+  showSingleDate?: boolean;
   showGranularity: boolean;
   showAnimalPicker: boolean;
 }) {
@@ -71,6 +75,20 @@ export function MarketValueSeriesFilter({
             />
           </div>
         </>
+      )}
+      {showSingleDate && (
+        <div>
+          <label htmlFor="as_of_date" className="mb-1 block text-xs font-medium text-slate-600">
+            Tarih İtibarıyla
+          </label>
+          <input
+            type="date"
+            id="as_of_date"
+            name="as_of_date"
+            defaultValue={asOfDate}
+            className="rounded border border-slate-300 px-2 py-1.5 text-sm text-slate-900"
+          />
+        </div>
       )}
       {showGranularity && (
         <div>

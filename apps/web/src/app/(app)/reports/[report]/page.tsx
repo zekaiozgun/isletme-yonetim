@@ -1,7 +1,9 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { apiGetSafe, type ApiRecord } from '@/lib/api';
 import { getReport } from '@/lib/reports';
 import { ReportTable } from '@/components/ReportTable';
+import { HerdAnimalValueTable } from '@/components/HerdAnimalValueTable';
 import { DateRangeFilter } from '@/components/DateRangeFilter';
 import { MarketValueSeriesFilter } from '@/components/MarketValueSeriesFilter';
 
@@ -19,7 +21,7 @@ export default async function ReportPage({
   searchParams,
 }: {
   params: Promise<{ report: string }>;
-  searchParams: Promise<{ start?: string; end?: string; granularity?: string; animal_id?: string }>;
+  searchParams: Promise<{ start?: string; end?: string; as_of_date?: string; granularity?: string; animal_id?: string }>;
 }) {
   const { report: slug } = await params;
   const report = getReport(slug);
@@ -34,6 +36,7 @@ export default async function ReportPage({
     rangeEnd = sp.end || todayIso();
   }
 
+  const asOfDate = report.singleDate ? sp.as_of_date || todayIso() : undefined;
   const granularity = report.granularity ? sp.granularity || 'monthly' : undefined;
 
   let animalId: string | undefined;
@@ -53,26 +56,39 @@ export default async function ReportPage({
     const query = new URLSearchParams();
     if (rangeStart) query.set('start_date', rangeStart);
     if (rangeEnd) query.set('end_date', rangeEnd);
+    if (asOfDate) query.set('as_of_date', asOfDate);
     if (granularity) query.set('granularity', granularity);
     if (animalId) query.set('animal_id', animalId);
     const separator = report.endpoint.includes('?') ? '&' : '?';
     rows = await apiGetSafe<ApiRecord[]>(`${report.endpoint}${separator}${query.toString()}`, []);
   }
 
-  const showCustomFilter = report.granularity || report.animalFilter;
+  const showCustomFilter = report.granularity || report.animalFilter || report.singleDate;
 
   return (
     <div>
-      <h1 className="mb-1 text-xl font-semibold text-slate-900">{report.title}</h1>
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-xl font-semibold text-slate-900">{report.title}</h1>
+        {report.usesGrowthCheckpoints && (
+          <Link
+            href="/growth-valuation-checkpoints"
+            className="text-sm font-medium text-slate-500 hover:text-slate-800 hover:underline"
+          >
+            Büyüme Değerleme Çıpalarını Düzenle →
+          </Link>
+        )}
+      </div>
       <p className="mb-4 text-sm text-slate-500">{report.description}</p>
       {showCustomFilter ? (
         <MarketValueSeriesFilter
           start={rangeStart}
           end={rangeEnd}
+          asOfDate={asOfDate}
           granularity={granularity}
           animalId={animalId}
           animals={report.animalFilter ? animalOptions : undefined}
           showDateRange={Boolean(report.dateRange)}
+          showSingleDate={Boolean(report.singleDate)}
           showGranularity={Boolean(report.granularity)}
           showAnimalPicker={Boolean(report.animalFilter)}
         />
@@ -80,7 +96,11 @@ export default async function ReportPage({
         report.dateRange && rangeStart && rangeEnd && <DateRangeFilter start={rangeStart} end={rangeEnd} />
       )}
       {canFetch ? (
-        <ReportTable report={report} rows={rows} />
+        report.slug === 'herd-animal-market-values' ? (
+          <HerdAnimalValueTable rows={rows} />
+        ) : (
+          <ReportTable report={report} rows={rows} />
+        )
       ) : (
         <p className="text-sm text-slate-500">Lütfen bir hayvan seçin.</p>
       )}

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.modules.reports import service
 from app.modules.reports.schemas import (
+    AnimalMarketValueRead,
     AnimalProfitabilityRead,
     BredAnimalRead,
     BreedingCandidateRead,
@@ -224,3 +225,11 @@ def herd_market_value_series(
     db: Session = Depends(get_db),
 ) -> list[MarketValueSeriesPointRead]:
     return service.list_herd_market_value_series(db, start_date, end_date, granularity)
+
+
+@router.get("/herd-animal-market-values", response_model=list[AnimalMarketValueRead])
+def herd_animal_market_values(
+    as_of_date: date = Query(...),
+    db: Session = Depends(get_db),
+) -> list[AnimalMarketValueRead]:
+    return service.list_herd_animal_market_values(db, as_of_date)

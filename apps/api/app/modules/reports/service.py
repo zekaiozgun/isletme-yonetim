@@ -42,6 +42,7 @@ from app.modules.valuation.models import GrowthValuationCheckpoint
 from app.modules.weight.models import WeightRecord
 from app.modules.pen.models import Pen, PenAssignment
 from app.modules.reports.schemas import (
+    AnimalMarketValueRead,
     AnimalProfitabilityRead,
     BredAnimalRead,
     BreedingCandidateRead,
@@ -1700,4 +1701,36 @@ def list_herd_market_value_series(
                 date=as_of_date, amount_try=_round_money(total_try), amount_usd=_round_money(total_usd), source_code=source_code
             )
         )
+    return rows
+
+
+def list_herd_animal_market_values(db: Session, as_of_date: date) -> list[AnimalMarketValueRead]:
+    """as_of_date itibariyla YAŞAYAN tüm hayvanların 'Tahmini Piyasa
+    Değeri'ni TEK TEK listeler (bkz. _estimated_market_value_usd_try) -
+    list_herd_market_value_series'in aksine tek bir toplam değil, hayvan
+    hayvan bir döküm verir. Alım/satım öncesi birden fazla hayvanı bir
+    arada değerlendirmek için (kullanıcı arayüzünde istediği satırları
+    seçip toplamını görebilir - bu seçim/toplam client-side yapılır,
+    burada sadece tam liste döner)."""
+    growth_checkpoints_by_gender, mature_checkpoints_by_gender = _checkpoint_maps(db)
+    rate = fx_service.get_usd_try_rate(db, as_of_date)
+    rows: list[AnimalMarketValueRead] = []
+    for animal in _animals_alive_at(db, as_of_date):
+        amount_try, amount_usd, source_code = _estimated_market_value_usd_try(
+            db, animal, as_of_date, growth_checkpoints_by_gender, mature_checkpoints_by_gender, rate
+        )
+        age_months = full_months_between(animal.birth_date, as_of_date) if animal.birth_date else None
+        rows.append(
+            AnimalMarketValueRead(
+                animal_id=animal.id,
+                tag_number=animal.tag_number,
+                name=animal.name,
+                gender_name=animal.gender.name,
+                age_months=age_months,
+                amount_try=amount_try,
+                amount_usd=amount_usd,
+                source_code=source_code,
+            )
+        )
+    rows.sort(key=lambda r: r.tag_number)
     return rows

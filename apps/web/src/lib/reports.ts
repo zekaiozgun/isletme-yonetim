@@ -24,6 +24,13 @@ export interface ReportConfig {
   /** true ise rapor sayfası bir hayvan seçici gösterir; hayvan seçilene
    * kadar rapor çağrılmaz, seçilen id `animal_id` query param'ı olarak eklenir. */
   animalFilter?: boolean;
+  /** true ise rapor sayfası tek bir "tarih itibariyle" filtresi gösterir
+   * (aralık değil) ve bunu `as_of_date` query param'ı olarak endpoint'e ekler. */
+  singleDate?: boolean;
+  /** true ise rapor sayfasının üstünde Büyüme Değerleme Çıpalarını
+   * düzenleme sayfasına giden bir link gösterilir (bu rapor o verilere
+   * dayandığı için). */
+  usesGrowthCheckpoints?: boolean;
 }
 
 function formatDays(value: unknown): string {
@@ -31,7 +38,7 @@ function formatDays(value: unknown): string {
   return `${String(value)} gün`;
 }
 
-function formatMonths(value: unknown): string {
+export function formatMonths(value: unknown): string {
   if (value === null || value === undefined) return '—';
   return `${String(value)} ay`;
 }
@@ -76,7 +83,7 @@ function formatUsd(value: unknown): string {
   return `$${String(value)}`;
 }
 
-function formatSourceCode(value: unknown): string {
+export function formatSourceCode(value: unknown): string {
   if (value === 'market_estimate') return 'Piyasa Tahmini';
   if (value === 'cost_basis') return 'Maliyet Bazlı';
   if (value === 'mixed') return 'Karışık';
@@ -438,6 +445,7 @@ export const reports: ReportConfig[] = [
     dateRange: true,
     granularity: true,
     animalFilter: true,
+    usesGrowthCheckpoints: true,
     columns: [
       { key: 'date', label: 'Tarih', format: formatDate },
       { key: 'amount_try', label: 'Tutar (TL)', format: formatCurrency },
@@ -453,8 +461,27 @@ export const reports: ReportConfig[] = [
     endpoint: '/reports/herd-market-value-series',
     dateRange: true,
     granularity: true,
+    usesGrowthCheckpoints: true,
     columns: [
       { key: 'date', label: 'Tarih', format: formatDate },
+      { key: 'amount_try', label: 'Tutar (TL)', format: formatCurrency },
+      { key: 'amount_usd', label: 'Tutar ($)', format: formatUsd },
+      { key: 'source_code', label: 'Kaynak', format: formatSourceCode },
+    ],
+  },
+  {
+    slug: 'herd-animal-market-values',
+    title: 'Sürü Hayvan Listesi - Tahmini Piyasa Değeri',
+    description:
+      'Belirtilen tarih itibarıyla yaşayan TÜM hayvanların tahmini piyasa değeri tek tek listelenir (bkz. Hayvan Bazlı Tahmini Piyasa Değeri ve Sürü Tahmini Piyasa Değeri). Alım/satım öncesi birden fazla hayvanı bir arada değerlendirmek için satırları işaretleyip seçilenlerin toplamını görebilirsiniz.',
+    endpoint: '/reports/herd-animal-market-values',
+    singleDate: true,
+    usesGrowthCheckpoints: true,
+    columns: [
+      { key: 'tag_number', label: 'Küpe No' },
+      { key: 'name', label: 'İsim', format: formatPlain },
+      { key: 'gender_name', label: 'Cinsiyet' },
+      { key: 'age_months', label: 'Yaş', format: formatMonths },
       { key: 'amount_try', label: 'Tutar (TL)', format: formatCurrency },
       { key: 'amount_usd', label: 'Tutar ($)', format: formatUsd },
       { key: 'source_code', label: 'Kaynak', format: formatSourceCode },
@@ -466,7 +493,7 @@ export function getReport(slug: string): ReportConfig | undefined {
   return reports.find((r) => r.slug === slug);
 }
 
-/** /reports hub sayfasında listelenen (tarih aralıklı) raporlar - reports[]'ten türetilir. */
+/** /reports hub sayfasında listelenen (tarih aralıklı VEYA tek tarihli) raporlar - reports[]'ten türetilir. */
 export function dateRangeReports(): ReportConfig[] {
-  return reports.filter((r) => r.dateRange);
+  return reports.filter((r) => r.dateRange || r.singleDate);
 }
