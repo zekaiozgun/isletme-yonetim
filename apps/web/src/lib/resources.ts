@@ -42,6 +42,8 @@ export interface ResourceConfig {
   fields: FieldConfig[];
   /** Bu veri girişiyle ilişkili, salt-okunur raporlara hızlı erişim linkleri (bkz. lib/reports.ts). */
   relatedReports?: { slug: string; title: string }[];
+  /** Varsa, liste sayfasında "Toplu Giriş" butonuyla gösterilecek özel sayfa yolu (örn. toplu tartı girişi). */
+  bulkEntryPath?: string;
 }
 
 const label =
@@ -253,6 +255,7 @@ const mainResources: ResourceConfig[] = [
     group: 'Tartı',
     listEndpoint: '/weight-records',
     createEndpoint: '/weight-records',
+    bulkEntryPath: '/weight-records/bulk',
     columns: [
       { key: 'animal_id', label: 'Hayvan', lookup: animals },
       { key: 'weigh_date', label: 'Tarih', date: true },

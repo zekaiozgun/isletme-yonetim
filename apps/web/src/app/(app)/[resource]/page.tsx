@@ -20,12 +20,22 @@ export default async function ResourceListPage({ params }: { params: Promise<{ r
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold text-slate-900">{resource.title}</h1>
-        <Link
-          href={`/${resource.slug}/new`}
-          className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700"
-        >
-          + Yeni {resource.singularTitle}
-        </Link>
+        <div className="flex items-center gap-2">
+          {resource.bulkEntryPath && (
+            <Link
+              href={resource.bulkEntryPath}
+              className="rounded border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Toplu Giriş
+            </Link>
+          )}
+          <Link
+            href={`/${resource.slug}/new`}
+            className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700"
+          >
+            + Yeni {resource.singularTitle}
+          </Link>
+        </div>
       </div>
       {resource.relatedReports && resource.relatedReports.length > 0 && (
         <div className="mb-4 flex flex-wrap items-center gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-2">
