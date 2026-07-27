@@ -15,14 +15,81 @@ function formatDaysValue(value: unknown): string {
   return typeof value === 'number' ? `${value} gün` : '—';
 }
 
+interface AttentionItem {
+  key: string;
+  label: string;
+  sublabel?: string;
+}
+
+/** "Bugün Dikkat Gerekenler" içindeki tek bir bölüm - var olan raporların
+ * (breeding-candidates, bred-animals, pregnant-animals, withdrawal-periods)
+ * sayı kartı yerine küpe no listesi olarak gösterilmesi; hiçbiri yeni bir
+ * tahmin/hesap eklemez, sadece zaten türetilen veriyi öne çıkarır. */
+function AttentionSection({
+  title,
+  href,
+  items,
+  emptyMessage,
+}: {
+  title: string;
+  href: string;
+  items: AttentionItem[];
+  emptyMessage: string;
+}) {
+  const visible = items.slice(0, 6);
+  const remaining = items.length - visible.length;
+  return (
+    <div className="rounded border border-slate-200 p-4">
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
+        <span
+          className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+            items.length > 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-500'
+          }`}
+        >
+          {items.length}
+        </span>
+      </div>
+      {items.length === 0 ? (
+        <p className="text-sm text-slate-400">{emptyMessage}</p>
+      ) : (
+        <ul className="space-y-1 text-sm">
+          {visible.map((item) => (
+            <li key={item.key} className="flex items-center justify-between gap-2">
+              <span className="font-medium text-slate-800">{item.label}</span>
+              {item.sublabel && <span className="text-slate-500">{item.sublabel}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {remaining > 0 && <p className="mt-1 text-xs text-slate-400">+{remaining} tane daha</p>}
+      <Link href={href} className="mt-2 inline-block text-xs font-medium text-slate-600 hover:underline">
+        Tüm listeyi gör →
+      </Link>
+    </div>
+  );
+}
+
+function formatDaysUntil(value: unknown): string {
+  if (typeof value !== 'number') return '—';
+  if (value < 0) return 'Gecikti';
+  if (value === 0) return 'Bugün';
+  return `${value} gün`;
+}
+
 export default async function Home() {
   const groups = groupedResources();
 
-  const [summary, inventory, penOccupancy] = await Promise.all([
-    apiGetSafe<ApiRecord>('/reports/dashboard-summary', {}),
-    apiGetSafe<ApiRecord>('/reports/herd-inventory', {}),
-    apiGetSafe<ApiRecord[]>('/reports/pen-occupancy', []),
-  ]);
+  const [summary, inventory, penOccupancy, breedingCandidates, bredAnimals, pregnantAnimals, withdrawalPeriods] =
+    await Promise.all([
+      apiGetSafe<ApiRecord>('/reports/dashboard-summary', {}),
+      apiGetSafe<ApiRecord>('/reports/herd-inventory', {}),
+      apiGetSafe<ApiRecord[]>('/reports/pen-occupancy', []),
+      apiGetSafe<ApiRecord[]>('/reports/breeding-candidates', []),
+      apiGetSafe<ApiRecord[]>('/reports/bred-animals', []),
+      apiGetSafe<ApiRecord[]>('/reports/pregnant-animals', []),
+      apiGetSafe<ApiRecord[]>('/reports/withdrawal-periods', []),
+    ]);
 
   const checkDueCount = asNumber(summary.pregnancy_check_due_count);
   const repeatBreederCount = asNumber(summary.repeat_breeder_count);
@@ -30,10 +97,62 @@ export default async function Home() {
   const calvingInterval = typeof summary.average_calving_interval_days === 'number' ? summary.average_calving_interval_days : null;
   const annualLossRate = typeof summary.annual_loss_rate === 'number' ? summary.annual_loss_rate : null;
 
+  // "Post Partum" (henuz aksiyon gerektirmeyen, bilgi amacli) haric - bkz.
+  // reports.service.get_dashboard_summary'deki ayni filtre.
+  const breedingNeeded: AttentionItem[] = breedingCandidates
+    .filter((c) => c.reason_code !== 'postpartum_waiting')
+    .map((c) => ({ key: String(c.animal_id), label: String(c.tag_number), sublabel: String(c.reason ?? '') }));
+
+  const checksNeeded: AttentionItem[] = bredAnimals
+    .filter((b) => b.pregnancy_check_due === true)
+    .map((b) => ({
+      key: String(b.animal_id),
+      label: String(b.tag_number),
+      sublabel: `${String(b.days_since_service)} gün`,
+    }));
+
+  const upcomingCalvings: AttentionItem[] = pregnantAnimals
+    .filter((p) => typeof p.days_until_calving === 'number' && p.days_until_calving <= 14)
+    .map((p) => ({ key: String(p.animal_id), label: String(p.tag_number), sublabel: formatDaysUntil(p.days_until_calving) }));
+
+  const withdrawalsActive: AttentionItem[] = withdrawalPeriods.map((w) => ({
+    key: `${String(w.animal_id)}-${String(w.event_date)}`,
+    label: String(w.tag_number),
+    sublabel: `${String(w.medication_name)} — ${String(w.days_remaining)} gün`,
+  }));
+
   return (
     <div>
       <h1 className="mb-1 text-2xl font-semibold text-slate-900">Dashboard</h1>
       <p className="mb-6 text-slate-500">Sürünün güncel durumu ve dikkat gerektiren kayıtlar.</p>
+
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Bugün Dikkat Gerekenler</h2>
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <AttentionSection
+          title="Tohumlama Gerekenler"
+          href="/reports/breeding-candidates"
+          items={breedingNeeded}
+          emptyMessage="Şu an tohumlama bekleyen hayvan yok."
+        />
+        <AttentionSection
+          title="Gebelik Kontrolü Gereken"
+          href="/reports/bred-animals"
+          items={checksNeeded}
+          emptyMessage="Şu an kontrol gereken hayvan yok."
+        />
+        <AttentionSection
+          title="Yaklaşan Doğumlar (14 gün)"
+          href="/reports/pregnant-animals"
+          items={upcomingCalvings}
+          emptyMessage="Önümüzdeki 14 günde beklenen doğum yok."
+        />
+        <AttentionSection
+          title="İlaç Arınma Süresi Devam Edenler"
+          href="/reports/withdrawal-periods"
+          items={withdrawalsActive}
+          emptyMessage="Arınma süresi devam eden hayvan yok."
+        />
+      </div>
 
       <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         <StatTile label="Aktif Hayvan Sayısı" value={String(asNumber(summary.active_animal_count))} href="/animals" />

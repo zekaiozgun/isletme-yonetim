@@ -185,6 +185,15 @@ class PregnantAnimalRead(BaseModel):
     days_until_calving: int
 
 
+class WithdrawalPeriodRead(BaseModel):
+    animal_id: uuid.UUID
+    tag_number: str
+    medication_name: str
+    event_date: date
+    withdrawal_end_date: date
+    days_remaining: int
+
+
 class YoungAnimalRead(BaseModel):
     animal_id: uuid.UUID
     tag_number: str

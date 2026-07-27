@@ -343,6 +343,7 @@ const mainResources: ResourceConfig[] = [
       { name: 'cost', label: 'Maliyet (TL)', type: 'decimal' },
       { name: 'note', label: 'Not', type: 'textarea' },
     ],
+    relatedReports: [{ slug: 'withdrawal-periods', title: 'İlaç Arınma Süresi Devam Edenler' }],
   },
   {
     slug: 'medications',

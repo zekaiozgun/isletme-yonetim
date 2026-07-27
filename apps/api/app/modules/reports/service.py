@@ -63,6 +63,7 @@ from app.modules.reports.schemas import (
     PregnantAnimalRead,
     SalesReportRead,
     WeightGainRead,
+    WithdrawalPeriodRead,
     YoungAnimalRead,
 )
 
@@ -375,6 +376,42 @@ def list_pregnant_animals(db: Session, today: date | None = None) -> list[Pregna
             )
         )
     rows.sort(key=lambda r: r.expected_calving_date)
+    return rows
+
+
+def list_active_withdrawal_periods(db: Session, today: date | None = None) -> list[WithdrawalPeriodRead]:
+    """Su anda ilac arinma suresi devam eden (satisa/kesime henuz hazir
+    olmayan) aktif hayvanlar. withdrawal_end_date DB'de saklanmaz, her
+    saglik olayinda event_date + medication.withdrawal_period_days olarak
+    hesaplanir (bkz. app.modules.health.service.calculate_withdrawal_end_date
+    - ayni formul, burada raporlama icin toplu calistirilir)."""
+    today = today or date.today()
+    active_id = get_lookup_by_code(db, AnimalStatus, ACTIVE_STATUS_CODE).id
+    stmt = (
+        select(HealthEvent)
+        .join(Animal, HealthEvent.animal_id == Animal.id)
+        .options(joinedload(HealthEvent.animal), joinedload(HealthEvent.medication))
+        .where(Animal.status_id == active_id, HealthEvent.medication_id.isnot(None))
+    )
+    rows: list[WithdrawalPeriodRead] = []
+    for event in db.scalars(stmt).all():
+        medication = event.medication
+        if medication is None or medication.withdrawal_period_days <= 0:
+            continue
+        withdrawal_end = event.event_date + timedelta(days=medication.withdrawal_period_days)
+        if withdrawal_end < today:
+            continue
+        rows.append(
+            WithdrawalPeriodRead(
+                animal_id=event.animal_id,
+                tag_number=event.animal.tag_number,
+                medication_name=medication.name,
+                event_date=event.event_date,
+                withdrawal_end_date=withdrawal_end,
+                days_remaining=(withdrawal_end - today).days,
+            )
+        )
+    rows.sort(key=lambda r: r.days_remaining)
     return rows
 
 
