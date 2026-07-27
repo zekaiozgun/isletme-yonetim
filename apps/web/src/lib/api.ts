@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 // yuzden NEXT_PUBLIC_ on eki (build-time inline) GEREKMEZ; normal bir
 // runtime env var olarak kalir (Docker imajini yeniden derlemeden
 // degistirilebilir).
-const API_URL = process.env.API_URL ?? 'http://localhost:3001';
+export const API_URL = process.env.API_URL ?? 'http://localhost:3001';
 
 // httpOnly cookie'de tutulan JWT - tarayici bu cookie'yi API'ye hicbir zaman
 // dogrudan gondermez, sadece Next.js sunucusu (asagidaki getAuthHeader)
@@ -15,7 +15,7 @@ export const AUTH_COOKIE_NAME = 'isletme_token';
 
 export type ApiRecord = Record<string, unknown>;
 
-async function getAuthHeader(): Promise<Record<string, string>> {
+export async function getAuthHeader(): Promise<Record<string, string>> {
   const cookieStore = await cookies();
   const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
   return token ? { Authorization: `Bearer ${token}` } : {};

@@ -5,6 +5,7 @@ import type { ApiRecord } from '@/lib/api';
 import { formatMonths, formatSourceCode } from '@/lib/reports';
 import { TableSearch } from '@/components/TableSearch';
 import { CsvExportButton } from '@/components/CsvExportButton';
+import { PdfExportButton } from '@/components/PdfExportButton';
 
 function formatCurrency(value: number): string {
   return `${value.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`;
@@ -70,6 +71,15 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
     formatUsd(Number(row.amount_usd ?? 0)),
     formatSourceCode(row.source_code),
   ]);
+  const pdfColumns = [
+    { label: 'Küpe No', width: 'narrow' as const },
+    { label: 'İsim', width: 'wide' as const },
+    { label: 'Cinsiyet', width: 'narrow' as const },
+    { label: 'Yaş', width: 'narrow' as const },
+    { label: 'Tutar (TL)', width: 'narrow' as const },
+    { label: 'Tutar ($)', width: 'narrow' as const },
+    { label: 'Kaynak', width: 'narrow' as const },
+  ];
 
   return (
     <div className="space-y-3">
@@ -87,7 +97,17 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
       )}
       <TableSearch
         placeholder="Sürü Hayvan Listesi içinde ara..."
-        actions={<CsvExportButton headers={csvHeaders} rows={csvRows} filename="herd-animal-market-values.csv" />}
+        actions={
+          <>
+            <PdfExportButton
+              title="Sürü Hayvan Listesi - Tahmini Piyasa Değeri"
+              columns={pdfColumns}
+              rows={csvRows}
+              filename="herd-animal-market-values.pdf"
+            />
+            <CsvExportButton headers={csvHeaders} rows={csvRows} filename="herd-animal-market-values.csv" />
+          </>
+        }
       >
         <div className="overflow-x-auto rounded border border-slate-200">
           <table className="min-w-full divide-y divide-slate-200 text-sm">

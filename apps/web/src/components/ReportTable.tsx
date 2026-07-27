@@ -2,7 +2,7 @@ import type { ApiRecord } from '@/lib/api';
 import type { ReportConfig } from '@/lib/reports';
 import { TableSearch } from '@/components/TableSearch';
 import { CsvExportButton } from '@/components/CsvExportButton';
-import { PrintButton } from '@/components/PrintButton';
+import { PdfExportButton } from '@/components/PdfExportButton';
 
 function formatCell(row: ApiRecord, column: ReportConfig['columns'][number]): string {
   const raw = row[column.key];
@@ -31,13 +31,24 @@ export function ReportTable({ report, rows }: { report: ReportConfig; rows: ApiR
     String(index + 1),
     ...report.columns.map((column) => formatCell(row, column)),
   ]);
+  const pdfColumns = [{ label: '#', width: 'narrow' as const }, ...report.columns.map((c) => ({ label: c.label, width: c.width }))];
+  const highlightedRows = rows
+    .map((row, index) => (report.rowHighlight?.(row) ? index : -1))
+    .filter((index) => index !== -1);
 
   return (
     <TableSearch
       placeholder={`${report.title} içinde ara...`}
       actions={
         <>
-          <PrintButton />
+          <PdfExportButton
+            title={report.title}
+            description={report.description}
+            columns={pdfColumns}
+            rows={csvRows}
+            highlightedRows={highlightedRows}
+            filename={`${report.slug}.pdf`}
+          />
           <CsvExportButton headers={csvHeaders} rows={csvRows} filename={`${report.slug}.csv`} />
         </>
       }

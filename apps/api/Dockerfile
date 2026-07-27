@@ -2,6 +2,14 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
+# weasyprint (PDF export) metin sekillendirme icin Pango'ya (sistem
+# kutuphanesi) ihtiyac duyar - pip kurulumu bunu saglamaz, apt ile ayrica
+# kurulmasi gerekir (bkz. app/modules/pdf_export/service.py).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpango-1.0-0 libpangoft2-1.0-0 libgdk-pixbuf2.0-0 \
+    fonts-liberation shared-mime-info \
+    && rm -rf /var/lib/apt/lists/*
+
 # Sadece requirements once kopyalanir ki kod degisince bagimlilik
 # katmani yeniden indirilmesin (Docker layer cache).
 COPY requirements.txt .

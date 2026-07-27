@@ -16,6 +16,7 @@ from app.modules.death.router import router as death_router
 from app.modules.feed.router import router as feed_router
 from app.modules.genetic_resource.router import router as genetic_resource_router
 from app.modules.health.router import router as health_router
+from app.modules.pdf_export.router import router as pdf_export_router
 from app.modules.pen.router import router as pen_router
 from app.modules.reports.router import router as reports_router
 from app.modules.sale.router import router as sale_router
@@ -71,6 +72,7 @@ for router in (
     death_router,
     reports_router,
     valuation_router,
+    pdf_export_router,
 ):
     app.include_router(router, dependencies=[Depends(get_current_user)])
 
