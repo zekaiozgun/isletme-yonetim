@@ -840,7 +840,7 @@ def _active_animals_with_age(db: Session, today: date) -> list[tuple[Animal, int
     active_id = get_lookup_by_code(db, AnimalStatus, ACTIVE_STATUS_CODE).id
     stmt = (
         select(Animal)
-        .options(joinedload(Animal.gender), joinedload(Animal.mother))
+        .options(joinedload(Animal.gender), joinedload(Animal.mother), joinedload(Animal.breed))
         .where(Animal.status_id == active_id, Animal.birth_date.isnot(None))
         .order_by(Animal.birth_date)
     )
@@ -854,7 +854,11 @@ def list_animals_by_status(db: Session, status_ids: list[int] | None = None, tod
     filtrelemez). Yas gibi turetilmis alanlar (bkz. full_months_between)
     hicbir yerde saklanmaz, yalnizca burada hesaplanir."""
     today = today or date.today()
-    stmt = select(Animal).options(joinedload(Animal.gender), joinedload(Animal.mother)).order_by(Animal.tag_number)
+    stmt = (
+        select(Animal)
+        .options(joinedload(Animal.gender), joinedload(Animal.mother), joinedload(Animal.breed))
+        .order_by(Animal.tag_number)
+    )
     if status_ids:
         stmt = stmt.where(Animal.status_id.in_(status_ids))
     rows: list[YoungAnimalRead] = []
@@ -866,6 +870,7 @@ def list_animals_by_status(db: Session, status_ids: list[int] | None = None, tod
                 tag_number=animal.tag_number,
                 name=animal.name,
                 gender_name=animal.gender.name,
+                breed_name=animal.breed.name if animal.breed else None,
                 birth_date=animal.birth_date,
                 age_months=age_months,
                 age_days=(today - animal.birth_date).days if animal.birth_date else None,
@@ -901,6 +906,7 @@ def _to_young_animal_read(animal: Animal, age_months: int, today: date) -> Young
         tag_number=animal.tag_number,
         name=animal.name,
         gender_name=animal.gender.name,
+        breed_name=animal.breed.name if animal.breed else None,
         birth_date=animal.birth_date,
         age_months=age_months,
         age_days=(today - animal.birth_date).days if animal.birth_date else None,

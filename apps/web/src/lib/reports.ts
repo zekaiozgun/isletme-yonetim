@@ -329,6 +329,7 @@ export const reports: ReportConfig[] = [
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
       { key: 'gender_name', label: 'Cinsiyet', width: 'narrow' },
+      { key: 'breed_name', label: 'Irk', format: formatPlain, width: 'narrow' },
       { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate, width: 'narrow' },
       { key: 'age_months', label: 'Yaş', format: formatMonths, width: 'narrow' },
       { key: 'mother_tag_number', label: 'Anne Küpe No', format: formatPlain, width: 'narrow' },
@@ -342,6 +343,7 @@ export const reports: ReportConfig[] = [
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
       { key: 'gender_name', label: 'Cinsiyet', width: 'narrow' },
+      { key: 'breed_name', label: 'Irk', format: formatPlain, width: 'narrow' },
       { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate, width: 'narrow' },
       { key: 'age_months', label: 'Yaş', format: formatMonths, width: 'narrow' },
       { key: 'mother_tag_number', label: 'Anne Küpe No', format: formatPlain, width: 'narrow' },
@@ -355,6 +357,7 @@ export const reports: ReportConfig[] = [
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
       { key: 'gender_name', label: 'Cinsiyet', width: 'narrow' },
+      { key: 'breed_name', label: 'Irk', format: formatPlain, width: 'narrow' },
       { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate, width: 'narrow' },
       { key: 'age_months', label: 'Yaş', format: formatMonths, width: 'narrow' },
       { key: 'mother_tag_number', label: 'Anne Küpe No', format: formatPlain, width: 'narrow' },

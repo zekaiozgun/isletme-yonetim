@@ -190,6 +190,7 @@ class YoungAnimalRead(BaseModel):
     tag_number: str
     name: str | None = None
     gender_name: str
+    breed_name: str | None = None
     birth_date: date | None = None
     age_months: int | None = None
     age_days: int | None = None
