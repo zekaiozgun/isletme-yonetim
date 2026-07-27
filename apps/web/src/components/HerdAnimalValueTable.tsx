@@ -61,10 +61,9 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
     setSelected((prev) => (prev.size === rows.length ? new Set() : new Set(rows.map((r) => String(r.animal_id)))));
   }
 
-  const csvHeaders = ['Küpe No', 'İsim', 'Cinsiyet', 'Yaş', 'Tutar (TL)', 'Tutar ($)', 'Kaynak'];
+  const csvHeaders = ['Küpe No', 'Cinsiyet', 'Yaş', 'Tutar (TL)', 'Tutar ($)', 'Kaynak'];
   const csvRows = rows.map((row) => [
     String(row.tag_number ?? ''),
-    String(row.name ?? ''),
     String(row.gender_name ?? ''),
     formatMonths(row.age_months),
     formatCurrency(Number(row.amount_try ?? 0)),
@@ -73,7 +72,6 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
   ]);
   const pdfColumns = [
     { label: 'Küpe No', width: 'narrow' as const },
-    { label: 'İsim', width: 'wide' as const },
     { label: 'Cinsiyet', width: 'narrow' as const },
     { label: 'Yaş', width: 'narrow' as const },
     { label: 'Tutar (TL)', width: 'narrow' as const },
@@ -122,7 +120,6 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
                   />
                 </th>
                 <th className="px-3 py-2 text-left font-medium text-slate-600">Küpe No</th>
-                <th className="px-3 py-2 text-left font-medium text-slate-600">İsim</th>
                 <th className="px-3 py-2 text-left font-medium text-slate-600">Cinsiyet</th>
                 <th className="px-3 py-2 text-left font-medium text-slate-600">Yaş</th>
                 <th className="px-3 py-2 text-left font-medium text-slate-600">Tutar (TL)</th>
@@ -134,7 +131,7 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
               {rows.map((row) => {
                 const id = String(row.animal_id);
                 const checked = selected.has(id);
-                const searchText = [row.tag_number, row.name, row.gender_name]
+                const searchText = [row.tag_number, row.gender_name]
                   .map((v) => String(v ?? ''))
                   .join(' ')
                   .toLocaleLowerCase('tr-TR');
@@ -149,7 +146,6 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
                       />
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 text-slate-700">{String(row.tag_number ?? '—')}</td>
-                    <td className="whitespace-nowrap px-3 py-2 text-slate-700">{String(row.name ?? '—')}</td>
                     <td className="whitespace-nowrap px-3 py-2 text-slate-700">{String(row.gender_name ?? '—')}</td>
                     <td className="whitespace-nowrap px-3 py-2 text-slate-700">{formatMonths(row.age_months)}</td>
                     <td className="whitespace-nowrap px-3 py-2 text-slate-700">
@@ -164,7 +160,7 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
             <tfoot>
               <tr className="border-t border-slate-300 bg-slate-50 font-semibold text-slate-900">
                 <td className="px-3 py-2" />
-                <td className="px-3 py-2" colSpan={3}>
+                <td className="px-3 py-2" colSpan={2}>
                   TOPLAM ({rows.length} hayvan)
                 </td>
                 <td className="px-3 py-2" />
