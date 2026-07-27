@@ -4,9 +4,11 @@ WORKDIR /app
 
 # weasyprint (PDF export) metin sekillendirme icin Pango'ya (sistem
 # kutuphanesi) ihtiyac duyar - pip kurulumu bunu saglamaz, apt ile ayrica
-# kurulmasi gerekir (bkz. app/modules/pdf_export/service.py).
+# kurulmasi gerekir (bkz. app/modules/pdf_export/service.py). gdk-pixbuf
+# GEREKMEZ - weasyprint v53+ resimler icin Pillow kullanir, cairo/GTK
+# yigininin geri kalanina bagimli degil.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpango-1.0-0 libpangoft2-1.0-0 libgdk-pixbuf2.0-0 \
+    libpango-1.0-0 libpangoft2-1.0-0 \
     fonts-liberation shared-mime-info \
     && rm -rf /var/lib/apt/lists/*
 
