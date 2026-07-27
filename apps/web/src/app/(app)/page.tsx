@@ -91,8 +91,6 @@ export default async function Home() {
       apiGetSafe<ApiRecord[]>('/reports/withdrawal-periods', []),
     ]);
 
-  const checkDueCount = asNumber(summary.pregnancy_check_due_count);
-  const repeatBreederCount = asNumber(summary.repeat_breeder_count);
   const occupancyRate = typeof summary.pen_occupancy_rate === 'number' ? summary.pen_occupancy_rate : null;
   const calvingInterval = typeof summary.average_calving_interval_days === 'number' ? summary.average_calving_interval_days : null;
   const annualLossRate = typeof summary.annual_loss_rate === 'number' ? summary.annual_loss_rate : null;
@@ -156,24 +154,7 @@ export default async function Home() {
 
       <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         <StatTile label="Aktif Hayvan Sayısı" value={String(asNumber(summary.active_animal_count))} href="/animals" />
-        <StatTile
-          label="Tohumlanacak Hayvan"
-          value={String(asNumber(summary.breeding_candidate_count))}
-          href="/reports/breeding-candidates"
-        />
-        <StatTile
-          label="Gebelik Kontrolü Gereken"
-          value={String(checkDueCount)}
-          href="/reports/bred-animals"
-          status={checkDueCount > 0 ? 'warning' : 'neutral'}
-        />
         <StatTile label="Gebe Hayvan" value={String(asNumber(summary.pregnant_count))} href="/reports/pregnant-animals" />
-        <StatTile
-          label="Tekrar Kızgınlık / Boş"
-          value={String(repeatBreederCount)}
-          href="/reports/breeding-candidates"
-          status={repeatBreederCount > 0 ? 'warning' : 'neutral'}
-        />
         <StatTile label="Buzağı (0-7 Ay)" value={String(asNumber(summary.calves_count))} href="/reports/calves" />
         <StatTile label="Düve ve Dana (7-12 Ay)" value={String(asNumber(summary.heifers_steers_count))} href="/reports/heifers-steers" />
         <StatTile
