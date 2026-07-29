@@ -2,11 +2,18 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError
 from app.core.lookup_router import build_lookup_router
 from app.modules.feed import service
 from app.modules.feed.lookups import FeedType, FeedUnit
-from app.modules.feed.schemas import FeedDistributionCreate, FeedDistributionRead, FeedItemCreate, FeedItemRead
+from app.modules.feed.schemas import (
+    FeedItemCreate,
+    FeedItemRead,
+    FeedPurchaseCreate,
+    FeedPurchaseRead,
+    PenRationCreate,
+    PenRationRead,
+)
 
 router = APIRouter(prefix="/feed", tags=["feed"])
 
@@ -45,45 +52,77 @@ def delete_feed_item(item_id: int, db: Session = Depends(get_db)) -> None:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.post("/distributions", response_model=FeedDistributionRead, status_code=201)
-def create_feed_distribution(payload: FeedDistributionCreate, db: Session = Depends(get_db)) -> FeedDistributionRead:
-    return service.create_feed_distribution(db, payload)
+@router.post("/purchases", response_model=FeedPurchaseRead, status_code=201)
+def create_feed_purchase(payload: FeedPurchaseCreate, db: Session = Depends(get_db)) -> FeedPurchaseRead:
+    return service.create_feed_purchase(db, payload)
 
 
-@router.get("/distributions", response_model=list[FeedDistributionRead])
-def list_all_feed_distributions(pen_id: int | None = None, db: Session = Depends(get_db)) -> list[FeedDistributionRead]:
-    return service.list_feed_distributions(db, pen_id=pen_id)
+@router.get("/purchases", response_model=list[FeedPurchaseRead])
+def list_feed_purchases(feed_item_id: int | None = None, db: Session = Depends(get_db)) -> list[FeedPurchaseRead]:
+    return service.list_feed_purchases(db, feed_item_id=feed_item_id)
 
 
-@router.get("/distributions/{distribution_id}", response_model=FeedDistributionRead)
-def get_feed_distribution(distribution_id: int, db: Session = Depends(get_db)) -> FeedDistributionRead:
+@router.get("/purchases/{purchase_id}", response_model=FeedPurchaseRead)
+def get_feed_purchase(purchase_id: int, db: Session = Depends(get_db)) -> FeedPurchaseRead:
     try:
-        return service.get_feed_distribution(db, distribution_id)
+        return service.get_feed_purchase(db, purchase_id)
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.put("/distributions/{distribution_id}", response_model=FeedDistributionRead)
-def update_feed_distribution(
-    distribution_id: int, payload: FeedDistributionCreate, db: Session = Depends(get_db)
-) -> FeedDistributionRead:
+@router.put("/purchases/{purchase_id}", response_model=FeedPurchaseRead)
+def update_feed_purchase(
+    purchase_id: int, payload: FeedPurchaseCreate, db: Session = Depends(get_db)
+) -> FeedPurchaseRead:
     try:
-        return service.update_feed_distribution(db, distribution_id, payload)
+        return service.update_feed_purchase(db, purchase_id, payload)
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.delete("/distributions/{distribution_id}", status_code=204)
-def delete_feed_distribution(distribution_id: int, db: Session = Depends(get_db)) -> None:
+@router.delete("/purchases/{purchase_id}", status_code=204)
+def delete_feed_purchase(purchase_id: int, db: Session = Depends(get_db)) -> None:
     try:
-        service.delete_feed_distribution(db, distribution_id)
+        service.delete_feed_purchase(db, purchase_id)
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.get("/pens/{pen_id}/distributions", response_model=list[FeedDistributionRead])
-def list_feed_distributions(pen_id: int, db: Session = Depends(get_db)) -> list[FeedDistributionRead]:
-    return service.list_feed_distributions(db, pen_id)
+@router.post("/rations", response_model=PenRationRead, status_code=201)
+def create_pen_ration(payload: PenRationCreate, db: Session = Depends(get_db)) -> PenRationRead:
+    try:
+        return service.create_pen_ration(db, payload)
+    except ConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get("/rations", response_model=list[PenRationRead])
+def list_pen_rations(pen_id: int | None = None, db: Session = Depends(get_db)) -> list[PenRationRead]:
+    return service.list_pen_rations(db, pen_id=pen_id)
+
+
+@router.get("/rations/{ration_id}", response_model=PenRationRead)
+def get_pen_ration(ration_id: int, db: Session = Depends(get_db)) -> PenRationRead:
+    try:
+        return service.get_pen_ration(db, ration_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.put("/rations/{ration_id}", response_model=PenRationRead)
+def update_pen_ration(ration_id: int, payload: PenRationCreate, db: Session = Depends(get_db)) -> PenRationRead:
+    try:
+        return service.update_pen_ration(db, ration_id, payload)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.delete("/rations/{ration_id}", status_code=204)
+def delete_pen_ration(ration_id: int, db: Session = Depends(get_db)) -> None:
+    try:
+        service.delete_pen_ration(db, ration_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 lookup_routers = [

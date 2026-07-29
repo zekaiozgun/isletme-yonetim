@@ -34,7 +34,7 @@ from app.modules.breeding.lookups import PregnancyResult
 from app.modules.breeding.models import BreedingEvent, PregnancyCheck
 from app.modules.genetic_resource.models import SemenBatch
 from app.modules.death.models import Death
-from app.modules.feed.models import FeedDistribution, FeedItem
+from app.modules.feed.models import FeedItem, FeedPurchase, PenRation, RationItem
 from app.modules.fx import service as fx_service
 from app.modules.health.models import HealthEvent
 from app.modules.sale.models import Sale
@@ -52,6 +52,7 @@ from app.modules.reports.schemas import (
     DashboardSummaryRead,
     DeathLossReportRead,
     FeedConsumptionRead,
+    FeedStockStatusRead,
     HealthEventReportRead,
     HerdCostSummaryRead,
     HerdFlowReportRead,
@@ -73,6 +74,56 @@ ACTIVE_STATUS_CODE = "AKTIF"
 DIFFICULT_BIRTH_TYPE_CODE = "GUC"
 ILLNESS_EVENT_TYPE_CODE = "HASTALIK_BILDIRIMI"
 FEED_TON_UNIT_CODE = "TON"
+
+def _to_kg(quantity: Decimal, unit_code: str) -> float:
+    """Yem miktarini kg'a normalize eder (ton kayitlari x1000)."""
+    return float(quantity) * (1000 if unit_code == FEED_TON_UNIT_CODE else 1)
+
+
+def _feed_avg_cost_per_kg(db: Session, feed_item_id: int, as_of_date: date) -> Decimal | None:
+    """Bir yem kaleminin as_of_date'e kadarki (dahil) TUM alimlarindan
+    turetilen agirlikli ortalama birim maliyeti (TL/kg) - hicbir yerde
+    saklanmaz; hem rasyon/tuketim maliyetinde hem stok degerinde kullanilir
+    (Anayasa m.4: birim fiyat elle girilmez, fatura tutarindan turetilir).
+    Maliyetli hic alim yoksa None doner."""
+    purchases = db.scalars(
+        select(FeedPurchase)
+        .options(joinedload(FeedPurchase.unit))
+        .where(
+            FeedPurchase.feed_item_id == feed_item_id,
+            FeedPurchase.purchase_date <= as_of_date,
+            FeedPurchase.total_cost.isnot(None),
+        )
+    ).all()
+    total_cost = Decimal("0")
+    total_kg = Decimal("0")
+    for purchase in purchases:
+        total_cost += purchase.total_cost
+        total_kg += Decimal(str(_to_kg(purchase.quantity, purchase.unit.code)))
+    if total_kg == 0:
+        return None
+    return total_cost / total_kg
+
+
+def _daily_headcounts(assignments: list[PenAssignment], start: date, end: date) -> dict[date, int]:
+    """Onceden (bir padoga gore) cekilmis PenAssignment listesinden,
+    [start, end] arasindaki her gun icin o padokta kayitli hayvan sayisini
+    Python'da hesaplar (gun basina DB sorgusu atmaz)."""
+    counts: dict[date, int] = {}
+    day = start
+    while day <= end:
+        counts[day] = sum(
+            1 for a in assignments if a.assigned_date <= day and (a.removed_date is None or a.removed_date >= day)
+        )
+        day += timedelta(days=1)
+    return counts
+
+
+def _overlap_days_count(start_a: date, end_a: date, start_b: date, end_b: date) -> int:
+    start = max(start_a, start_b)
+    end = min(end_a, end_b)
+    return (end - start).days + 1 if end >= start else 0
+
 
 BREEDING_AGE_MONTHS = 12
 POSTPARTUM_WAIT_DAYS = 45
@@ -740,36 +791,60 @@ class _FeedBucket:
     feed_item_name: str
     feed_type_name: str
     total_quantity_kg: float = 0.0
-    distribution_count: int = 0
+    active_days: int = 0
+
+
+def _rations_overlapping(db: Session, start_date: date, end_date: date) -> list[PenRation]:
+    stmt = (
+        select(PenRation)
+        .options(
+            joinedload(PenRation.pen),
+            joinedload(PenRation.items).joinedload(RationItem.feed_item).joinedload(FeedItem.feed_type),
+            joinedload(PenRation.items).joinedload(RationItem.unit),
+        )
+        .where(PenRation.start_date <= end_date, (PenRation.end_date.is_(None)) | (PenRation.end_date >= start_date))
+    )
+    return list(db.scalars(stmt).unique().all())
 
 
 def list_feed_consumption(db: Session, start_date: date, end_date: date) -> list[FeedConsumptionRead]:
-    """Belirtilen tarih araliginda (distribution_date) padok + yem urunu bazinda
-    dagitilan toplam yem miktari (kg'a normalize edilerek, ton kayitlari x1000)."""
-    stmt = (
-        select(FeedDistribution)
-        .options(
-            joinedload(FeedDistribution.pen),
-            joinedload(FeedDistribution.feed_item).joinedload(FeedItem.feed_type),
-            joinedload(FeedDistribution.unit),
+    """[start_date, end_date] ile kesisen rasyon donemlerinden, padok + yem
+    urunu bazinda toplam tuketimi turetir - gunluk dagitim kaydi YOKTUR
+    (bkz. app/modules/feed/models.py). Miktar, o gunku FIILI hayvan
+    sayisiyla (pen_assignments) carpilarak hesaplanir, hicbir yerde
+    saklanmaz (Anayasa m.4/m.5)."""
+    rations = _rations_overlapping(db, start_date, end_date)
+    if not rations:
+        return []
+
+    assignments_by_pen: dict[int, list[PenAssignment]] = {}
+    for pen_id in {r.pen_id for r in rations}:
+        assignments_by_pen[pen_id] = list(
+            db.scalars(select(PenAssignment).where(PenAssignment.pen_id == pen_id)).all()
         )
-        .where(FeedDistribution.distribution_date >= start_date, FeedDistribution.distribution_date <= end_date)
-    )
+
     buckets: dict[tuple[int, int], _FeedBucket] = {}
-    for dist in db.scalars(stmt).all():
-        key = (dist.pen_id, dist.feed_item_id)
-        bucket = buckets.get(key)
-        if bucket is None:
-            bucket = _FeedBucket(
-                pen_code=dist.pen.code,
-                pen_name=dist.pen.name,
-                feed_item_name=dist.feed_item.name,
-                feed_type_name=dist.feed_item.feed_type.name,
-            )
-            buckets[key] = bucket
-        quantity_kg = float(dist.quantity) * (1000 if dist.unit.code == FEED_TON_UNIT_CODE else 1)
-        bucket.total_quantity_kg += quantity_kg
-        bucket.distribution_count += 1
+    for ration in rations:
+        overlap_start = max(ration.start_date, start_date)
+        overlap_end = min(ration.end_date or end_date, end_date)
+        if overlap_start > overlap_end:
+            continue
+        headcounts = _daily_headcounts(assignments_by_pen[ration.pen_id], overlap_start, overlap_end)
+        active_days = sum(1 for count in headcounts.values() if count > 0)
+        for item in ration.items:
+            key = (ration.pen_id, item.feed_item_id)
+            bucket = buckets.get(key)
+            if bucket is None:
+                bucket = _FeedBucket(
+                    pen_code=ration.pen.code,
+                    pen_name=ration.pen.name,
+                    feed_item_name=item.feed_item.name,
+                    feed_type_name=item.feed_item.feed_type.name,
+                )
+                buckets[key] = bucket
+            per_animal_kg = _to_kg(item.daily_quantity_per_animal, item.unit.code)
+            bucket.total_quantity_kg += sum(per_animal_kg * count for count in headcounts.values())
+            bucket.active_days += active_days
 
     rows = [
         FeedConsumptionRead(
@@ -778,11 +853,76 @@ def list_feed_consumption(db: Session, start_date: date, end_date: date) -> list
             feed_item_name=b.feed_item_name,
             feed_type_name=b.feed_type_name,
             total_quantity_kg=round(b.total_quantity_kg, 2),
-            distribution_count=b.distribution_count,
+            active_days=b.active_days,
         )
         for b in buckets.values()
     ]
     rows.sort(key=lambda r: -r.total_quantity_kg)
+    return rows
+
+
+def list_feed_stock_status(db: Session, as_of_date: date | None = None) -> list[FeedStockStatusRead]:
+    """Her yem urunu icin: toplam alim - toplam tuketim (TUM rasyon
+    donemlerinden turetilir) = mevcut stok. Agirlikli ortalama birim
+    maliyetle (bkz. _feed_avg_cost_per_kg) carpilarak stok degeri (TL) de
+    hesaplanir - hicbiri saklanmaz (Anayasa m.5)."""
+    as_of_date = as_of_date or date.today()
+    rows: list[FeedStockStatusRead] = []
+
+    for feed_item in db.scalars(
+        select(FeedItem).options(joinedload(FeedItem.feed_type)).order_by(FeedItem.name)
+    ).all():
+        purchases = db.scalars(
+            select(FeedPurchase)
+            .options(joinedload(FeedPurchase.unit))
+            .where(FeedPurchase.feed_item_id == feed_item.id, FeedPurchase.purchase_date <= as_of_date)
+        ).all()
+        total_purchased_kg = sum(_to_kg(p.quantity, p.unit.code) for p in purchases)
+
+        ration_items = db.scalars(
+            select(RationItem)
+            .join(PenRation)
+            .options(
+                joinedload(RationItem.unit),
+                joinedload(RationItem.ration),
+            )
+            .where(RationItem.feed_item_id == feed_item.id, PenRation.start_date <= as_of_date)
+        ).unique().all()
+
+        total_consumed_kg = 0.0
+        pens_seen: dict[int, list[PenAssignment]] = {}
+        for item in ration_items:
+            ration = item.ration
+            overlap_end = min(ration.end_date or as_of_date, as_of_date)
+            if ration.start_date > overlap_end:
+                continue
+            if ration.pen_id not in pens_seen:
+                pens_seen[ration.pen_id] = list(
+                    db.scalars(select(PenAssignment).where(PenAssignment.pen_id == ration.pen_id)).all()
+                )
+            headcounts = _daily_headcounts(pens_seen[ration.pen_id], ration.start_date, overlap_end)
+            per_animal_kg = _to_kg(item.daily_quantity_per_animal, item.unit.code)
+            total_consumed_kg += sum(per_animal_kg * count for count in headcounts.values())
+
+        if total_purchased_kg == 0 and total_consumed_kg == 0:
+            continue
+
+        stock_kg = total_purchased_kg - total_consumed_kg
+        avg_cost = _feed_avg_cost_per_kg(db, feed_item.id, as_of_date)
+        stock_value_try = (Decimal(str(stock_kg)) * avg_cost) if avg_cost is not None else None
+
+        rows.append(
+            FeedStockStatusRead(
+                feed_item_name=feed_item.name,
+                feed_type_name=feed_item.feed_type.name,
+                total_purchased_kg=round(total_purchased_kg, 2),
+                total_consumed_kg=round(total_consumed_kg, 2),
+                stock_kg=round(stock_kg, 2),
+                avg_cost_per_kg_try=round(float(avg_cost), 2) if avg_cost is not None else None,
+                stock_value_try=_round_money(stock_value_try) if stock_value_try is not None else None,
+            )
+        )
+    rows.sort(key=lambda r: r.feed_item_name)
     return rows
 
 
@@ -1097,27 +1237,40 @@ class _PenEfficiencyBucket:
 
 def list_pen_efficiency(db: Session, start_date: date, end_date: date) -> list[PenEfficiencyRead]:
     """Padok bazinda yem donusum orani (FCR) ve kg canli agirlik basina
-    maliyet. Toplam yem (miktar + maliyet, TL/USD), padoga dagitilan
-    feed_distributions satirlarindan; toplam kilo artisi ise pen_assignments
-    araliklariyla KESISEN weight_records ciftlerinden (ilk/son tarti farki)
-    turetilir - bir hayvan donem icinde padok degistirse bile kilosu dogru
-    padoga yazilir (Anayasa m.4/m.5: hicbir yerde saklanmaz)."""
+    maliyet. Toplam yem (miktar + maliyet, TL/USD), [start_date, end_date]
+    ile kesisen rasyon donemlerinden (bkz. list_feed_consumption ile ayni
+    turetme mantigi); toplam kilo artisi ise pen_assignments araliklariyla
+    KESISEN weight_records ciftlerinden (ilk/son tarti farki) turetilir -
+    bir hayvan donem icinde padok degistirse bile kilosu dogru padoga
+    yazilir (Anayasa m.4/m.5: hicbir yerde saklanmaz)."""
     buckets: dict[int, _PenEfficiencyBucket] = {}
 
-    feed_stmt = (
-        select(FeedDistribution)
-        .options(joinedload(FeedDistribution.pen), joinedload(FeedDistribution.unit))
-        .where(FeedDistribution.distribution_date >= start_date, FeedDistribution.distribution_date <= end_date)
-    )
-    for dist in db.scalars(feed_stmt).all():
-        bucket = buckets.get(dist.pen_id)
+    rations = _rations_overlapping(db, start_date, end_date)
+    assignments_by_pen: dict[int, list[PenAssignment]] = {}
+    for pen_id in {r.pen_id for r in rations}:
+        assignments_by_pen[pen_id] = list(
+            db.scalars(select(PenAssignment).where(PenAssignment.pen_id == pen_id)).all()
+        )
+
+    for ration in rations:
+        overlap_start = max(ration.start_date, start_date)
+        overlap_end = min(ration.end_date or end_date, end_date)
+        if overlap_start > overlap_end:
+            continue
+        headcounts = _daily_headcounts(assignments_by_pen[ration.pen_id], overlap_start, overlap_end)
+        bucket = buckets.get(ration.pen_id)
         if bucket is None:
-            bucket = _PenEfficiencyBucket(code=dist.pen.code, name=dist.pen.name)
-            buckets[dist.pen_id] = bucket
-        bucket.total_feed_quantity_kg += float(dist.quantity) * (1000 if dist.unit.code == FEED_TON_UNIT_CODE else 1)
-        if dist.total_cost is not None:
-            bucket.total_feed_cost_try += dist.total_cost
-            bucket.total_feed_cost_usd += _try_to_usd(db, dist.total_cost, dist.distribution_date)
+            bucket = _PenEfficiencyBucket(code=ration.pen.code, name=ration.pen.name)
+            buckets[ration.pen_id] = bucket
+        for item in ration.items:
+            per_animal_kg = _to_kg(item.daily_quantity_per_animal, item.unit.code)
+            total_kg = sum(per_animal_kg * count for count in headcounts.values())
+            bucket.total_feed_quantity_kg += total_kg
+            avg_cost = _feed_avg_cost_per_kg(db, item.feed_item_id, end_date)
+            if avg_cost is not None:
+                cost_try = Decimal(str(total_kg)) * avg_cost
+                bucket.total_feed_cost_try += cost_try
+                bucket.total_feed_cost_usd += _try_to_usd(db, cost_try, end_date)
 
     assignment_stmt = select(PenAssignment).where(
         PenAssignment.assigned_date <= end_date,
@@ -1177,16 +1330,18 @@ def _feed_cost_share_for_animal(
     db: Session, animal_id: uuid.UUID, outcome_date: date, convert_usd: bool = True
 ) -> tuple[Decimal, Decimal]:
     """Bir hayvanin pen_assignments gecmisindeki (girisinden cikis tarihine
-    kadar) her gunku yem dagitimindan payini GUN AGIRLIKLI ORANTIYLA
-    hesaplar: her feed_distributions satiri, O GUN o padokta kayitli kac
-    hayvan varsa o kadar hayvana esit bolunur, bu hayvanin payi toplanir.
-    Cikistan (satis/olum) sonraki hicbir gun bu hesaba dahil edilmez.
+    kadar), o padoga uygulanan rasyon donemleriyle KESISEN gunler icin
+    payini hesaplar. Rasyon zaten HAYVAN BASINA tanimli oldugundan (bkz.
+    app/modules/feed/models.py RationItem), eski modeldeki gibi o gunku
+    padok doluluguna bolme YOKTUR - hayvanin payi direkt olarak
+    (rasyon kaleminin hayvan basina gunluk miktari x kesisen gun sayisi)
+    x agirlikli ortalama birim maliyettir. Cikistan (satis/olum) sonraki
+    hicbir gun bu hesaba dahil edilmez.
 
-    convert_usd=False ise USD kismi hesaplanmaz (0 doner) - her dagitim
-    satiri KENDI tarihinde ayri bir TCMB sorgusu tetikleyebildiginden, cok
-    sayida hayvan/kayit uzerinde tek bir istekte calisan raporlarda (surudeki
-    tum hayvanlari gezen raporlar) performans/timeout riski olusturur; öyle
-    bir ihtiyacta USD, tek bir toplu kurla ayrica hesaplanir (bkz. _asset_book_value)."""
+    convert_usd=False ise USD kismi hesaplanmaz (0 doner) - cok sayida
+    hayvan/kayit uzerinde tek bir istekte calisan raporlarda (surudeki tum
+    hayvanlari gezen raporlar) performans/timeout riski olusturur; öyle bir
+    ihtiyacta USD, tek bir toplu kurla ayrica hesaplanir (bkz. _asset_book_value)."""
     total_try = Decimal("0")
     total_usd = Decimal("0")
     assignments = list(db.scalars(select(PenAssignment).where(PenAssignment.animal_id == animal_id)).all())
@@ -1194,27 +1349,26 @@ def _feed_cost_share_for_animal(
         window_end = min(assignment.removed_date or outcome_date, outcome_date)
         if assignment.assigned_date > window_end:
             continue
-        dist_stmt = select(FeedDistribution).where(
-            FeedDistribution.pen_id == assignment.pen_id,
-            FeedDistribution.distribution_date >= assignment.assigned_date,
-            FeedDistribution.distribution_date <= window_end,
-            FeedDistribution.total_cost.isnot(None),
-        )
-        for dist in db.scalars(dist_stmt).all():
-            occupant_count = (
-                db.scalar(
-                    select(func.count(PenAssignment.id)).where(
-                        PenAssignment.pen_id == dist.pen_id,
-                        PenAssignment.assigned_date <= dist.distribution_date,
-                        (PenAssignment.removed_date.is_(None)) | (PenAssignment.removed_date >= dist.distribution_date),
-                    )
-                )
-                or 1
+        rations = db.scalars(
+            select(PenRation)
+            .options(joinedload(PenRation.items).joinedload(RationItem.unit))
+            .where(PenRation.pen_id == assignment.pen_id)
+        ).unique().all()
+        for ration in rations:
+            days = _overlap_days_count(
+                assignment.assigned_date, window_end, ration.start_date, ration.end_date or window_end
             )
-            share_try = dist.total_cost / occupant_count
-            total_try += share_try
-            if convert_usd:
-                total_usd += _try_to_usd(db, share_try, dist.distribution_date)
+            if days <= 0:
+                continue
+            for item in ration.items:
+                kg = Decimal(str(_to_kg(item.daily_quantity_per_animal, item.unit.code) * days))
+                avg_cost = _feed_avg_cost_per_kg(db, item.feed_item_id, outcome_date)
+                if avg_cost is None:
+                    continue
+                cost_try = kg * avg_cost
+                total_try += cost_try
+                if convert_usd:
+                    total_usd += _try_to_usd(db, cost_try, outcome_date)
     return total_try, total_usd
 
 
@@ -1337,14 +1491,27 @@ def list_herd_cost_summary(db: Session, start_date: date, end_date: date) -> lis
     eslestirmesinden farkli olarak, burada sadece SECILEN DONEMDE olusan
     tutarlar toplanir)."""
     feed_try = feed_usd = Decimal("0")
-    feed_stmt = select(FeedDistribution).where(
-        FeedDistribution.distribution_date >= start_date,
-        FeedDistribution.distribution_date <= end_date,
-        FeedDistribution.total_cost.isnot(None),
-    )
-    for dist in db.scalars(feed_stmt).all():
-        feed_try += dist.total_cost
-        feed_usd += _try_to_usd(db, dist.total_cost, dist.distribution_date)
+    rations = _rations_overlapping(db, start_date, end_date)
+    assignments_by_pen_for_cost: dict[int, list[PenAssignment]] = {}
+    for pen_id in {r.pen_id for r in rations}:
+        assignments_by_pen_for_cost[pen_id] = list(
+            db.scalars(select(PenAssignment).where(PenAssignment.pen_id == pen_id)).all()
+        )
+    for ration in rations:
+        overlap_start = max(ration.start_date, start_date)
+        overlap_end = min(ration.end_date or end_date, end_date)
+        if overlap_start > overlap_end:
+            continue
+        headcounts = _daily_headcounts(assignments_by_pen_for_cost[ration.pen_id], overlap_start, overlap_end)
+        for item in ration.items:
+            per_animal_kg = _to_kg(item.daily_quantity_per_animal, item.unit.code)
+            total_kg = sum(per_animal_kg * count for count in headcounts.values())
+            avg_cost = _feed_avg_cost_per_kg(db, item.feed_item_id, end_date)
+            if avg_cost is None:
+                continue
+            cost_try = Decimal(str(total_kg)) * avg_cost
+            feed_try += cost_try
+            feed_usd += _try_to_usd(db, cost_try, end_date)
 
     health_try = health_usd = Decimal("0")
     health_stmt = select(HealthEvent).where(

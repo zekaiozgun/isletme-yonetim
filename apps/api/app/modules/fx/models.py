@@ -2,7 +2,7 @@
 
 TCMB'nin herkese acik gunluk kur XML servisinden cekilen USD/TRY satis
 kurlarini tarih bazinda onbelleğe alir. Bu, hicbir maliyet tablosuna
-(Animal/FeedDistribution/HealthEvent) eklenen bir "fact" DEGILDIR - dis
+(Animal/FeedPurchase/HealthEvent) eklenen bir "fact" DEGILDIR - dis
 kaynakli referans veridir; raporlar USD karsiligini islem tarihi + bu
 tablo uzerinden turetir (bkz. service.get_usd_try_rate, Anayasa m.4/m.5).
 Bir tarihin kuru bir kez yazildiktan sonra degismez (tarihsel kur sabittir).

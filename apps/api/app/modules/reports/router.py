@@ -20,6 +20,7 @@ from app.modules.reports.schemas import (
     DashboardSummaryRead,
     DeathLossReportRead,
     FeedConsumptionRead,
+    FeedStockStatusRead,
     HealthEventReportRead,
     HerdCostSummaryRead,
     HerdFlowReportRead,
@@ -137,6 +138,11 @@ def feed_consumption(
     db: Session = Depends(get_db),
 ) -> list[FeedConsumptionRead]:
     return service.list_feed_consumption(db, start_date, end_date)
+
+
+@router.get("/feed-stock-status", response_model=list[FeedStockStatusRead])
+def feed_stock_status(as_of_date: date | None = None, db: Session = Depends(get_db)) -> list[FeedStockStatusRead]:
+    return service.list_feed_stock_status(db, as_of_date)
 
 
 @router.get("/calving-intervals", response_model=list[CalvingIntervalRead])

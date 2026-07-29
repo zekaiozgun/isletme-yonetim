@@ -18,19 +18,50 @@ class FeedItemRead(FeedItemCreate):
     updated_at: datetime
 
 
-class FeedDistributionCreate(BaseModel):
-    pen_id: int
+class FeedPurchaseCreate(BaseModel):
     feed_item_id: int
-    distribution_date: date
+    purchase_date: date
     quantity: Decimal
     unit_id: int
     total_cost: Decimal | None = None
     note: str | None = None
 
 
-class FeedDistributionRead(FeedDistributionCreate):
+class FeedPurchaseRead(FeedPurchaseCreate):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class RationItemCreate(BaseModel):
+    feed_item_id: int
+    daily_quantity_per_animal: Decimal
+    unit_id: int
+
+
+class RationItemRead(RationItemCreate):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+
+
+class PenRationCreate(BaseModel):
+    pen_id: int
+    start_date: date
+    note: str | None = None
+    items: list[RationItemCreate]
+
+
+class PenRationRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    pen_id: int
+    start_date: date
+    end_date: date | None
+    note: str | None
+    items: list[RationItemRead]
     created_at: datetime
     updated_at: datetime

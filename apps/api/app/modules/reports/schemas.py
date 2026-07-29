@@ -84,7 +84,19 @@ class FeedConsumptionRead(BaseModel):
     feed_item_name: str
     feed_type_name: str
     total_quantity_kg: float
-    distribution_count: int
+    # Rasyonun bu aralikta fiilen uygulandigi (padogun dolu oldugu) gun
+    # sayisi - eski "dagitim sayisi"nin karsiligi (bkz. models.py PenRation).
+    active_days: int
+
+
+class FeedStockStatusRead(BaseModel):
+    feed_item_name: str
+    feed_type_name: str
+    total_purchased_kg: float
+    total_consumed_kg: float
+    stock_kg: float
+    avg_cost_per_kg_try: float | None = None
+    stock_value_try: Decimal | None = None
 
 
 class HerdFlowReportRead(BaseModel):

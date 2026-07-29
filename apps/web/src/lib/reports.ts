@@ -252,7 +252,8 @@ export const reports: ReportConfig[] = [
   {
     slug: 'feed-consumption',
     title: 'Yem Tüketim Raporu',
-    description: 'Aralıkta dağıtılan yem miktarı, padok/yem tipi bazında.',
+    description:
+      'Aralıkta rasyon dönemleri ve padoğun fiilen dolu olduğu günlerden türetilen yem tüketimi, padok/yem tipi bazında.',
     endpoint: '/reports/feed-consumption',
     dateRange: true,
     columns: [
@@ -261,8 +262,26 @@ export const reports: ReportConfig[] = [
       { key: 'feed_item_name', label: 'Yem Ürünü' },
       { key: 'feed_type_name', label: 'Yem Tipi' },
       { key: 'total_quantity_kg', label: 'Toplam Miktar', format: formatKg, width: 'narrow' },
-      { key: 'distribution_count', label: 'Dağıtım Sayısı', width: 'narrow' },
+      { key: 'active_days', label: 'Aktif Gün', width: 'narrow' },
     ],
+  },
+  {
+    slug: 'feed-stock-status',
+    title: 'Yem Stok Durumu',
+    description:
+      'Yem ürünü bazında toplam alım, tüketim, mevcut stok (kg) ve ağırlıklı ortalama maliyetle hesaplanan stok değeri (TL).',
+    endpoint: '/reports/feed-stock-status',
+    singleDate: true,
+    columns: [
+      { key: 'feed_item_name', label: 'Yem Ürünü' },
+      { key: 'feed_type_name', label: 'Yem Tipi' },
+      { key: 'total_purchased_kg', label: 'Toplam Alım', format: formatKg, width: 'narrow' },
+      { key: 'total_consumed_kg', label: 'Toplam Tüketim', format: formatKg, width: 'narrow' },
+      { key: 'stock_kg', label: 'Mevcut Stok', format: formatKg, width: 'narrow' },
+      { key: 'avg_cost_per_kg_try', label: 'Ort. Maliyet (TL/kg)', format: formatCurrency, width: 'narrow' },
+      { key: 'stock_value_try', label: 'Stok Değeri (TL)', format: formatCurrency, width: 'narrow' },
+    ],
+    rowHighlight: (row) => typeof row.stock_kg === 'number' && row.stock_kg < 0,
   },
   {
     slug: 'calving-intervals',

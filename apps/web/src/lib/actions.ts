@@ -154,3 +154,53 @@ export async function cancelAnimalEntryAction(
   revalidatePath(`/animals/${animalId}`);
   redirect('/animals');
 }
+
+export interface RationItemInput {
+  feedItemId: number;
+  dailyQuantityPerAnimal: number;
+  unitId: number;
+}
+
+/** Yeni bir padok rasyonu (donemi) baslatir - backend, ayni padogun hala
+ * acik onceki rasyonunu otomatik kapatir (bkz. app/modules/feed/service.py
+ * create_pen_ration). Gunluk yem dagitim kaydi YOKTUR (bkz.
+ * components/RationForm.tsx). */
+export async function createPenRationAction(
+  penId: number,
+  startDate: string,
+  note: string,
+  items: RationItemInput[]
+): Promise<{ error?: string }> {
+  const result = await apiPost('/feed/rations', {
+    pen_id: penId,
+    start_date: startDate,
+    note: note.trim() || null,
+    items: items.map((item) => ({
+      feed_item_id: item.feedItemId,
+      daily_quantity_per_animal: item.dailyQuantityPerAnimal,
+      unit_id: item.unitId,
+    })),
+  });
+
+  if (result.error !== undefined) {
+    return { error: result.error };
+  }
+
+  revalidatePath('/pen-rations');
+  return {};
+}
+
+export async function deletePenRationAction(
+  rationId: number,
+  _prevState: FormState,
+  _formData: FormData
+): Promise<FormState> {
+  const result = await apiDelete(`/feed/rations/${rationId}`);
+
+  if (result.error !== undefined) {
+    return { error: result.error };
+  }
+
+  revalidatePath('/pen-rations');
+  redirect('/pen-rations');
+}
