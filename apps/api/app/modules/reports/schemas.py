@@ -61,6 +61,10 @@ class CalvingRead(BaseModel):
     mother_id: uuid.UUID | None = None
     mother_tag_number: str | None = None
     father_sire_name: str | None = None
+    # Buzaginin GUNCEL statusu (Aktif/Satildi/Oldu/vb.) - dogum aninda
+    # degil, rapor calistirildigi andaki durumu yansitir (Anayasa m.8).
+    status_name: str
+    note: str | None = None
 
 
 class DeathLossReportRead(BaseModel):

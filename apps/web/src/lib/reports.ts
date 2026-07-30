@@ -42,6 +42,10 @@ export interface ReportConfig {
    * (örn. doğum sonrası bekleme süresi gibi anlık görünmeyebilecek
    * kuralları) kullanıcıya açık şekilde anlatmak için. */
   helpNote?: string;
+  /** Belirtilirse, tablonun üstünde bu sütuna göre gruplanmış kayıt
+   * sayısı özeti gösterilir (örn. "Toplam: 45 · Aktif: 40 · Öldü: 3 · Satıldı: 2").
+   * Sütunun kendi label'ı grup adı olarak kullanılır. */
+  groupSummaryKey?: string;
 }
 
 function formatDays(value: unknown): string {
@@ -119,6 +123,7 @@ export const reports: ReportConfig[] = [
       'Belirtilen tarih aralığında doğan hayvanlar; cinsiyet, doğum tipi (tekiz/ikiz) ve doğum ağırlığı ile birlikte. Güç doğum (distoni) vakaları vurgulu.',
     endpoint: '/reports/calving',
     dateRange: true,
+    groupSummaryKey: 'status_name',
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
       { key: 'mother_tag_number', label: 'Anne/Baba', format: formatParentage, width: 'narrow' },
@@ -127,6 +132,8 @@ export const reports: ReportConfig[] = [
       { key: 'birth_type_name', label: 'Doğum Şekli', format: formatPlain, width: 'narrow' },
       { key: 'litter_type_name', label: 'Doğum Tipi', format: formatPlain, width: 'narrow' },
       { key: 'birth_weight_kg', label: 'Doğum Ağırlığı', format: formatKg, width: 'narrow' },
+      { key: 'status_name', label: 'Son Durum', width: 'narrow' },
+      { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
     ],
     rowHighlight: (row) => Boolean(row.is_difficult_birth),
   },

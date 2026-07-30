@@ -484,6 +484,7 @@ def list_calvings(db: Session, start_date: date, end_date: date) -> list[Calving
             joinedload(Animal.litter_type),
             joinedload(Animal.mother),
             joinedload(Animal.father_sire),
+            joinedload(Animal.status),
         )
         .where(Animal.birth_date.isnot(None), Animal.birth_date >= start_date, Animal.birth_date <= end_date)
         .order_by(Animal.birth_date, Animal.tag_number)
@@ -505,6 +506,8 @@ def list_calvings(db: Session, start_date: date, end_date: date) -> list[Calving
                 mother_id=animal.mother_id,
                 mother_tag_number=animal.mother.tag_number if animal.mother else None,
                 father_sire_name=animal.father_sire.name if animal.father_sire else None,
+                status_name=animal.status.name,
+                note=animal.note,
             )
         )
     return rows

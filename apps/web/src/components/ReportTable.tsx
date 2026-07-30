@@ -21,6 +21,29 @@ function widthClass(width: ReportConfig['columns'][number]['width']): string {
   return 'whitespace-nowrap px-3 py-2';
 }
 
+// report.groupSummaryKey belirtilen sutunun degerine gore kayit sayisini
+// gruplar (orn. statu bazinda kac buzagi) - arama kutusundan bagimsiz,
+// her zaman TAM veri setinin toplamini gosterir.
+function GroupSummary({ rows, groupKey }: { rows: ApiRecord[]; groupKey: string }) {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const raw = row[groupKey];
+    const value = raw === null || raw === undefined || raw === '' ? '—' : String(raw);
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  const entries = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-2 text-sm print:mb-2">
+      <span className="rounded-full bg-slate-900 px-3 py-1 font-medium text-white">Toplam: {rows.length}</span>
+      {entries.map(([value, count]) => (
+        <span key={value} className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
+          {value}: {count}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function ReportTable({ report, rows }: { report: ReportConfig; rows: ApiRecord[] }) {
   if (rows.length === 0) {
     return <p className="text-sm text-slate-500">Bu raporda şu anda gösterilecek kayıt yok.</p>;
@@ -37,65 +60,68 @@ export function ReportTable({ report, rows }: { report: ReportConfig; rows: ApiR
     .filter((index) => index !== -1);
 
   return (
-    <TableSearch
-      placeholder={`${report.title} içinde ara...`}
-      actions={
-        <>
-          <PdfExportButton
-            title={report.title}
-            description={report.description}
-            columns={pdfColumns}
-            rows={csvRows}
-            highlightedRows={highlightedRows}
-            filename={`${report.slug}.pdf`}
-          />
-          <CsvExportButton headers={csvHeaders} rows={csvRows} filename={`${report.slug}.csv`} />
-        </>
-      }
-    >
-      <div className="overflow-x-auto rounded border border-slate-200 print:overflow-visible print:rounded-none print:border-none">
-        <table className="min-w-full divide-y divide-slate-200 text-sm print:w-full print:text-[10px]">
-          <thead className="bg-slate-50 print:bg-transparent">
-            <tr>
-              <th className="whitespace-nowrap px-[1ch] py-2 text-left font-medium text-slate-600">#</th>
-              {report.columns.map((column) => (
-                <th
-                  key={column.key}
-                  className={`text-left font-medium text-slate-600 ${widthClass(column.width)}`}
-                >
-                  {column.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {rows.map((row, index) => {
-              const highlighted = report.rowHighlight?.(row) ?? false;
-              const cellValues = report.columns.map((column) => formatCell(row, column));
-              const searchText = cellValues.join(' ').toLocaleLowerCase('tr-TR');
-              const rowBg = highlighted ? 'bg-amber-50' : index % 2 === 1 ? 'bg-slate-50/70' : undefined;
-              return (
-                <tr key={String(row.animal_id ?? row.pen_id ?? row.breeding_event_id ?? index)} data-search={searchText} className={rowBg}>
-                  <td
-                    className={`whitespace-nowrap px-[1ch] py-2 ${highlighted ? 'font-medium text-amber-900' : 'text-slate-500'}`}
+    <>
+      {report.groupSummaryKey && <GroupSummary rows={rows} groupKey={report.groupSummaryKey} />}
+      <TableSearch
+        placeholder={`${report.title} içinde ara...`}
+        actions={
+          <>
+            <PdfExportButton
+              title={report.title}
+              description={report.description}
+              columns={pdfColumns}
+              rows={csvRows}
+              highlightedRows={highlightedRows}
+              filename={`${report.slug}.pdf`}
+            />
+            <CsvExportButton headers={csvHeaders} rows={csvRows} filename={`${report.slug}.csv`} />
+          </>
+        }
+      >
+        <div className="overflow-x-auto rounded border border-slate-200 print:overflow-visible print:rounded-none print:border-none">
+          <table className="min-w-full divide-y divide-slate-200 text-sm print:w-full print:text-[10px]">
+            <thead className="bg-slate-50 print:bg-transparent">
+              <tr>
+                <th className="whitespace-nowrap px-[1ch] py-2 text-left font-medium text-slate-600">#</th>
+                {report.columns.map((column) => (
+                  <th
+                    key={column.key}
+                    className={`text-left font-medium text-slate-600 ${widthClass(column.width)}`}
                   >
-                    {index + 1}
-                  </td>
-                  {report.columns.map((column, columnIndex) => (
+                    {column.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {rows.map((row, index) => {
+                const highlighted = report.rowHighlight?.(row) ?? false;
+                const cellValues = report.columns.map((column) => formatCell(row, column));
+                const searchText = cellValues.join(' ').toLocaleLowerCase('tr-TR');
+                const rowBg = highlighted ? 'bg-amber-50' : index % 2 === 1 ? 'bg-slate-50/70' : undefined;
+                return (
+                  <tr key={String(row.animal_id ?? row.pen_id ?? row.breeding_event_id ?? index)} data-search={searchText} className={rowBg}>
                     <td
-                      key={column.key}
-                      title={column.width === 'wide' ? cellValues[columnIndex] : undefined}
-                      className={`${widthClass(column.width)} ${highlighted ? 'font-medium text-amber-900' : 'text-slate-700'}`}
+                      className={`whitespace-nowrap px-[1ch] py-2 ${highlighted ? 'font-medium text-amber-900' : 'text-slate-500'}`}
                     >
-                      {cellValues[columnIndex]}
+                      {index + 1}
                     </td>
-                  ))}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </TableSearch>
+                    {report.columns.map((column, columnIndex) => (
+                      <td
+                        key={column.key}
+                        title={column.width === 'wide' ? cellValues[columnIndex] : undefined}
+                        className={`${widthClass(column.width)} ${highlighted ? 'font-medium text-amber-900' : 'text-slate-700'}`}
+                      >
+                        {cellValues[columnIndex]}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </TableSearch>
+    </>
   );
 }
