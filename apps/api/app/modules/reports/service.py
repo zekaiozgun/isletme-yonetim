@@ -370,7 +370,7 @@ def list_bred_animals(db: Session, today: date | None = None) -> list[BredAnimal
             check_status = "Tohumlu"
             check_due = days_since_service >= PREGNANCY_CHECK_DUE_DAYS
         elif classification.kind == "suspicious":
-            check_status = "Şüpheli (Tekrar Kontrol Gerekli)"
+            check_status = "Şüpheli"
             check_due = True
         else:
             check_status = "Gebe"

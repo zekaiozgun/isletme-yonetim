@@ -11,25 +11,22 @@ function formatCell(row: ApiRecord, column: ReportConfig['columns'][number]): st
   return String(raw);
 }
 
-// A4 baskıya uygun mizanpaj: dar sütunlar (tarih/yaş/sayı) sıkışıklık
-// hissi vermeyecek 1 karakterlik dolguyla dar tutulur; geniş sütunlar
-// (serbest metin) tek satırda kalıp taşarsa "…" ile kesilir (title
-// attribute'u üzerine gelince tam metni gösterir - bkz. ReportTable altı).
+// A4 baskıya uygun mizanpaj: sütunlar arası boşluk her zaman ~1ch dolgu
+// (iki bitişik sütun arası toplam ~2ch) ile dar tutulur - dar sütunlar
+// (tarih/yaş/sayı) sıkışıklık hissi vermez; geniş sütunlar (serbest
+// metin) tek satırda kalıp taşarsa "…" ile kesilir (title attribute'u
+// üzerine gelince tam metni gösterir - bkz. ReportTable altı).
 function widthClass(width: ReportConfig['columns'][number]['width']): string {
   if (width === 'narrow') return 'whitespace-nowrap px-[1ch] py-2';
-  if (width === 'wide') return 'max-w-md truncate px-3 py-2';
-  return 'whitespace-nowrap px-3 py-2';
+  if (width === 'wide') return 'max-w-lg truncate px-[1ch] py-2';
+  return 'whitespace-nowrap px-[1ch] py-2';
 }
 
 // Başlıklar - veri hücrelerinin aksine - tek satıra sığmıyorsa iki satıra
 // SARILIR (nowrap yok) - böylece uzun bir etiket (örn. "Tohumlama Tarihi")
 // altındaki kısa değerleri (örn. "29/04/2026") gereksiz yere
 // genişletmez, sütun asıl içeriğe göre dar kalabilir.
-function headerClass(width: ReportConfig['columns'][number]['width']): string {
-  if (width === 'narrow') return 'px-[1ch] py-2 leading-tight';
-  if (width === 'wide') return 'px-3 py-2 leading-tight';
-  return 'px-3 py-2 leading-tight';
-}
+const HEADER_CLASS = 'px-[1ch] py-2 leading-tight';
 
 // report.groupSummaryKey belirtilen sutunun degerine gore kayit sayisini
 // gruplar (orn. statu bazinda kac buzagi) - arama kutusundan bagimsiz,
@@ -91,13 +88,10 @@ export function ReportTable({ report, rows }: { report: ReportConfig; rows: ApiR
         <div className="overflow-x-auto rounded border border-slate-200 print:overflow-visible print:rounded-none print:border-none">
           <table className="min-w-full divide-y divide-slate-200 text-sm print:w-full print:text-[10px]">
             <thead className="bg-slate-50 print:bg-transparent">
-              <tr>
+              <tr className="divide-x divide-slate-200">
                 <th className="px-[1ch] py-2 text-left font-medium leading-tight text-slate-600">#</th>
                 {report.columns.map((column) => (
-                  <th
-                    key={column.key}
-                    className={`text-left font-medium text-slate-600 ${headerClass(column.width)}`}
-                  >
+                  <th key={column.key} className={`text-left font-medium text-slate-600 ${HEADER_CLASS}`}>
                     {column.label}
                   </th>
                 ))}
@@ -110,7 +104,11 @@ export function ReportTable({ report, rows }: { report: ReportConfig; rows: ApiR
                 const searchText = cellValues.join(' ').toLocaleLowerCase('tr-TR');
                 const rowBg = highlighted ? 'bg-amber-50' : index % 2 === 1 ? 'bg-slate-50/70' : undefined;
                 return (
-                  <tr key={String(row.animal_id ?? row.pen_id ?? row.breeding_event_id ?? index)} data-search={searchText} className={rowBg}>
+                  <tr
+                    key={String(row.animal_id ?? row.pen_id ?? row.breeding_event_id ?? index)}
+                    data-search={searchText}
+                    className={`divide-x divide-slate-100 ${rowBg ?? ''}`}
+                  >
                     <td
                       className={`whitespace-nowrap px-[1ch] py-2 ${highlighted ? 'font-medium text-amber-900' : 'text-slate-500'}`}
                     >
