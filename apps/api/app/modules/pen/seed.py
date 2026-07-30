@@ -11,18 +11,18 @@ from app.modules.pen.lookups import PenAssignmentReason, PenType
 
 SEED_DATA: dict[type, list[tuple[str, str]]] = {
     PenType: [
-        ("DOGUM", "Dogum Padoku"),
+        ("DOGUM", "Doğum Padoku"),
         ("BESI", "Besi Padoku"),
         ("KARANTINA", "Karantina"),
-        ("HASTANE", "Hastane Padogu"),
+        ("HASTANE", "Hastane Padoku"),
         ("BEKLEME", "Bekleme Padoku"),
     ],
     PenAssignmentReason: [
-        ("BUYUME", "Buyume"),
-        ("SAGLIK", "Saglik"),
-        ("CINSIYET_AYRIMI", "Cinsiyet Ayrimi"),
-        ("DOGUM", "Dogum"),
-        ("DIGER", "Diger"),
+        ("BUYUME", "Büyüme"),
+        ("SAGLIK", "Sağlık"),
+        ("CINSIYET_AYRIMI", "Cinsiyet Ayrımı"),
+        ("DOGUM", "Doğum"),
+        ("DIGER", "Diğer"),
     ],
 }
 

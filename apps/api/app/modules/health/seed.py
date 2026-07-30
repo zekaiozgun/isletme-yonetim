@@ -11,17 +11,17 @@ from app.modules.health.lookups import Disease, DosageUnit, HealthEventType, Med
 
 SEED_DATA: dict[type, list[tuple[str, str]]] = {
     HealthEventType: [
-        ("ASILAMA", "Asilama"),
+        ("ASILAMA", "Aşılama"),
         ("TEDAVI", "Tedavi"),
         ("MUAYENE", "Muayene"),
-        ("HASTALIK_BILDIRIMI", "Hastalik Bildirimi"),
+        ("HASTALIK_BILDIRIMI", "Hastalık Bildirimi"),
     ],
     MedicationType: [
-        ("ASI", "Asi"),
+        ("ASI", "Aşı"),
         ("ANTIBIYOTIK", "Antibiyotik"),
-        ("PARAZIT_ILACI", "Parazit Ilaci"),
+        ("PARAZIT_ILACI", "Parazit İlacı"),
         ("VITAMIN_MINERAL", "Vitamin / Mineral"),
-        ("DIGER", "Diger"),
+        ("DIGER", "Diğer"),
     ],
     DosageUnit: [
         ("ML", "ml"),

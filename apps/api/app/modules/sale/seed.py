@@ -11,9 +11,9 @@ from app.modules.sale.lookups import SaleType
 
 SEED_DATA: dict[type, list[tuple[str, str]]] = {
     SaleType: [
-        ("CANLI", "Canli Satis"),
-        ("KESIM", "Kesim Icin Satis"),
-        ("DAMIZLIK", "Damizlik Satis"),
+        ("CANLI", "Canlı Satış"),
+        ("KESIM", "Kesim İçin Satış"),
+        ("DAMIZLIK", "Damızlık Satış"),
     ],
 }
 

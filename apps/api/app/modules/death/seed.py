@@ -11,10 +11,10 @@ from app.modules.death.lookups import DisposalMethod
 
 SEED_DATA: dict[type, list[tuple[str, str]]] = {
     DisposalMethod: [
-        ("GOMME", "Gomme"),
+        ("GOMME", "Gömme"),
         ("RENDERING", "Rendering"),
         ("YAKMA", "Yakma"),
-        ("DIGER", "Diger"),
+        ("DIGER", "Diğer"),
     ],
 }
 

@@ -11,7 +11,7 @@ from app.modules.breeding.lookups import PregnancyCheckMethod, PregnancyResult, 
 
 SEED_DATA: dict[type, list[tuple[str, str]]] = {
     ServiceMethod: [
-        ("DOGAL", "Dogal Asim"),
+        ("DOGAL", "Doğal Aşım"),
         ("SUNI_TOHUMLAMA", "Suni Tohumlama"),
         ("EMBRIYO_TRANSFERI", "Embriyo Transferi"),
     ],
@@ -22,8 +22,8 @@ SEED_DATA: dict[type, list[tuple[str, str]]] = {
     ],
     PregnancyResult: [
         ("GEBE", "Gebe"),
-        ("BOS", "Bos"),
-        ("SUPHELI", "Supheli"),
+        ("BOS", "Boş"),
+        ("SUPHELI", "Şüpheli"),
     ],
 }
 

@@ -12,8 +12,8 @@ from app.modules.weight.lookups import WeighingMethod
 SEED_DATA: dict[type, list[tuple[str, str]]] = {
     WeighingMethod: [
         ("DIJITAL", "Dijital Kantar"),
-        ("ELLE", "Elle Tarti"),
-        ("BANT", "Bant Olcumu (Tahmini)"),
+        ("ELLE", "Elle Tartı"),
+        ("BANT", "Bant Ölçümü (Tahmini)"),
     ],
 }
 
