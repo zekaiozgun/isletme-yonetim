@@ -89,26 +89,14 @@ function formatDaysUntilCalving(value: unknown): string {
   return `${value} gün`;
 }
 
-/** Tohumlu ve Gebe Hayvanlar raporundaki "Uyarı" sütunu iki bağımsız
- * durumu birleştirir: kontrol zamanı gelmiş ama henüz kontrol edilmemiş
- * (Kontrol Bekliyor + pregnancy_check_due) ve önceden gebeydi
- * (returned_from_pregnancy) - "Şüpheli" satırlarda zaten Durum sütunu
- * tekrar kontrol gerektiğini söylediği için burada tekrarlanmaz. Kısa ve
- * kırmızı (bkz. bredAnimalWarningClass) tutulur - satır zaten amber
- * vurgulu olduğundan uzun bir uyarı metni göze çarpmıyordu. */
-function formatBreedingWarning(value: unknown, row: ApiRecord): string {
-  const warnings: string[] = [];
-  if (row.check_status === 'Kontrol Bekliyor' && row.pregnancy_check_due === true) {
-    warnings.push('Kontrol!');
-  }
-  if (value === true) warnings.push('Önceden Gebeydi');
-  return warnings.length > 0 ? warnings.join(' · ') : '—';
-}
-
-function bredAnimalWarningClass(row: ApiRecord): string {
-  const checkDue = row.check_status === 'Kontrol Bekliyor' && row.pregnancy_check_due === true;
-  const returnedFromPregnancy = row.returned_from_pregnancy === true;
-  return checkDue || returnedFromPregnancy ? 'font-bold text-red-600' : 'text-slate-700';
+/** Tohumlu ve Gebe Hayvanlar raporunda ayrı bir "Uyarı" sütunu yerine,
+ * dikkat gerektiren satırlarda (kontrol zamanı gelmiş ya da önceden
+ * gebeydi çelişkisi var) doğrudan Durum hücresini kırmızı/kalın gösterir
+ * - satır zaten amber vurgulu olduğundan ayrı bir metin sütunu
+ * gerekmiyor, bu tek başına yeterince göze batıyor. */
+function bredAnimalStatusClass(row: ApiRecord): string {
+  const needsAttention = row.pregnancy_check_due === true || row.returned_from_pregnancy === true;
+  return needsAttention ? 'font-bold text-red-600' : 'text-slate-700';
 }
 
 /** Anne (value) ve Baba (row.father_sire_name) küpe/isim bilgisini tek
@@ -378,23 +366,16 @@ export const reports: ReportConfig[] = [
     endpoint: '/reports/bred-animals',
     groupSummaryKey: 'check_status',
     helpNote:
-      'Bir hayvan doğurduğunda (buzağısı sisteme anne bilgisiyle kaydedildiğinde) bu listeden ANINDA çıkar - ayrıca bir işlem yapmanıza gerek yoktur. "Tahmini Doğum" tarihi, henüz gebelik kontrolü yapılmamış ya da "Şüpheli" çıkmış satırlarda da gösterilir - bu satırlarda kontrol sonucu HENÜZ ONAYLANMAMIŞTIR, tarih sadece tohumlama tarihine dayalı bir projeksiyondur. Uyarı sütunu iki farklı durumu gösterebilir: "⚠ Kontrol Zamanı Geldi" (kontrol bekleyen bir hayvan için süre doldu) ve "⚠ Önceden Gebeydi" (bu tohumlamadan önce aynı döngüde onaylı bir gebelik vardı ama artık geçerli değil - sebebi düşük mü, yanlış giriş mi, not alanına elle kaydedilmelidir).',
+      'Bir hayvan doğurduğunda (buzağısı sisteme anne bilgisiyle kaydedildiğinde) bu listeden ANINDA çıkar - ayrıca bir işlem yapmanıza gerek yoktur. "Tahmini Doğum" tarihi, henüz gebelik kontrolü yapılmamış ya da "Şüpheli" çıkmış satırlarda da gösterilir - bu satırlarda kontrol sonucu HENÜZ ONAYLANMAMIŞTIR, tarih sadece tohumlama tarihine dayalı bir projeksiyondur. Durum sütunu kırmızı/kalın görünüyorsa dikkat gerekir: kontrol zamanı gelmiş (Tohumlu, süre dolmuş, ya da Şüpheli) ya da bu tohumlamadan önce aynı döngüde onaylı bir gebelik vardı ama artık geçerli değil (sebebi düşük mü, yanlış giriş mi, not alanına elle kaydedilmelidir).',
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
       { key: 'service_date', label: 'Tohumlama Tarihi', format: formatDate, width: 'narrow' },
       { key: 'service_method_name', label: 'Yöntem', width: 'narrow' },
       { key: 'days_since_service', label: 'Geçen Süre', format: formatDays, width: 'narrow' },
-      { key: 'check_status', label: 'Durum', width: 'narrow' },
+      { key: 'check_status', label: 'Durum', width: 'narrow', cellClassName: bredAnimalStatusClass },
       { key: 'expected_calving_date', label: 'Tahmini Doğum', format: formatDate, width: 'narrow' },
       { key: 'days_until_calving', label: 'Doğuma Kalan', format: formatDaysUntilCalving, width: 'narrow' },
       { key: 'service_attempt_count', label: 'Deneme Sayısı', width: 'narrow' },
-      {
-        key: 'returned_from_pregnancy',
-        label: 'Uyarı',
-        format: formatBreedingWarning,
-        width: 'narrow',
-        cellClassName: bredAnimalWarningClass,
-      },
       { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
     ],
     rowHighlight: (row) => Boolean(row.pregnancy_check_due) || row.returned_from_pregnancy === true,

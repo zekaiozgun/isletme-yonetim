@@ -367,7 +367,7 @@ def list_bred_animals(db: Session, today: date | None = None) -> list[BredAnimal
         assert event is not None
         days_since_service = (today - event.service_date).days
         if classification.kind == "pending":
-            check_status = "Kontrol Bekliyor"
+            check_status = "Tohumlu"
             check_due = days_since_service >= PREGNANCY_CHECK_DUE_DAYS
         elif classification.kind == "suspicious":
             check_status = "Şüpheli (Tekrar Kontrol Gerekli)"
@@ -403,7 +403,7 @@ def list_bred_animals(db: Session, today: date | None = None) -> list[BredAnimal
     def sort_key(row: BredAnimalRead) -> tuple[int, object]:
         if row.pregnancy_check_due and row.check_status != "Gebe":
             return (0, -row.days_since_service)
-        if row.check_status == "Kontrol Bekliyor":
+        if row.check_status == "Tohumlu":
             return (1, row.service_date)
         if row.check_status == "Gebe":
             return (2, row.service_date)
