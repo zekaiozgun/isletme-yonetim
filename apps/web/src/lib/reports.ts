@@ -99,6 +99,17 @@ function bredAnimalStatusClass(row: ApiRecord): string {
   return needsAttention ? 'font-bold text-red-600' : 'text-slate-700';
 }
 
+/** Tohumlu ve Gebe Hayvanlar raporunda sütun genişliğini sınırlı tutmak
+ * için ServiceMethod adının kısaltılmış hali - altta yatan lookup ismini
+ * (ör. Aşım/Tohumlama Kayıtları formundaki seçenek) değiştirmez, sadece
+ * bu raporun görünümüne özeldir. */
+function formatServiceMethodShort(value: unknown): string {
+  if (value === 'Doğal Aşım') return 'Aşım';
+  if (value === 'Suni Tohumlama') return 'Suni T.';
+  if (value === 'Embriyo Transferi') return 'Embriyo T.';
+  return typeof value === 'string' && value ? value : '—';
+}
+
 /** Anne (value) ve Baba (row.father_sire_name) küpe/isim bilgisini tek
  * sütunda "anne / baba" olarak gösterir - iki ayrı sütuna göre hem yer
  * kazandırır hem de eksik tarafı ("1234 / —") tek bakışta fark ettirir. */
@@ -369,13 +380,13 @@ export const reports: ReportConfig[] = [
       'Bir hayvan doğurduğunda (buzağısı sisteme anne bilgisiyle kaydedildiğinde) bu listeden ANINDA çıkar - ayrıca bir işlem yapmanıza gerek yoktur. "Tahmini Doğum" tarihi, henüz gebelik kontrolü yapılmamış ya da "Şüpheli" çıkmış satırlarda da gösterilir - bu satırlarda kontrol sonucu HENÜZ ONAYLANMAMIŞTIR, tarih sadece tohumlama tarihine dayalı bir projeksiyondur. Durum sütunu kırmızı/kalın görünüyorsa dikkat gerekir: kontrol zamanı gelmiş (Tohumlu, süre dolmuş, ya da Şüpheli) ya da bu tohumlamadan önce aynı döngüde onaylı bir gebelik vardı ama artık geçerli değil (sebebi düşük mü, yanlış giriş mi, not alanına elle kaydedilmelidir).',
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
-      { key: 'service_date', label: 'Tohumlama Tarihi', format: formatDate, width: 'narrow' },
-      { key: 'service_method_name', label: 'Yöntem', width: 'narrow' },
-      { key: 'days_since_service', label: 'Geçen Süre', format: formatDays, width: 'narrow' },
+      { key: 'service_date', label: 'Tohum Tar.', format: formatDate, width: 'narrow' },
+      { key: 'service_method_name', label: 'Yöntem', format: formatServiceMethodShort, width: 'narrow' },
+      { key: 'days_since_service', label: 'G.Süre', format: formatDays, width: 'narrow' },
       { key: 'check_status', label: 'Durum', width: 'narrow', cellClassName: bredAnimalStatusClass },
-      { key: 'expected_calving_date', label: 'Tahmini Doğum', format: formatDate, width: 'narrow' },
-      { key: 'days_until_calving', label: 'Doğuma Kalan', format: formatDaysUntilCalving, width: 'narrow' },
-      { key: 'service_attempt_count', label: 'Deneme Sayısı', width: 'narrow' },
+      { key: 'expected_calving_date', label: 'Tah.Tarih', format: formatDate, width: 'narrow' },
+      { key: 'days_until_calving', label: 'D.K.Gün', format: formatDaysUntilCalving, width: 'narrow' },
+      { key: 'service_attempt_count', label: 'Den.Sayı', width: 'narrow' },
       { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
     ],
     rowHighlight: (row) => Boolean(row.pregnancy_check_due) || row.returned_from_pregnancy === true,
