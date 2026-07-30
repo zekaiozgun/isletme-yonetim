@@ -43,6 +43,9 @@ class BreedingCandidateRead(BaseModel):
     # _returned_from_pregnancy). Sistem SEBEBI (dusuk mu, yanlis giris mi)
     # TAHMIN ETMEZ, sadece celiskiyi gorunur kilar.
     returned_from_pregnancy: bool = False
+    # En son gebelik kontrolune girilen not (PregnancyCheck.note) - orn.
+    # returned_from_pregnancy'nin sebebini kullanicinin elle acikladigi yer.
+    note: str | None = None
 
 
 class CalvingRead(BaseModel):
@@ -57,6 +60,7 @@ class CalvingRead(BaseModel):
     birth_weight_kg: Decimal | None = None
     mother_id: uuid.UUID | None = None
     mother_tag_number: str | None = None
+    father_sire_name: str | None = None
 
 
 class DeathLossReportRead(BaseModel):
@@ -129,6 +133,7 @@ class WeightGainRead(BaseModel):
     days_between: int
     weight_gain_kg: Decimal
     average_daily_gain_kg: float
+    note: str | None = None
 
 
 class HealthEventReportRead(BaseModel):
@@ -155,6 +160,7 @@ class PregnancyCheckResultRead(BaseModel):
     method_name: str
     result_name: str
     is_suspicious: bool
+    note: str | None = None
 
 
 class BreedingPerformanceRead(BaseModel):
@@ -186,6 +192,7 @@ class BredAnimalRead(BaseModel):
     # tohumlamada "Gebe" onayi vardi (bkz. BreedingCandidateRead'deki
     # ayni alanin aciklamasi / _returned_from_pregnancy).
     returned_from_pregnancy: bool = False
+    note: str | None = None
 
 
 class PregnantAnimalRead(BaseModel):
@@ -216,6 +223,8 @@ class YoungAnimalRead(BaseModel):
     age_months: int | None = None
     age_days: int | None = None
     mother_tag_number: str | None = None
+    father_sire_name: str | None = None
+    note: str | None = None
 
 
 class PenOccupancyRead(BaseModel):

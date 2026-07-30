@@ -76,6 +76,16 @@ function formatReturnedFromPregnancy(value: unknown): string {
   return value === true ? '⚠ Önceden Gebeydi' : '—';
 }
 
+/** Anne (value) ve Baba (row.father_sire_name) küpe/isim bilgisini tek
+ * sütunda "anne / baba" olarak gösterir - iki ayrı sütuna göre hem yer
+ * kazandırır hem de eksik tarafı ("1234 / —") tek bakışta fark ettirir. */
+function formatParentage(value: unknown, row: ApiRecord): string {
+  const mother = typeof value === 'string' && value ? value : null;
+  const father = typeof row.father_sire_name === 'string' && row.father_sire_name ? row.father_sire_name : null;
+  if (!mother && !father) return '—';
+  return `${mother ?? '—'} / ${father ?? '—'}`;
+}
+
 function formatDosage(value: unknown, row: ApiRecord): string {
   if (value === null || value === undefined || value === '') return '—';
   const unit = row.dosage_unit_name;
@@ -114,7 +124,7 @@ export const reports: ReportConfig[] = [
     dateRange: true,
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
-      { key: 'mother_tag_number', label: 'Anne Küpe No', format: formatPlain, width: 'narrow' },
+      { key: 'mother_tag_number', label: 'Anne/Baba', format: formatParentage },
       { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate, width: 'narrow' },
       { key: 'gender_name', label: 'Cinsiyet', width: 'narrow' },
       { key: 'birth_type_name', label: 'Doğum Şekli', format: formatPlain },
@@ -154,6 +164,7 @@ export const reports: ReportConfig[] = [
       { key: 'check_date', label: 'Kontrol Tarihi', format: formatDate, width: 'narrow' },
       { key: 'method_name', label: 'Kontrol Yöntemi' },
       { key: 'result_name', label: 'Sonuç', width: 'narrow' },
+      { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
     ],
     rowHighlight: (row) => Boolean(row.is_suspicious),
   },
@@ -204,6 +215,7 @@ export const reports: ReportConfig[] = [
       { key: 'weight_gain_kg', label: 'Kilo Artışı', format: formatKg, width: 'narrow' },
       { key: 'days_between', label: 'Gün Sayısı', format: formatDays, width: 'narrow' },
       { key: 'average_daily_gain_kg', label: 'Günlük Ort. Artış (ADG)', format: formatKgPerDay, width: 'narrow' },
+      { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
     ],
     rowHighlight: (row) => typeof row.average_daily_gain_kg === 'number' && row.average_daily_gain_kg < 0,
   },
@@ -316,6 +328,7 @@ export const reports: ReportConfig[] = [
       { key: 'service_method_name', label: 'Yöntem (Boş Çıkanlar)', format: formatPlain },
       { key: 'service_attempt_count', label: 'Deneme Sayısı', width: 'narrow' },
       { key: 'returned_from_pregnancy', label: 'Uyarı', format: formatReturnedFromPregnancy },
+      { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
     ],
     rowHighlight: (row) => row.reason_code === 'open' || row.returned_from_pregnancy === true,
   },
@@ -334,6 +347,7 @@ export const reports: ReportConfig[] = [
       { key: 'expected_calving_date', label: 'Beklenen Doğum', format: formatDate, width: 'narrow' },
       { key: 'service_attempt_count', label: 'Deneme Sayısı', width: 'narrow' },
       { key: 'returned_from_pregnancy', label: 'Uyarı', format: formatReturnedFromPregnancy },
+      { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
     ],
     rowHighlight: (row) => Boolean(row.pregnancy_check_due) || row.returned_from_pregnancy === true,
   },
@@ -365,7 +379,8 @@ export const reports: ReportConfig[] = [
       { key: 'breed_name', label: 'Irk', format: formatPlain, width: 'narrow' },
       { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate, width: 'narrow' },
       { key: 'age_months', label: 'Yaş', format: formatMonths, width: 'narrow' },
-      { key: 'mother_tag_number', label: 'Anne Küpe No', format: formatPlain, width: 'narrow' },
+      { key: 'mother_tag_number', label: 'Anne/Baba', format: formatParentage },
+      { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
     ],
   },
   {
@@ -379,7 +394,8 @@ export const reports: ReportConfig[] = [
       { key: 'breed_name', label: 'Irk', format: formatPlain, width: 'narrow' },
       { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate, width: 'narrow' },
       { key: 'age_months', label: 'Yaş', format: formatMonths, width: 'narrow' },
-      { key: 'mother_tag_number', label: 'Anne Küpe No', format: formatPlain, width: 'narrow' },
+      { key: 'mother_tag_number', label: 'Anne/Baba', format: formatParentage },
+      { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
     ],
   },
   {
@@ -393,7 +409,8 @@ export const reports: ReportConfig[] = [
       { key: 'breed_name', label: 'Irk', format: formatPlain, width: 'narrow' },
       { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate, width: 'narrow' },
       { key: 'age_months', label: 'Yaş', format: formatMonths, width: 'narrow' },
-      { key: 'mother_tag_number', label: 'Anne Küpe No', format: formatPlain, width: 'narrow' },
+      { key: 'mother_tag_number', label: 'Anne/Baba', format: formatParentage },
+      { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
     ],
   },
   {
@@ -449,6 +466,7 @@ export const reports: ReportConfig[] = [
       { key: 'revenue_usd', label: 'Satış Geliri ($)', format: formatUsd },
       { key: 'profit_try', label: 'Kâr/Zarar (TL)', format: formatCurrency },
       { key: 'profit_usd', label: 'Kâr/Zarar ($)', format: formatUsd },
+      { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
     ],
     rowHighlight: (row) => typeof row.profit_try === 'number' && row.profit_try < 0,
   },

@@ -225,6 +225,8 @@ class _Classification:
     kind: str  # "candidate_new" | "postpartum_waiting" | "candidate_postpartum" | "pending" | "suspicious" | "pregnant" | "open" | "none"
     breeding_event: BreedingEvent | None = None
     last_calving_date: date | None = None
+    # En son gebelik kontrolunun notu (varsa) - bkz. PregnancyCheck.note.
+    check_note: str | None = None
 
 
 def _classify_female(
@@ -258,10 +260,10 @@ def _classify_female(
         return _Classification(kind="pending", breeding_event=last_breed)
     result_code = check.result.code
     if result_code == "GEBE":
-        return _Classification(kind="pregnant", breeding_event=last_breed)
+        return _Classification(kind="pregnant", breeding_event=last_breed, check_note=check.note)
     if result_code == "BOS":
-        return _Classification(kind="open", breeding_event=last_breed)
-    return _Classification(kind="suspicious", breeding_event=last_breed)
+        return _Classification(kind="open", breeding_event=last_breed, check_note=check.note)
+    return _Classification(kind="suspicious", breeding_event=last_breed, check_note=check.note)
 
 
 def _active_females(db: Session) -> list[Animal]:
@@ -342,6 +344,7 @@ def list_breeding_candidates(db: Session, today: date | None = None) -> list[Bre
             service_method_name=service_method_name,
             service_attempt_count=attempt_count,
             returned_from_pregnancy=returned_from_pregnancy,
+            note=classification.check_note,
         )
         entries.append((_BREEDING_CANDIDATE_REASON_ORDER[classification.kind], row))
 
@@ -396,6 +399,7 @@ def list_bred_animals(db: Session, today: date | None = None) -> list[BredAnimal
                 returned_from_pregnancy=_returned_from_pregnancy(
                     db, animal.id, event.service_date, last_calving_by_dam.get(animal.id)
                 ),
+                note=classification.check_note,
             )
         )
 
@@ -483,6 +487,7 @@ def list_calvings(db: Session, start_date: date, end_date: date) -> list[Calving
             joinedload(Animal.birth_type),
             joinedload(Animal.litter_type),
             joinedload(Animal.mother),
+            joinedload(Animal.father_sire),
         )
         .where(Animal.birth_date.isnot(None), Animal.birth_date >= start_date, Animal.birth_date <= end_date)
         .order_by(Animal.birth_date, Animal.tag_number)
@@ -503,6 +508,7 @@ def list_calvings(db: Session, start_date: date, end_date: date) -> list[Calving
                 birth_weight_kg=animal.birth_weight_kg,
                 mother_id=animal.mother_id,
                 mother_tag_number=animal.mother.tag_number if animal.mother else None,
+                father_sire_name=animal.father_sire.name if animal.father_sire else None,
             )
         )
     return rows
@@ -666,6 +672,7 @@ def list_pregnancy_check_results(db: Session, start_date: date, end_date: date) 
                 method_name=check.method.name,
                 result_name=check.result.name,
                 is_suspicious=check.result.code == "SUPHELI",
+                note=check.note,
             )
         )
     return rows
@@ -742,6 +749,7 @@ def list_weight_gains(db: Session, start_date: date, end_date: date) -> list[Wei
                 days_between=days,
                 weight_gain_kg=gain,
                 average_daily_gain_kg=round(float(gain) / days, 3),
+                note=last.note,
             )
         )
     rows.sort(key=lambda r: r.average_daily_gain_kg)
@@ -1028,7 +1036,12 @@ def _active_animals_with_age(db: Session, today: date) -> list[tuple[Animal, int
     active_id = get_lookup_by_code(db, AnimalStatus, ACTIVE_STATUS_CODE).id
     stmt = (
         select(Animal)
-        .options(joinedload(Animal.gender), joinedload(Animal.mother), joinedload(Animal.breed))
+        .options(
+            joinedload(Animal.gender),
+            joinedload(Animal.mother),
+            joinedload(Animal.father_sire),
+            joinedload(Animal.breed),
+        )
         .where(Animal.status_id == active_id, Animal.birth_date.isnot(None))
         .order_by(Animal.birth_date)
     )
@@ -1044,7 +1057,12 @@ def list_animals_by_status(db: Session, status_ids: list[int] | None = None, tod
     today = today or date.today()
     stmt = (
         select(Animal)
-        .options(joinedload(Animal.gender), joinedload(Animal.mother), joinedload(Animal.breed))
+        .options(
+            joinedload(Animal.gender),
+            joinedload(Animal.mother),
+            joinedload(Animal.father_sire),
+            joinedload(Animal.breed),
+        )
         .order_by(Animal.tag_number)
     )
     if status_ids:
@@ -1063,6 +1081,8 @@ def list_animals_by_status(db: Session, status_ids: list[int] | None = None, tod
                 age_months=age_months,
                 age_days=(today - animal.birth_date).days if animal.birth_date else None,
                 mother_tag_number=animal.mother.tag_number if animal.mother else None,
+                father_sire_name=animal.father_sire.name if animal.father_sire else None,
+                note=animal.note,
             )
         )
     return rows
@@ -1099,6 +1119,8 @@ def _to_young_animal_read(animal: Animal, age_months: int, today: date) -> Young
         age_months=age_months,
         age_days=(today - animal.birth_date).days if animal.birth_date else None,
         mother_tag_number=animal.mother.tag_number if animal.mother else None,
+        father_sire_name=animal.father_sire.name if animal.father_sire else None,
+        note=animal.note,
     )
 
 
@@ -1463,6 +1485,7 @@ def _build_profitability_row(
         revenue_usd=_round_money(revenue_usd) if revenue_usd is not None else None,
         profit_try=_round_money(profit_try),
         profit_usd=_round_money(profit_usd),
+        note=animal.note,
     )
 
 
