@@ -25,7 +25,6 @@ export default async function ReportPage({
     start?: string;
     end?: string;
     as_of_date?: string;
-    granularity?: string;
     filtered?: string;
     status_ids?: string | string[];
   }>;
@@ -44,7 +43,6 @@ export default async function ReportPage({
   }
 
   const asOfDate = report.singleDate ? sp.as_of_date || todayIso() : undefined;
-  const granularity = report.granularity ? sp.granularity || 'monthly' : undefined;
 
   let statusOptions: { id: number; name: string }[] = [];
   let selectedStatusIds: number[] = [];
@@ -64,12 +62,11 @@ export default async function ReportPage({
   if (rangeStart) query.set('start_date', rangeStart);
   if (rangeEnd) query.set('end_date', rangeEnd);
   if (asOfDate) query.set('as_of_date', asOfDate);
-  if (granularity) query.set('granularity', granularity);
   for (const id of selectedStatusIds) query.append('status_ids', String(id));
   const separator = report.endpoint.includes('?') ? '&' : '?';
   const rows = await apiGetSafe<ApiRecord[]>(`${report.endpoint}${separator}${query.toString()}`, []);
 
-  const showCustomFilter = report.granularity || report.singleDate || report.statusFilter;
+  const showCustomFilter = report.singleDate || report.statusFilter;
 
   return (
     <div>
@@ -96,12 +93,10 @@ export default async function ReportPage({
           start={rangeStart}
           end={rangeEnd}
           asOfDate={asOfDate}
-          granularity={granularity}
           statuses={report.statusFilter ? statusOptions : undefined}
           selectedStatusIds={report.statusFilter ? selectedStatusIds : undefined}
           showDateRange={Boolean(report.dateRange)}
           showSingleDate={Boolean(report.singleDate)}
-          showGranularity={Boolean(report.granularity)}
           showStatusFilter={Boolean(report.statusFilter)}
         />
       ) : (

@@ -26,7 +26,6 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.date_utils import full_months_between
-from app.core.exceptions import DomainError
 from app.core.lookup_helpers import get_lookup_by_code
 from app.modules.animal.lookups import AnimalStatus, EntrySource, Gender
 from app.modules.animal.models import Animal
@@ -57,7 +56,6 @@ from app.modules.reports.schemas import (
     HerdCostSummaryRead,
     HerdFlowReportRead,
     HerdInventoryRead,
-    MarketValueSeriesPointRead,
     PenEfficiencyRead,
     PenOccupancyRead,
     PregnancyCheckResultRead,
@@ -149,13 +147,6 @@ GESTATION_DAYS = 283
 # granulerlikte puruzsuz olmasi icin (takvim ay uzunlugu degil, sabit bir
 # yaklasiklik - full_months_between'in aksine burada kesirli gun onemli).
 GROWTH_CHECKPOINT_DAYS_PER_MONTH = 30
-# Zaman serisi raporlarinin (hayvan/suru bazli tahmini piyasa degeri)
-# ureteceigi maksimum nokta sayisi - suru bazli seride her nokta TUM
-# suruyu tek tek gezdiginden (bkz. list_herd_market_value_series), asiri
-# genis araligi/gunluk granulerligi sinirlamazsak istek suresiz uzayabilir
-# (surudeki tum hayvanlari tek istekte gezen raporlarda daha once yasanan
-# TCMB cagri patlamasiyla ayni performans riski sinifi).
-MAX_SERIES_POINTS = 100
 
 
 def _latest_breeding_by_dam(db: Session) -> dict[uuid.UUID, BreedingEvent]:
@@ -1655,8 +1646,8 @@ def _asset_book_value(
     PERFORMANS: Hayvan Kârlılık Raporu'nun aksine (orada her fact kendi
     tarihindeki kurla cevrilir - bkz. _accumulated_cost_try_usd docstring),
     bu fonksiyon SURUDEKI TUM hayvanlar icin tek istekte cagrildigindan
-    (bkz. list_herd_market_value_series/list_herd_animal_market_values)
-    alt-fact'lerin USD donusumu KAPATILIR (convert_usd=False) ve yerine
+    (bkz. list_herd_animal_market_values) alt-fact'lerin USD donusumu
+    KAPATILIR (convert_usd=False) ve yerine
     TEK bir as_of_date kuru kullanilir -
     aksi halde her hayvanin her giris/saglik/yem tarihi icin ayri bir TCMB
     sorgusu tetiklenip rapor onlarca-yuzlerce ag cagrisiyla zaman asimina
@@ -1839,65 +1830,10 @@ def _estimated_market_value_usd_try(
     return book_try, book_usd, "cost_basis"
 
 
-def _series_dates(start_date: date, end_date: date, granularity: str) -> list[date]:
-    """start_date'ten end_date'e (dahil) 'daily' | 'weekly' | 'monthly'
-    adimlarla tarih listesi uretir; MAX_SERIES_POINTS asilirsa DomainError
-    firlatir (kullanici araligi daraltmali ya da granulerligi kabalastirmali)."""
-    step_days = {"daily": 1, "weekly": 7, "monthly": 30}.get(granularity)
-    if step_days is None:
-        raise DomainError(f"Gecersiz granularity: {granularity!r} (daily | weekly | monthly olmali)")
-    if end_date < start_date:
-        raise DomainError("end_date, start_date'ten once olamaz")
-
-    dates: list[date] = []
-    current = start_date
-    while current < end_date:
-        dates.append(current)
-        if len(dates) > MAX_SERIES_POINTS:
-            raise DomainError(
-                f"Tarih araligi ve granularity cok fazla nokta uretiyor (maks. {MAX_SERIES_POINTS}) - "
-                "araligi daraltin veya granularity'yi kabalastirin (orn. gunluk yerine haftalik/aylik)."
-            )
-        current += timedelta(days=step_days)
-    dates.append(end_date)
-    return dates
-
-
-def list_herd_market_value_series(
-    db: Session, start_date: date, end_date: date, granularity: str
-) -> list[MarketValueSeriesPointRead]:
-    """Yaşayan tüm sürünün toplam 'Tahmini Piyasa Değeri'nin start_date-
-    end_date araliginda zaman icindeki seyri (bkz. _estimated_market_value_usd_try).
-    Sürüde çıpasız/Demirbaş hayvanlar için maliyet-bazlı değer kullanılır,
-    bu yuzden her nokta karma bir kaynaktan olusabilir - source_code bu
-    noktalarda 'mixed' olarak isaretlenir."""
-    growth_checkpoints_by_gender, mature_checkpoints_by_gender = _checkpoint_maps(db)
-    rows: list[MarketValueSeriesPointRead] = []
-    for as_of_date in _series_dates(start_date, end_date, granularity):
-        rate = fx_service.get_usd_try_rate(db, as_of_date)
-        total_try = total_usd = Decimal("0")
-        sources: set[str] = set()
-        for animal in _animals_alive_at(db, as_of_date):
-            amount_try, amount_usd, source_code = _estimated_market_value_usd_try(
-                db, animal, as_of_date, growth_checkpoints_by_gender, mature_checkpoints_by_gender, rate
-            )
-            total_try += amount_try
-            total_usd += amount_usd
-            sources.add(source_code)
-        source_code = sources.pop() if len(sources) == 1 else "mixed" if sources else "cost_basis"
-        rows.append(
-            MarketValueSeriesPointRead(
-                date=as_of_date, amount_try=_round_money(total_try), amount_usd=_round_money(total_usd), source_code=source_code
-            )
-        )
-    return rows
-
-
 def list_herd_animal_market_values(db: Session, as_of_date: date) -> list[AnimalMarketValueRead]:
     """as_of_date itibariyla YAŞAYAN tüm hayvanların 'Tahmini Piyasa
     Değeri'ni TEK TEK listeler (bkz. _estimated_market_value_usd_try) -
-    list_herd_market_value_series'in aksine tek bir toplam değil, hayvan
-    hayvan bir döküm verir. Alım/satım öncesi birden fazla hayvanı bir
+    hayvan hayvan bir döküm verir. Alım/satım öncesi birden fazla hayvanı bir
     arada değerlendirmek için (kullanıcı arayüzünde istediği satırları
     seçip toplamını görebilir - bu seçim/toplam client-side yapılır,
     burada sadece tam liste döner)."""

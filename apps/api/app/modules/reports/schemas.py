@@ -295,19 +295,9 @@ class AnimalMarketValueRead(BaseModel):
     age_months: int | None = None
     amount_try: Decimal
     amount_usd: Decimal
-    # "market_estimate" | "cost_basis" - bkz. MarketValueSeriesPointRead.
-    source_code: str
-
-
-class MarketValueSeriesPointRead(BaseModel):
-    date: date
-    amount_try: Decimal
-    amount_usd: Decimal
-    # "market_estimate" (büyüme çıpalarından interpolasyon) |
-    # "cost_basis" (mevcut maliyet-bazlı defter değeri - hiç çıpa
-    # girilmemiş VEYA hayvan zaten Demirbaşa geçmiş) - hangi rakamın
-    # gerçek piyasa gözlemine mi yoksa harcama kaydına mı dayandığını
-    # gizlemeden gösterir (bkz. reports/service.py _estimated_market_value_usd_try).
+    # "market_estimate" (büyüme çıpalarından interpolasyon) | "cost_basis"
+    # (maliyet-bazlı defter değeri) - hangi rakamın gerçek piyasa gözlemine
+    # mi yoksa harcama kaydına mı dayandığını gizlemeden gösterir.
     source_code: str
 
 

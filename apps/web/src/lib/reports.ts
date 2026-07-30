@@ -25,9 +25,6 @@ export interface ReportConfig {
   /** true ise rapor sayfası bir başlangıç/bitiş tarihi filtresi gösterir ve
    * bunları `start_date`/`end_date` query param'ı olarak endpoint'e ekler. */
   dateRange?: boolean;
-  /** true ise rapor sayfası bir granülerlik (günlük/haftalık/aylık) seçici
-   * gösterir ve bunu `granularity` query param'ı olarak endpoint'e ekler. */
-  granularity?: boolean;
   /** true ise rapor sayfası tek bir "tarih itibariyle" filtresi gösterir
    * (aralık değil) ve bunu `as_of_date` query param'ı olarak endpoint'e ekler. */
   singleDate?: boolean;
@@ -485,26 +482,10 @@ export const reports: ReportConfig[] = [
     rowHighlight: (row) => row.category_code === 'NET',
   },
   {
-    slug: 'herd-market-value-series',
-    title: 'Sürü Tahmini Piyasa Değeri',
-    description:
-      'Yaşayan tüm sürünün toplam tahmini piyasa değerinin zaman içindeki seyri - büyüme çıpası girilmiş genç hayvanlar için piyasa tahmini, diğerleri için maliyet-bazlı defter değeri toplanır (bkz. Sürü Hayvan Listesi).',
-    endpoint: '/reports/herd-market-value-series',
-    dateRange: true,
-    granularity: true,
-    usesGrowthCheckpoints: true,
-    columns: [
-      { key: 'date', label: 'Tarih', format: formatDate, width: 'narrow' },
-      { key: 'amount_try', label: 'Tutar (TL)', format: formatCurrency, width: 'narrow' },
-      { key: 'amount_usd', label: 'Tutar ($)', format: formatUsd, width: 'narrow' },
-      { key: 'source_code', label: 'Kaynak', format: formatSourceCode, width: 'narrow' },
-    ],
-  },
-  {
     slug: 'herd-animal-market-values',
     title: 'Sürü Hayvan Listesi - Tahmini Piyasa Değeri',
     description:
-      'Belirtilen tarih itibarıyla yaşayan TÜM hayvanların tahmini piyasa değeri tek tek listelenir (bkz. Sürü Tahmini Piyasa Değeri - o rapor toplamı, bu rapor dökümü verir). Alım/satım öncesi birden fazla hayvanı bir arada değerlendirmek için satırları işaretleyip seçilenlerin toplamını görebilirsiniz.',
+      'Belirtilen tarih itibarıyla yaşayan TÜM hayvanların tahmini piyasa değeri tek tek listelenir - büyüme çıpası girilmiş genç hayvanlar için piyasa tahmini, diğerleri için maliyet-bazlı defter değeri kullanılır. Alım/satım öncesi birden fazla hayvanı bir arada değerlendirmek için satırları işaretleyip seçilenlerin toplamını görebilirsiniz.',
     endpoint: '/reports/herd-animal-market-values',
     singleDate: true,
     usesGrowthCheckpoints: true,
