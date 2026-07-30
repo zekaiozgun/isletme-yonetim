@@ -12,6 +12,11 @@ export interface ReportColumn {
    *   kalır, taşarsa "…" ile kesilir (üzerine gelince tam metin görünür).
    * Belirtilmezse normal (varsayılan) genişlik kullanılır. */
   width?: 'narrow' | 'wide';
+  /** Belirtilirse, bu satır için hücrenin metin rengi/kalınlığı bu sınıfla
+   * DEĞİŞTİRİLİR (satır vurgusunun rengiyle birleştirilmez) - örn. bir
+   * uyarı hücresini kırmızı göstermek için. format()'ın döndürdüğü METNİ
+   * etkilemez, CSV/PDF export'u bundan etkilenmez. */
+  cellClassName?: (row: ApiRecord) => string;
 }
 
 export interface ReportConfig {
@@ -88,14 +93,22 @@ function formatDaysUntilCalving(value: unknown): string {
  * durumu birleştirir: kontrol zamanı gelmiş ama henüz kontrol edilmemiş
  * (Kontrol Bekliyor + pregnancy_check_due) ve önceden gebeydi
  * (returned_from_pregnancy) - "Şüpheli" satırlarda zaten Durum sütunu
- * tekrar kontrol gerektiğini söylediği için burada tekrarlanmaz. */
+ * tekrar kontrol gerektiğini söylediği için burada tekrarlanmaz. Kısa ve
+ * kırmızı (bkz. bredAnimalWarningClass) tutulur - satır zaten amber
+ * vurgulu olduğundan uzun bir uyarı metni göze çarpmıyordu. */
 function formatBreedingWarning(value: unknown, row: ApiRecord): string {
   const warnings: string[] = [];
   if (row.check_status === 'Kontrol Bekliyor' && row.pregnancy_check_due === true) {
-    warnings.push('⚠ Kontrol Zamanı Geldi');
+    warnings.push('Kontrol!');
   }
-  if (value === true) warnings.push('⚠ Önceden Gebeydi');
+  if (value === true) warnings.push('Önceden Gebeydi');
   return warnings.length > 0 ? warnings.join(' · ') : '—';
+}
+
+function bredAnimalWarningClass(row: ApiRecord): string {
+  const checkDue = row.check_status === 'Kontrol Bekliyor' && row.pregnancy_check_due === true;
+  const returnedFromPregnancy = row.returned_from_pregnancy === true;
+  return checkDue || returnedFromPregnancy ? 'font-bold text-red-600' : 'text-slate-700';
 }
 
 /** Anne (value) ve Baba (row.father_sire_name) küpe/isim bilgisini tek
@@ -375,7 +388,13 @@ export const reports: ReportConfig[] = [
       { key: 'expected_calving_date', label: 'Tahmini Doğum', format: formatDate, width: 'narrow' },
       { key: 'days_until_calving', label: 'Doğuma Kalan', format: formatDaysUntilCalving, width: 'narrow' },
       { key: 'service_attempt_count', label: 'Deneme Sayısı', width: 'narrow' },
-      { key: 'returned_from_pregnancy', label: 'Uyarı', format: formatBreedingWarning, width: 'narrow' },
+      {
+        key: 'returned_from_pregnancy',
+        label: 'Uyarı',
+        format: formatBreedingWarning,
+        width: 'narrow',
+        cellClassName: bredAnimalWarningClass,
+      },
       { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
     ],
     rowHighlight: (row) => Boolean(row.pregnancy_check_due) || row.returned_from_pregnancy === true,

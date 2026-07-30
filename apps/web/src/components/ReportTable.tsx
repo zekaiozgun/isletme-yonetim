@@ -17,8 +17,18 @@ function formatCell(row: ApiRecord, column: ReportConfig['columns'][number]): st
 // attribute'u üzerine gelince tam metni gösterir - bkz. ReportTable altı).
 function widthClass(width: ReportConfig['columns'][number]['width']): string {
   if (width === 'narrow') return 'whitespace-nowrap px-[1ch] py-2';
-  if (width === 'wide') return 'max-w-sm truncate px-3 py-2';
+  if (width === 'wide') return 'max-w-md truncate px-3 py-2';
   return 'whitespace-nowrap px-3 py-2';
+}
+
+// Başlıklar - veri hücrelerinin aksine - tek satıra sığmıyorsa iki satıra
+// SARILIR (nowrap yok) - böylece uzun bir etiket (örn. "Tohumlama Tarihi")
+// altındaki kısa değerleri (örn. "29/04/2026") gereksiz yere
+// genişletmez, sütun asıl içeriğe göre dar kalabilir.
+function headerClass(width: ReportConfig['columns'][number]['width']): string {
+  if (width === 'narrow') return 'px-[1ch] py-2 leading-tight';
+  if (width === 'wide') return 'px-3 py-2 leading-tight';
+  return 'px-3 py-2 leading-tight';
 }
 
 // report.groupSummaryKey belirtilen sutunun degerine gore kayit sayisini
@@ -82,11 +92,11 @@ export function ReportTable({ report, rows }: { report: ReportConfig; rows: ApiR
           <table className="min-w-full divide-y divide-slate-200 text-sm print:w-full print:text-[10px]">
             <thead className="bg-slate-50 print:bg-transparent">
               <tr>
-                <th className="whitespace-nowrap px-[1ch] py-2 text-left font-medium text-slate-600">#</th>
+                <th className="px-[1ch] py-2 text-left font-medium leading-tight text-slate-600">#</th>
                 {report.columns.map((column) => (
                   <th
                     key={column.key}
-                    className={`text-left font-medium text-slate-600 ${widthClass(column.width)}`}
+                    className={`text-left font-medium text-slate-600 ${headerClass(column.width)}`}
                   >
                     {column.label}
                   </th>
@@ -106,15 +116,19 @@ export function ReportTable({ report, rows }: { report: ReportConfig; rows: ApiR
                     >
                       {index + 1}
                     </td>
-                    {report.columns.map((column, columnIndex) => (
-                      <td
-                        key={column.key}
-                        title={column.width === 'wide' ? cellValues[columnIndex] : undefined}
-                        className={`${widthClass(column.width)} ${highlighted ? 'font-medium text-amber-900' : 'text-slate-700'}`}
-                      >
-                        {cellValues[columnIndex]}
-                      </td>
-                    ))}
+                    {report.columns.map((column, columnIndex) => {
+                      const cellExtra = column.cellClassName?.(row);
+                      const textClass = cellExtra ?? (highlighted ? 'font-medium text-amber-900' : 'text-slate-700');
+                      return (
+                        <td
+                          key={column.key}
+                          title={column.width === 'wide' ? cellValues[columnIndex] : undefined}
+                          className={`${widthClass(column.width)} ${textClass}`}
+                        >
+                          {cellValues[columnIndex]}
+                        </td>
+                      );
+                    })}
                   </tr>
                 );
               })}
