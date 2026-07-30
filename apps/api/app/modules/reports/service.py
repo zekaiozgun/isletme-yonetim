@@ -341,11 +341,16 @@ def list_breeding_candidates(db: Session, today: date | None = None) -> list[Bre
 
     def sort_key(entry: tuple[int, BreedingCandidateRead]) -> tuple[int, object]:
         order, row = entry
-        # "Tekrar Kızgınlık / Boş" grubu icinde en uzun süredir açık olan
-        # üstte (eski Tekrar Kızgınlık raporunun sıralaması) - diğer iki
-        # grup küpe no'ya göre alfabetik kalır.
+        # Her grup icinde en uzun süredir bekleyen üstte: "Boş Çıkan"da en
+        # uzun açık süre, "Tohumlanacak"/"Post Partum"da en eski son doğum
+        # tarihi (en cok gun once dogurmus), "İlk Tohumlama"da en yaşlı
+        # (en yuksek yas) hayvan.
         if row.days_open is not None:
             return (order, -row.days_open)
+        if row.last_calving_date is not None:
+            return (order, row.last_calving_date)
+        if row.age_months is not None:
+            return (order, -row.age_months)
         return (order, row.tag_number)
 
     entries.sort(key=sort_key)
@@ -1054,7 +1059,7 @@ def list_animals_by_status(db: Session, status_ids: list[int] | None = None, tod
             joinedload(Animal.father_sire),
             joinedload(Animal.breed),
         )
-        .order_by(Animal.tag_number)
+        .order_by(Animal.birth_date, Animal.tag_number)
     )
     if status_ids:
         stmt = stmt.where(Animal.status_id.in_(status_ids))
@@ -1857,5 +1862,5 @@ def list_herd_animal_market_values(db: Session, as_of_date: date) -> list[Animal
                 source_code=source_code,
             )
         )
-    rows.sort(key=lambda r: r.tag_number)
+    rows.sort(key=lambda r: (r.age_months is None, -(r.age_months or 0)))
     return rows
