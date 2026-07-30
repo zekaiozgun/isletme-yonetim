@@ -74,10 +74,16 @@ ACTIVE_STATUS_CODE = "AKTIF"
 DIFFICULT_BIRTH_TYPE_CODE = "GUC"
 ILLNESS_EVENT_TYPE_CODE = "HASTALIK_BILDIRIMI"
 FEED_TON_UNIT_CODE = "TON"
+FEED_GRAM_UNIT_CODE = "GR"
+
 
 def _to_kg(quantity: Decimal, unit_code: str) -> float:
-    """Yem miktarini kg'a normalize eder (ton kayitlari x1000)."""
-    return float(quantity) * (1000 if unit_code == FEED_TON_UNIT_CODE else 1)
+    """Yem miktarini kg'a normalize eder (ton kayitlari x1000, gram kayitlari /1000)."""
+    if unit_code == FEED_TON_UNIT_CODE:
+        return float(quantity) * 1000
+    if unit_code == FEED_GRAM_UNIT_CODE:
+        return float(quantity) / 1000
+    return float(quantity)
 
 
 def _feed_avg_cost_per_kg(db: Session, feed_item_id: int, as_of_date: date) -> Decimal | None:
