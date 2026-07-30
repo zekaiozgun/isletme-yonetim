@@ -513,21 +513,26 @@ def list_calving_intervals(db: Session) -> list[CalvingIntervalRead]:
     tarihe gore siralayip son iki dogum arasindaki gun farkini (yavrulama
     araligi) hesaplar. Tarih araligi gerektirmez - sureklilik gosteren, yavas
     degisen bir verimlilik gostergesidir (Anayasa m.4/m.5: hicbir yerde
-    saklanmaz, her istek Animal.birth_date/mother_id'den turetilir)."""
+    saklanmaz, her istek Animal.birth_date/mother_id'den turetilir).
+
+    Ayni tarihte dogan yavrular (ikiz/ucuz) TEK yavrulama olayi sayilir -
+    aksi halde ikiz dogumlar aralarinda 0 gun fark varmis gibi ayri birer
+    "dogum" olarak sayilip yavrulama araligini yapay olarak dusurur."""
     stmt = (
         select(Animal.mother_id, Animal.birth_date)
         .where(Animal.mother_id.isnot(None), Animal.birth_date.isnot(None))
         .order_by(Animal.mother_id, Animal.birth_date)
     )
-    calving_dates_by_dam: dict[uuid.UUID, list[date]] = {}
+    calving_dates_by_dam: dict[uuid.UUID, set[date]] = {}
     for mother_id, birth_date in db.execute(stmt).all():
-        calving_dates_by_dam.setdefault(mother_id, []).append(birth_date)
+        calving_dates_by_dam.setdefault(mother_id, set()).add(birth_date)
 
     dam_ids = list(calving_dates_by_dam.keys())
     dams = {a.id: a for a in db.scalars(select(Animal).where(Animal.id.in_(dam_ids))).all()} if dam_ids else {}
 
     dam_rows: list[CalvingIntervalRead] = []
-    for dam_id, dates in calving_dates_by_dam.items():
+    for dam_id, date_set in calving_dates_by_dam.items():
+        dates = sorted(date_set)
         if len(dates) < 2:
             continue
         previous_calving, last_calving = dates[-2], dates[-1]
