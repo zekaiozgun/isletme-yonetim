@@ -17,7 +17,7 @@ function formatCell(row: ApiRecord, column: ReportConfig['columns'][number]): st
 // attribute'u üzerine gelince tam metni gösterir - bkz. ReportTable altı).
 function widthClass(width: ReportConfig['columns'][number]['width']): string {
   if (width === 'narrow') return 'whitespace-nowrap px-[1ch] py-2';
-  if (width === 'wide') return 'max-w-xs truncate px-3 py-2';
+  if (width === 'wide') return 'max-w-sm truncate px-3 py-2';
   return 'whitespace-nowrap px-3 py-2';
 }
 
