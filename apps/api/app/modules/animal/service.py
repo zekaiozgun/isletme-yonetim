@@ -93,7 +93,7 @@ def list_animals(db: Session, status_id: int | None = None) -> list[Animal]:
     stmt = select(Animal)
     if status_id is not None:
         stmt = stmt.where(Animal.status_id == status_id)
-    return list(db.scalars(stmt.order_by(Animal.tag_number)).all())
+    return list(db.scalars(stmt.order_by(Animal.birth_date, Animal.tag_number)).all())
 
 
 def calculate_age_in_days(animal: Animal, as_of: date | None = None) -> int | None:

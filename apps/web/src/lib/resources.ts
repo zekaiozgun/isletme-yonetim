@@ -126,7 +126,7 @@ const mainResources: ResourceConfig[] = [
       { key: 'gender_id', label: 'Cinsiyet', lookup: genders },
       { key: 'age_months', label: 'Yaş', format: formatAgeMonths },
       { key: 'status_id', label: 'Statü', lookup: animalStatuses },
-      { key: 'entry_date', label: 'Giriş Tarihi', date: true },
+      { key: 'birth_date', label: 'Doğum Tarihi', date: true },
       { key: 'entry_value', label: 'Giriş Değeri (TL)' },
     ],
     fields: [
