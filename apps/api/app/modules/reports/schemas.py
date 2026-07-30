@@ -188,7 +188,11 @@ class BredAnimalRead(BaseModel):
     days_since_service: int
     check_status: str
     pregnancy_check_due: bool
-    expected_calving_date: date | None = None
+    # service_date + GESTATION_DAYS - kontrol sonucu (Gebe) onaylanmis
+    # olsun olmasin HER zaman hesaplanir (henuz onaylanmamis satirlarda
+    # "tahmini", Gebe satirlarda kesinlesmis bir projeksiyon).
+    expected_calving_date: date
+    days_until_calving: int
     # Hayvanin son dogumundan (hic dogurmadiysa girisinden) bu yana, bu
     # dahil, kacinci tohumlama denemesi oldugu (bkz. _service_attempt_count).
     service_attempt_count: int = 1
@@ -197,15 +201,6 @@ class BredAnimalRead(BaseModel):
     # ayni alanin aciklamasi / _returned_from_pregnancy).
     returned_from_pregnancy: bool = False
     note: str | None = None
-
-
-class PregnantAnimalRead(BaseModel):
-    animal_id: uuid.UUID
-    tag_number: str
-    name: str | None = None
-    service_date: date
-    expected_calving_date: date
-    days_until_calving: int
 
 
 class WithdrawalPeriodRead(BaseModel):

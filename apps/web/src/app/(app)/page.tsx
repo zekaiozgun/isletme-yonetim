@@ -22,8 +22,8 @@ interface AttentionItem {
 }
 
 /** "Bugün Dikkat Gerekenler" içindeki tek bir bölüm - var olan raporların
- * (breeding-candidates, bred-animals, pregnant-animals, withdrawal-periods)
- * sayı kartı yerine küpe no listesi olarak gösterilmesi; hiçbiri yeni bir
+ * (breeding-candidates, bred-animals, withdrawal-periods) sayı kartı
+ * yerine küpe no listesi olarak gösterilmesi; hiçbiri yeni bir
  * tahmin/hesap eklemez, sadece zaten türetilen veriyi öne çıkarır. */
 function AttentionSection({
   title,
@@ -80,14 +80,13 @@ function formatDaysUntil(value: unknown): string {
 export default async function Home() {
   const groups = groupedResources();
 
-  const [summary, inventory, penOccupancy, breedingCandidates, bredAnimals, pregnantAnimals, withdrawalPeriods] =
+  const [summary, inventory, penOccupancy, breedingCandidates, bredAnimals, withdrawalPeriods] =
     await Promise.all([
       apiGetSafe<ApiRecord>('/reports/dashboard-summary', {}),
       apiGetSafe<ApiRecord>('/reports/herd-inventory', {}),
       apiGetSafe<ApiRecord[]>('/reports/pen-occupancy', []),
       apiGetSafe<ApiRecord[]>('/reports/breeding-candidates', []),
       apiGetSafe<ApiRecord[]>('/reports/bred-animals', []),
-      apiGetSafe<ApiRecord[]>('/reports/pregnant-animals', []),
       apiGetSafe<ApiRecord[]>('/reports/withdrawal-periods', []),
     ]);
 
@@ -109,9 +108,9 @@ export default async function Home() {
       sublabel: `${String(b.days_since_service)} gün`,
     }));
 
-  const upcomingCalvings: AttentionItem[] = pregnantAnimals
-    .filter((p) => typeof p.days_until_calving === 'number' && p.days_until_calving <= 14)
-    .map((p) => ({ key: String(p.animal_id), label: String(p.tag_number), sublabel: formatDaysUntil(p.days_until_calving) }));
+  const upcomingCalvings: AttentionItem[] = bredAnimals
+    .filter((b) => b.check_status === 'Gebe' && typeof b.days_until_calving === 'number' && b.days_until_calving <= 14)
+    .map((b) => ({ key: String(b.animal_id), label: String(b.tag_number), sublabel: formatDaysUntil(b.days_until_calving) }));
 
   const withdrawalsActive: AttentionItem[] = withdrawalPeriods.map((w) => ({
     key: `${String(w.animal_id)}-${String(w.event_date)}`,
@@ -140,7 +139,7 @@ export default async function Home() {
         />
         <AttentionSection
           title="Yaklaşan Doğumlar (14 gün)"
-          href="/reports/pregnant-animals"
+          href="/reports/bred-animals"
           items={upcomingCalvings}
           emptyMessage="Önümüzdeki 14 günde beklenen doğum yok."
         />
@@ -154,7 +153,7 @@ export default async function Home() {
 
       <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         <StatTile label="Aktif Hayvan Sayısı" value={String(asNumber(summary.active_animal_count))} href="/animals" />
-        <StatTile label="Gebe Hayvan" value={String(asNumber(summary.pregnant_count))} href="/reports/pregnant-animals" />
+        <StatTile label="Gebe Hayvan" value={String(asNumber(summary.pregnant_count))} href="/reports/bred-animals" />
         <StatTile label="Buzağı (0-7 Ay)" value={String(asNumber(summary.calves_count))} href="/reports/calves" />
         <StatTile label="Düve ve Dana (7-12 Ay)" value={String(asNumber(summary.heifers_steers_count))} href="/reports/heifers-steers" />
         <StatTile

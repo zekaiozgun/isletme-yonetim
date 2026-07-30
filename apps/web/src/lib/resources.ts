@@ -292,7 +292,7 @@ const mainResources: ResourceConfig[] = [
     ],
     relatedReports: [
       { slug: 'breeding-candidates', title: 'Tohumlanacak Hayvanlar' },
-      { slug: 'bred-animals', title: 'Tohumlu Hayvanlar' },
+      { slug: 'bred-animals', title: 'Tohumlu ve Gebe Hayvanlar' },
     ],
   },
   {
@@ -315,7 +315,7 @@ const mainResources: ResourceConfig[] = [
       { name: 'result_id', label: 'Sonuç', type: 'select', options: pregnancyResults, required: true },
       { name: 'note', label: 'Not', type: 'textarea' },
     ],
-    relatedReports: [{ slug: 'pregnant-animals', title: 'Gebe Hayvanlar' }],
+    relatedReports: [{ slug: 'bred-animals', title: 'Tohumlu ve Gebe Hayvanlar' }],
   },
   {
     slug: 'health-events',

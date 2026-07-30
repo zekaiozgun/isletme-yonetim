@@ -59,7 +59,6 @@ from app.modules.reports.schemas import (
     PenEfficiencyRead,
     PenOccupancyRead,
     PregnancyCheckResultRead,
-    PregnantAnimalRead,
     SalesReportRead,
     WeightGainRead,
     WithdrawalPeriodRead,
@@ -370,15 +369,16 @@ def list_bred_animals(db: Session, today: date | None = None) -> list[BredAnimal
         if classification.kind == "pending":
             check_status = "Kontrol Bekliyor"
             check_due = days_since_service >= PREGNANCY_CHECK_DUE_DAYS
-            expected_calving = None
         elif classification.kind == "suspicious":
             check_status = "Şüpheli (Tekrar Kontrol Gerekli)"
             check_due = True
-            expected_calving = None
         else:
             check_status = "Gebe"
             check_due = False
-            expected_calving = event.service_date + timedelta(days=GESTATION_DAYS)
+        # Kontrol sonucu ne olursa olsun (henuz onaylanmamis olsa bile)
+        # servis tarihinden turetilen bir projeksiyon - Gebe disindaki
+        # satirlarda "tahmini" niteliktedir.
+        expected_calving = event.service_date + timedelta(days=GESTATION_DAYS)
         rows.append(
             BredAnimalRead(
                 breeding_event_id=event.id,
@@ -391,6 +391,7 @@ def list_bred_animals(db: Session, today: date | None = None) -> list[BredAnimal
                 check_status=check_status,
                 pregnancy_check_due=check_due,
                 expected_calving_date=expected_calving,
+                days_until_calving=(expected_calving - today).days,
                 service_attempt_count=_service_attempt_count(db, animal.id, last_calving_by_dam.get(animal.id)),
                 returned_from_pregnancy=_returned_from_pregnancy(
                     db, animal.id, event.service_date, last_calving_by_dam.get(animal.id)
@@ -411,29 +412,6 @@ def list_bred_animals(db: Session, today: date | None = None) -> list[BredAnimal
     rows.sort(key=sort_key)
     return rows
 
-
-
-def list_pregnant_animals(db: Session, today: date | None = None) -> list[PregnantAnimalRead]:
-    today = today or date.today()
-    rows: list[PregnantAnimalRead] = []
-    for animal, classification in _classify_all_active_females(db, today):
-        if classification.kind != "pregnant":
-            continue
-        event = classification.breeding_event
-        assert event is not None
-        expected_calving = event.service_date + timedelta(days=GESTATION_DAYS)
-        rows.append(
-            PregnantAnimalRead(
-                animal_id=animal.id,
-                tag_number=animal.tag_number,
-                name=animal.name,
-                service_date=event.service_date,
-                expected_calving_date=expected_calving,
-                days_until_calving=(expected_calving - today).days,
-            )
-        )
-    rows.sort(key=lambda r: r.expected_calving_date)
-    return rows
 
 
 def list_active_withdrawal_periods(db: Session, today: date | None = None) -> list[WithdrawalPeriodRead]:

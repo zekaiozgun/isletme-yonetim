@@ -27,14 +27,14 @@ export default async function NewResourcePage({ params }: { params: Promise<{ re
   // Bir asim (tohumlama) kaydi girilirken, secilen "Anne Adayi" o an
   // zaten "Gebe" olarak kayitliysa formu engellemeden bir uyari gosterir
   // - sistem sebebi (dusuk mu, yanlis giris mi) varsaymaz, sadece
-  // celiskiyi gorunur kilar (bkz. reports.list_pregnant_animals).
+  // celiskiyi gorunur kilar (bkz. reports.list_bred_animals).
   const warningField =
     slug === 'breeding-events'
       ? {
           fieldName: 'dam_id',
-          matchValues: (await apiGetSafe<ApiRecord[]>('/reports/pregnant-animals', [])).map((a) =>
-            String(a.animal_id)
-          ),
+          matchValues: (await apiGetSafe<ApiRecord[]>('/reports/bred-animals', []))
+            .filter((a) => a.check_status === 'Gebe')
+            .map((a) => String(a.animal_id)),
           message: '⚠ Bu hayvan şu anda "Gebe" olarak kayıtlı! Yeniden tohumlamak istediğinize emin misiniz?',
         }
       : undefined;

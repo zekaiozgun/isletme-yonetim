@@ -28,7 +28,6 @@ from app.modules.reports.schemas import (
     PenEfficiencyRead,
     PenOccupancyRead,
     PregnancyCheckResultRead,
-    PregnantAnimalRead,
     SalesReportRead,
     WeightGainRead,
     WithdrawalPeriodRead,
@@ -46,11 +45,6 @@ def breeding_candidates(db: Session = Depends(get_db)) -> list[BreedingCandidate
 @router.get("/bred-animals", response_model=list[BredAnimalRead])
 def bred_animals(db: Session = Depends(get_db)) -> list[BredAnimalRead]:
     return service.list_bred_animals(db)
-
-
-@router.get("/pregnant-animals", response_model=list[PregnantAnimalRead])
-def pregnant_animals(db: Session = Depends(get_db)) -> list[PregnantAnimalRead]:
-    return service.list_pregnant_animals(db)
 
 
 @router.get("/withdrawal-periods", response_model=list[WithdrawalPeriodRead])

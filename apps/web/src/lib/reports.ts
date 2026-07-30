@@ -77,6 +77,27 @@ function formatReturnedFromPregnancy(value: unknown): string {
   return value === true ? '⚠ Önceden Gebeydi' : '—';
 }
 
+function formatDaysUntilCalving(value: unknown): string {
+  if (typeof value !== 'number') return '—';
+  if (value < 0) return 'Gecikti';
+  if (value === 0) return 'Bugün';
+  return `${value} gün`;
+}
+
+/** Tohumlu ve Gebe Hayvanlar raporundaki "Uyarı" sütunu iki bağımsız
+ * durumu birleştirir: kontrol zamanı gelmiş ama henüz kontrol edilmemiş
+ * (Kontrol Bekliyor + pregnancy_check_due) ve önceden gebeydi
+ * (returned_from_pregnancy) - "Şüpheli" satırlarda zaten Durum sütunu
+ * tekrar kontrol gerektiğini söylediği için burada tekrarlanmaz. */
+function formatBreedingWarning(value: unknown, row: ApiRecord): string {
+  const warnings: string[] = [];
+  if (row.check_status === 'Kontrol Bekliyor' && row.pregnancy_check_due === true) {
+    warnings.push('⚠ Kontrol Zamanı Geldi');
+  }
+  if (value === true) warnings.push('⚠ Önceden Gebeydi');
+  return warnings.length > 0 ? warnings.join(' · ') : '—';
+}
+
 /** Anne (value) ve Baba (row.father_sire_name) küpe/isim bilgisini tek
  * sütunda "anne / baba" olarak gösterir - iki ayrı sütuna göre hem yer
  * kazandırır hem de eksik tarafı ("1234 / —") tek bakışta fark ettirir. */
@@ -338,37 +359,26 @@ export const reports: ReportConfig[] = [
   },
   {
     slug: 'bred-animals',
-    title: 'Tohumlu Hayvanlar',
+    title: 'Tohumlu ve Gebe Hayvanlar',
     description:
-      'Tohumlaması yapılmış, aktif üreme döngüsündeki hayvanlar. Gebelik kontrolü gerekenler üstte listelenir. Deneme Sayısı, son doğumundan bu yana (bu tohumlama dahil) kaçıncı deneme olduğunu gösterir. "⚠ Önceden Gebeydi" uyarısı, bu tohumlamadan önce aynı döngüde onaylı bir gebelik olduğunu ama artık geçerli olmadığını gösterir (sebebi - düşük mü, yanlış giriş mi - not alanına elle kaydedilmelidir).',
+      'Tohumlaması yapılmış, aktif üreme döngüsündeki hayvanlar - kontrol bekleyenler, şüpheli sonuçlar ve gebeliği onaylanmış olanlar tek listede (Durum sütunuyla ayırt edilir). Tahmini Doğum, kontrol sonucu onaylanmış olsun olmasın tohumlama tarihinden hesaplanır. Gebelik kontrolü gerekenler üstte listelenir. Deneme Sayısı, son doğumundan bu yana (bu tohumlama dahil) kaçıncı deneme olduğunu gösterir.',
     endpoint: '/reports/bred-animals',
+    groupSummaryKey: 'check_status',
+    helpNote:
+      'Bir hayvan doğurduğunda (buzağısı sisteme anne bilgisiyle kaydedildiğinde) bu listeden ANINDA çıkar - ayrıca bir işlem yapmanıza gerek yoktur. "Tahmini Doğum" tarihi, henüz gebelik kontrolü yapılmamış ya da "Şüpheli" çıkmış satırlarda da gösterilir - bu satırlarda kontrol sonucu HENÜZ ONAYLANMAMIŞTIR, tarih sadece tohumlama tarihine dayalı bir projeksiyondur. Uyarı sütunu iki farklı durumu gösterebilir: "⚠ Kontrol Zamanı Geldi" (kontrol bekleyen bir hayvan için süre doldu) ve "⚠ Önceden Gebeydi" (bu tohumlamadan önce aynı döngüde onaylı bir gebelik vardı ama artık geçerli değil - sebebi düşük mü, yanlış giriş mi, not alanına elle kaydedilmelidir).',
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
       { key: 'service_date', label: 'Tohumlama Tarihi', format: formatDate, width: 'narrow' },
       { key: 'service_method_name', label: 'Yöntem', width: 'narrow' },
       { key: 'days_since_service', label: 'Geçen Süre', format: formatDays, width: 'narrow' },
       { key: 'check_status', label: 'Durum', width: 'narrow' },
-      { key: 'expected_calving_date', label: 'Beklenen Doğum', format: formatDate, width: 'narrow' },
+      { key: 'expected_calving_date', label: 'Tahmini Doğum', format: formatDate, width: 'narrow' },
+      { key: 'days_until_calving', label: 'Doğuma Kalan', format: formatDaysUntilCalving, width: 'narrow' },
       { key: 'service_attempt_count', label: 'Deneme Sayısı', width: 'narrow' },
-      { key: 'returned_from_pregnancy', label: 'Uyarı', format: formatReturnedFromPregnancy, width: 'narrow' },
+      { key: 'returned_from_pregnancy', label: 'Uyarı', format: formatBreedingWarning, width: 'narrow' },
       { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
     ],
     rowHighlight: (row) => Boolean(row.pregnancy_check_due) || row.returned_from_pregnancy === true,
-  },
-  {
-    slug: 'pregnant-animals',
-    title: 'Gebe Hayvanlar',
-    description: 'Gebeliği onaylanmış hayvanlar, beklenen doğum tarihine göre sıralı.',
-    endpoint: '/reports/pregnant-animals',
-    helpNote:
-      'Bir hayvan doğurduğunda (buzağısı sisteme anne bilgisiyle kaydedildiğinde) bu listeden ANINDA çıkar - ayrıca bir işlem yapmanıza gerek yoktur. Doğumdan sonra hayvan, Tohumlanacak Hayvanlar raporunda önce "Post Partum" (ilk 45 gün, toparlanma süresi) sonra "Tohumlanacak" (45 gün sonrası, tekrar tohumlamaya hazır) sebebiyle görünmeye devam eder.',
-    columns: [
-      { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
-      { key: 'service_date', label: 'Tohumlama Tarihi', format: formatDate, width: 'narrow' },
-      { key: 'expected_calving_date', label: 'Beklenen Doğum Tarihi', format: formatDate, width: 'narrow' },
-      { key: 'days_until_calving', label: 'Doğuma Kalan Süre', format: formatDays, width: 'narrow' },
-    ],
-    rowHighlight: (row) => typeof row.days_until_calving === 'number' && row.days_until_calving <= 14,
   },
   {
     slug: 'active-animals',
