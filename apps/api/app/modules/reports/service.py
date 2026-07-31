@@ -1464,7 +1464,6 @@ def _build_profitability_row(
     outcome: str,
     outcome_date: date,
     revenue_try: Decimal | None,
-    is_forced_slaughter: bool | None = None,
 ) -> AnimalProfitabilityRead:
     health_cost_try, health_cost_usd = _health_cost_try_usd(db, animal.id, outcome_date)
     feed_cost_try, feed_cost_usd = _feed_cost_share_for_animal(db, animal.id, outcome_date)
@@ -1495,7 +1494,6 @@ def _build_profitability_row(
         revenue_usd=_round_money(revenue_usd) if revenue_usd is not None else None,
         profit_try=_round_money(profit_try),
         profit_usd=_round_money(profit_usd),
-        is_forced_slaughter=is_forced_slaughter,
         note=animal.note,
     )
 
@@ -1517,11 +1515,7 @@ def list_animal_profitability(db: Session, start_date: date, end_date: date) -> 
         Sale.sale_date >= start_date, Sale.sale_date <= end_date
     )
     for sale in db.scalars(sale_stmt).all():
-        rows.append(
-            _build_profitability_row(
-                db, sale.animal, "Satıldı", sale.sale_date, sale.total_amount, sale.is_forced_slaughter
-            )
-        )
+        rows.append(_build_profitability_row(db, sale.animal, "Satıldı", sale.sale_date, sale.total_amount))
 
     death_stmt = select(Death).options(joinedload(Death.animal)).where(
         Death.death_date >= start_date, Death.death_date <= end_date
