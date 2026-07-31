@@ -30,6 +30,11 @@ export interface ReportConfig {
   /** true ise rapor sayfası bir başlangıç/bitiş tarihi filtresi gösterir ve
    * bunları `start_date`/`end_date` query param'ı olarak endpoint'e ekler. */
   dateRange?: boolean;
+  /** Belirtilirse, hiçbir tarih seçilmeden ilk açıldığında başlangıç
+   * tarihi bugünden bu kadar gün öncesi olur (örn. 365 = 1 yıl önce) -
+   * belirtilmezse varsayılan "bu ayın başı" kullanılır. Kullanıcı her
+   * zaman kendi tarih aralığını seçip bunu değiştirebilir. */
+  defaultRangeDays?: number;
   /** true ise rapor sayfası tek bir "tarih itibariyle" filtresi gösterir
    * (aralık değil) ve bunu `as_of_date` query param'ı olarak endpoint'e ekler. */
   singleDate?: boolean;
@@ -277,6 +282,7 @@ export const reports: ReportConfig[] = [
     description: 'Aralıktaki ölümler; buzağı (0-7 ay) ve yetişkin kaybı ayrı ayrı, neden dağılımı ve kayıp oranı.',
     endpoint: '/reports/deaths',
     dateRange: true,
+    defaultRangeDays: 365,
     columns: [
       { key: 'age_group', label: 'Yaş Grubu', width: 'narrow' },
       { key: 'death_count', label: 'Kayıp Sayısı', width: 'narrow' },

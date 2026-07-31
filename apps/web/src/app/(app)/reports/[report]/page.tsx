@@ -16,6 +16,12 @@ function firstDayOfMonthIso(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 }
 
+function daysAgoIso(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
 export default async function ReportPage({
   params,
   searchParams,
@@ -38,7 +44,7 @@ export default async function ReportPage({
   let rangeStart: string | undefined;
   let rangeEnd: string | undefined;
   if (report.dateRange) {
-    rangeStart = sp.start || firstDayOfMonthIso();
+    rangeStart = sp.start || (report.defaultRangeDays ? daysAgoIso(report.defaultRangeDays) : firstDayOfMonthIso());
     rangeEnd = sp.end || todayIso();
   }
 
