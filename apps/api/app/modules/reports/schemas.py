@@ -73,6 +73,10 @@ class DeathLossReportRead(BaseModel):
     reason_breakdown: str
     current_active_count: int
     loss_rate: float | None = None
+    # true ise bu satir buzagi+yetiskin gruplarinin BIRLESIK toplamidir -
+    # dashboard'daki "Yillik Kayip Orani" (tum sürü icin tek bir oran) ile
+    # dogrudan karsilastirilabilsin diye (bkz. list_death_losses).
+    is_summary: bool = False
 
 
 class CalvingIntervalRead(BaseModel):

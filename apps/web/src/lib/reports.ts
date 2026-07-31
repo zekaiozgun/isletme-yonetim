@@ -279,7 +279,8 @@ export const reports: ReportConfig[] = [
   {
     slug: 'deaths',
     title: 'Ölüm/Kayıp Raporu',
-    description: 'Aralıktaki ölümler; buzağı (0-7 ay) ve yetişkin kaybı ayrı ayrı, neden dağılımı ve kayıp oranı.',
+    description:
+      'Aralıktaki ölümler; buzağı (0-7 ay) ve yetişkin kaybı ayrı ayrı, neden dağılımı ve kayıp oranı. "Toplam" satırı ikisinin birleşik oranını gösterir - Dashboard\'daki "Yıllık Kayıp Oranı" ile karşılaştırmak için (o tek bir sürü-geneli oran verir, buradaki iki ayrı satır ağırlıklı ortalaması alınınca ona eşit olur).',
     endpoint: '/reports/deaths',
     dateRange: true,
     defaultRangeDays: 365,
@@ -290,7 +291,7 @@ export const reports: ReportConfig[] = [
       { key: 'current_active_count', label: 'Mevcut Aktif Sayı', width: 'narrow' },
       { key: 'loss_rate', label: 'Kayıp Oranı', format: formatPercent, width: 'narrow' },
     ],
-    rowHighlight: (row) => typeof row.loss_rate === 'number' && row.loss_rate >= 10,
+    rowHighlight: (row) => Boolean(row.is_summary) || (typeof row.loss_rate === 'number' && row.loss_rate >= 10),
   },
   {
     slug: 'herd-flow',

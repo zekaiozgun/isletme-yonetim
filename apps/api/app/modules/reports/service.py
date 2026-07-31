@@ -1006,6 +1006,32 @@ def list_death_losses(db: Session, start_date: date, end_date: date, today: date
                 loss_rate=rate,
             )
         )
+
+    # Iki grubun BIRLESIK toplami - dashboard'daki "Yillik Kayip Orani"
+    # tek bir suru-geneli oran verdigi icin (bkz. get_dashboard_summary),
+    # buradaki ayri buzagi/yetiskin satirlarindan dogrudan karsilastirma
+    # yapilamiyordu. Bu satir aynı hesabi (toplam olum / toplam olum+aktif)
+    # burada da gosterip iki rakamin neden farkli oldugunu gorunur kilar.
+    total_dcount = sum(death_counts.values())
+    total_acount = sum(active_counts.values())
+    total_reason_counts: dict[str, int] = {}
+    for group_reasons in reason_counts.values():
+        for name, count in group_reasons.items():
+            total_reason_counts[name] = total_reason_counts.get(name, 0) + count
+    total_breakdown = ", ".join(
+        f"{name} ({count})" for name, count in sorted(total_reason_counts.items(), key=lambda kv: -kv[1])
+    )
+    total_rate = round(total_dcount / (total_dcount + total_acount) * 100, 1) if (total_dcount + total_acount) > 0 else None
+    rows.append(
+        DeathLossReportRead(
+            age_group="Toplam",
+            death_count=total_dcount,
+            reason_breakdown=total_breakdown,
+            current_active_count=total_acount,
+            loss_rate=total_rate,
+            is_summary=True,
+        )
+    )
     return rows
 
 
@@ -1180,7 +1206,9 @@ def get_dashboard_summary(db: Session, today: date | None = None) -> DashboardSu
     calving_intervals = list_calving_intervals(db)
     average_calving_interval = calving_intervals[0].interval_days if calving_intervals else None
 
-    yearly_losses = list_death_losses(db, today - timedelta(days=365), today, today)
+    # is_summary=True satiri (Toplam) zaten buzagi+yetiskin toplami oldugu
+    # icin disarida birakiliyor - yoksa cift sayim olurdu.
+    yearly_losses = [r for r in list_death_losses(db, today - timedelta(days=365), today, today) if not r.is_summary]
     total_deaths = sum(r.death_count for r in yearly_losses)
     total_active_for_loss = sum(r.current_active_count for r in yearly_losses)
     annual_loss_rate = (
