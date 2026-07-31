@@ -278,6 +278,9 @@ class AnimalProfitabilityRead(BaseModel):
     revenue_usd: Decimal | None = None
     profit_try: Decimal
     profit_usd: Decimal
+    # Sadece "Satıldı" satırlarında anlamlıdır (bkz. Sale.is_forced_slaughter);
+    # "Öldü" satırlarında None - satış olmadigi icin kavram uygulanamaz.
+    is_forced_slaughter: bool | None = None
 
 
 class HerdCostSummaryRead(BaseModel):

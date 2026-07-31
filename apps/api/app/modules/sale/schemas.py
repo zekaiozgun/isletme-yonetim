@@ -28,6 +28,7 @@ class SaleCreate(BaseModel):
     sale_type_id: int
     sale_weight_kg: Decimal | None = None
     total_amount: Decimal
+    is_forced_slaughter: bool = False
     note: str | None = None
 
 

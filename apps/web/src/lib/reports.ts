@@ -99,6 +99,10 @@ function formatDaysUntilCalving(value: unknown): string {
  * gebeydi çelişkisi var) doğrudan Durum hücresini kırmızı/kalın gösterir
  * - satır zaten amber vurgulu olduğundan ayrı bir metin sütunu
  * gerekmiyor, bu tek başına yeterince göze batıyor. */
+function formatForcedSlaughter(value: unknown): string {
+  return value === true ? 'Zorunlu Kesim' : '—';
+}
+
 function bredAnimalStatusClass(row: ApiRecord): string {
   const needsAttention = row.pregnancy_check_due === true || row.returned_from_pregnancy === true;
   return needsAttention ? 'font-bold text-red-600' : 'text-slate-700';
@@ -494,6 +498,7 @@ export const reports: ReportConfig[] = [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
       { key: 'outcome', label: 'Sonuç', width: 'narrow' },
       { key: 'outcome_date', label: 'Tarih', format: formatDate, width: 'narrow' },
+      { key: 'is_forced_slaughter', label: 'Kesim Türü', format: formatForcedSlaughter, width: 'narrow' },
       { key: 'entry_value_try', label: 'Giriş Değeri (TL)', format: formatCurrency, width: 'narrow' },
       { key: 'health_cost_try', label: 'Sağlık Maliyeti (TL)', format: formatCurrency, width: 'narrow' },
       { key: 'feed_cost_try', label: 'Yem Payı (TL)', format: formatCurrency, width: 'narrow' },

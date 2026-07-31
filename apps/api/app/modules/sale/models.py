@@ -10,7 +10,7 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import Date, ForeignKey, Numeric, String
+from sqlalchemy import Boolean, Date, ForeignKey, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -41,6 +41,12 @@ class Sale(TimestampMixin, Base):
     sale_type_id: Mapped[int] = mapped_column(ForeignKey("sale_types.id"), nullable=False)
     sale_weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(6, 2), nullable=True)
     total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    # Hayvan yaralanma/hastalik gibi bir zorunluluktan dolayi (planlanan
+    # zamanindan once, tipik olarak dusuk fiyata) kesime satildiysa true -
+    # nedeni tekrar tutulmaz (zaten Saglik Olaylari'nda kayitli), sadece
+    # bu satislari kayip-benzeri olarak filtrelenebilir/raporlanabilir
+    # kilmak icin (Anayasa m.4: tahmin etmez, sadece isaretlenen facti tutar).
+    is_forced_slaughter: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     note: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     animal = relationship("Animal")

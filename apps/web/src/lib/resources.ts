@@ -439,6 +439,7 @@ const mainResources: ResourceConfig[] = [
       { key: 'buyer_id', label: 'Alıcı', lookup: buyers },
       { key: 'sale_type_id', label: 'Tip', lookup: saleTypes },
       { key: 'total_amount', label: 'Tutar' },
+      { key: 'is_forced_slaughter', label: 'Zorunlu Kesim', boolean: true },
     ],
     fields: [
       { name: 'animal_id', label: 'Hayvan', type: 'select', options: animals, required: true },
@@ -447,6 +448,11 @@ const mainResources: ResourceConfig[] = [
       { name: 'sale_type_id', label: 'Satış Tipi', type: 'select', options: saleTypes, required: true },
       { name: 'sale_weight_kg', label: 'Satış Ağırlığı (kg)', type: 'decimal' },
       { name: 'total_amount', label: 'Toplam Tutar', type: 'decimal', required: true },
+      {
+        name: 'is_forced_slaughter',
+        label: 'Zorunlu Kesim mi? (yaralanma/hastalık nedeniyle planlanandan önce, düşük fiyata kesime satış)',
+        type: 'checkbox',
+      },
       { name: 'note', label: 'Not', type: 'textarea' },
     ],
   },
