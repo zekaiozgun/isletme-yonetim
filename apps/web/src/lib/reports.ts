@@ -182,6 +182,7 @@ export const reports: ReportConfig[] = [
       'Aralıktaki aşım kayıtları; doğal/suni tohumlama dağılımı, boğa veya sperma partisi bazında gebe kalma oranı.',
     endpoint: '/reports/breeding-performance',
     dateRange: true,
+    defaultRangeDays: 365,
     columns: [
       { key: 'source_type', label: 'Yöntem', width: 'narrow' },
       { key: 'source_label', label: 'Boğa / Sperma Partisi', width: 'wide' },
@@ -248,6 +249,7 @@ export const reports: ReportConfig[] = [
       'Aralıkta en az iki tartısı olan hayvanlar için, ilk ve son tartı arasındaki günlük ortalama canlı ağırlık artışı (ADG).',
     endpoint: '/reports/weight-gains',
     dateRange: true,
+    defaultRangeDays: 180,
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
       { key: 'first_weigh_date', label: 'İlk Tartı', format: formatDate, width: 'narrow' },
@@ -299,6 +301,7 @@ export const reports: ReportConfig[] = [
     description: 'Aralıkta işletmeye giren (doğum/satın alma) ve çıkan (satış/ölüm) hayvan sayıları; net büyüme.',
     endpoint: '/reports/herd-flow',
     dateRange: true,
+    defaultRangeDays: 365,
     columns: [
       { key: 'category', label: 'Hareket', width: 'narrow' },
       { key: 'count', label: 'Hayvan Sayısı', width: 'narrow' },
@@ -466,6 +469,7 @@ export const reports: ReportConfig[] = [
       'Aralıkta padoğa dağıtılan yem (miktar, TL ve TCMB kuruyla USD) ile o padoktaki hayvanların gerçek kilo artışı karşılaştırılır: yem dönüşüm oranı (FCR) ve kg canlı ağırlık başına maliyet.',
     endpoint: '/reports/pen-efficiency',
     dateRange: true,
+    defaultRangeDays: 180,
     columns: [
       { key: 'code', label: 'Padok Kodu', width: 'narrow' },
       { key: 'name', label: 'Padok Adı', width: 'narrow' },
@@ -485,6 +489,7 @@ export const reports: ReportConfig[] = [
       'Aralıkta satılan veya ölen hayvanların yaşam boyu maliyeti (giriş değeri + sağlık + gün ağırlıklı yem payı) satış geliriyle karşılaştırılır. Giriş değeri, satın alınan hayvanlarda alım tutarı, işletmede doğanlarda ise doğumda biçilen tahmini değerdir - ölen bir hayvanın giriş değeri doğrudan zarar yazılır. TL tutarlar tarihsel/nominal, USD karşılığı işlem tarihindeki TCMB kuruyla hesaplanır. Zarar eden hayvanlar vurgulu.',
     endpoint: '/reports/animal-profitability',
     dateRange: true,
+    defaultRangeDays: 365,
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
       { key: 'outcome', label: 'Sonuç', width: 'narrow' },
