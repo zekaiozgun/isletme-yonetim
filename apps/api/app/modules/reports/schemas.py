@@ -67,6 +67,36 @@ class CalvingRead(BaseModel):
     note: str | None = None
 
 
+class OffspringByMotherRead(BaseModel):
+    mother_id: uuid.UUID
+    mother_tag_number: str
+    animal_id: uuid.UUID
+    tag_number: str
+    name: str | None = None
+    birth_date: date
+    gender_name: str
+    status_name: str
+
+
+class OffspringBySireRead(BaseModel):
+    sire_id: int
+    # Kimlik gosterim onceligi (frontend'de birlestirilir): kupe no
+    # (suruye ait bogaysa) -> registry_no (soy kutugu kayit no, dis
+    # kaynakli bogalarda girilmis olabilir) -> hicbiri yoksa sire_id
+    # (sistemin ic kayit no'su) - hicbiri uydurma degildir, zaten var
+    # olan bir facttir, sadece gosterim onceligi degisir.
+    sire_tag_number: str | None = None
+    sire_registry_no: str | None = None
+    sire_name: str
+    animal_id: uuid.UUID
+    tag_number: str
+    name: str | None = None
+    birth_date: date
+    gender_name: str
+    mother_tag_number: str | None = None
+    status_name: str
+
+
 class DeathLossReportRead(BaseModel):
     age_group: str
     death_count: int

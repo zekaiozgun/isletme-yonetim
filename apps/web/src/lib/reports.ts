@@ -125,6 +125,24 @@ function formatParentage(value: unknown, row: ApiRecord): string {
   return `${mother ?? '—'} / ${father ?? '—'}`;
 }
 
+/** Baba Bazında Yavru Listesi raporunda boğa kimliğini gösterir - öncelik
+ * sırası: küpe no (sürüye ait bir boğaysa) -> soy kütüğü kayıt no (dış
+ * kaynaklı boğalarda girilmiş olabilir) -> hiçbiri yoksa sistemin kendi
+ * iç kayıt no'su (sire_id). Hiçbiri uydurma değildir, zaten var olan bir
+ * facttir - sadece hangisinin gösterileceği değişir (bkz. backend
+ * OffspringBySireRead). Her durumda boğa adıyla birlikte gösterilir.
+ */
+function formatSireIdentity(value: unknown, row: ApiRecord): string {
+  const name = typeof row.sire_name === 'string' && row.sire_name ? row.sire_name : '—';
+  if (typeof row.sire_tag_number === 'string' && row.sire_tag_number) {
+    return `${row.sire_tag_number} — ${name}`;
+  }
+  if (typeof row.sire_registry_no === 'string' && row.sire_registry_no) {
+    return `Kayıt No ${row.sire_registry_no} — ${name}`;
+  }
+  return `Kayıt No ${String(value)} — ${name}`;
+}
+
 function formatDosage(value: unknown, row: ApiRecord): string {
   if (value === null || value === undefined || value === '') return '—';
   const unit = row.dosage_unit_name;
@@ -187,6 +205,35 @@ export const reports: ReportConfig[] = [
       { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
     ],
     rowHighlight: (row) => Boolean(row.is_difficult_birth),
+  },
+  {
+    slug: 'offspring-by-mother',
+    title: 'Anne Bazında Yavru Listesi',
+    description:
+      'Anne küpe numarasına göre sıralı, tüm yavrular (satılmış/ölmüş olanlar dahil) - bir soy kaydıdır, aktif sürü listesi değildir. Belirli bir anneyi görmek için arama kutusuna küpe no yazın.',
+    endpoint: '/reports/offspring-by-mother',
+    columns: [
+      { key: 'mother_tag_number', label: 'Anne Küpe No', width: 'narrow' },
+      { key: 'tag_number', label: 'Yavru Küpe No', width: 'narrow' },
+      { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate, width: 'narrow' },
+      { key: 'gender_name', label: 'Cinsiyet', width: 'narrow' },
+      { key: 'status_name', label: 'Güncel Durum', width: 'narrow' },
+    ],
+  },
+  {
+    slug: 'offspring-by-sire',
+    title: 'Baba Bazında Yavru Listesi',
+    description:
+      'Boğa kimliğine göre sıralı, tüm yavrular (satılmış/ölmüş olanlar dahil) - bir soy kaydıdır, aktif sürü listesi değildir. Belirli bir boğayı görmek için arama kutusuna adını veya kayıt no\'sunu yazın.',
+    endpoint: '/reports/offspring-by-sire',
+    columns: [
+      { key: 'sire_id', label: 'Baba', format: formatSireIdentity, width: 'narrow' },
+      { key: 'tag_number', label: 'Yavru Küpe No', width: 'narrow' },
+      { key: 'mother_tag_number', label: 'Anne Küpe No', format: formatPlain, width: 'narrow' },
+      { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate, width: 'narrow' },
+      { key: 'gender_name', label: 'Cinsiyet', width: 'narrow' },
+      { key: 'status_name', label: 'Güncel Durum', width: 'narrow' },
+    ],
   },
   {
     slug: 'breeding-performance',

@@ -23,7 +23,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, aliased, joinedload
 
 from app.core.date_utils import full_months_between
 from app.core.lookup_helpers import get_lookup_by_code
@@ -31,7 +31,7 @@ from app.modules.animal.lookups import AnimalStatus, EntrySource, Gender
 from app.modules.animal.models import Animal
 from app.modules.breeding.lookups import PregnancyResult
 from app.modules.breeding.models import BreedingEvent, PregnancyCheck
-from app.modules.genetic_resource.models import SemenBatch
+from app.modules.genetic_resource.models import SemenBatch, Sire
 from app.modules.death.models import Death
 from app.modules.feed.models import FeedItem, FeedPurchase, PenRation, RationItem
 from app.modules.fx import service as fx_service
@@ -57,6 +57,8 @@ from app.modules.reports.schemas import (
     HerdFlowReportRead,
     HerdInventoryRead,
     HerdStatusSummaryRead,
+    OffspringByMotherRead,
+    OffspringBySireRead,
     PenEfficiencyRead,
     PenOccupancyRead,
     PregnancyCheckResultRead,
@@ -487,6 +489,78 @@ def list_calvings(db: Session, start_date: date, end_date: date) -> list[Calving
                 father_sire_name=animal.father_sire.name if animal.father_sire else None,
                 status_name=animal.status.name,
                 note=animal.note,
+            )
+        )
+    return rows
+
+
+def list_offspring_by_mother(db: Session) -> list[OffspringByMotherRead]:
+    """Anne bazinda yavru (soy) listesi - mother_id dolu olan TUM hayvanlar,
+    guncel durumlari ne olursa olsun (satilmis/olmus yavrular da dahildir,
+    cunku bu bir soy kaydidir, aktif suru listesi degildir). Anne kupe
+    numarasina, sonra dogum tarihine gore siralanir - boylece ayni anneden
+    gelen yavrular listede ardisik gorunur."""
+    mother_alias = aliased(Animal)
+    stmt = (
+        select(Animal)
+        .join(mother_alias, Animal.mother_id == mother_alias.id)
+        .options(joinedload(Animal.mother), joinedload(Animal.gender), joinedload(Animal.status))
+        .where(Animal.mother_id.isnot(None), Animal.birth_date.isnot(None))
+        .order_by(mother_alias.tag_number, Animal.birth_date)
+    )
+    rows: list[OffspringByMotherRead] = []
+    for animal in db.scalars(stmt).all():
+        assert animal.mother is not None and animal.birth_date is not None
+        rows.append(
+            OffspringByMotherRead(
+                mother_id=animal.mother_id,
+                mother_tag_number=animal.mother.tag_number,
+                animal_id=animal.id,
+                tag_number=animal.tag_number,
+                name=animal.name,
+                birth_date=animal.birth_date,
+                gender_name=animal.gender.name,
+                status_name=animal.status.name,
+            )
+        )
+    return rows
+
+
+def list_offspring_by_sire(db: Session) -> list[OffspringBySireRead]:
+    """Baba bazinda yavru (soy) listesi - father_sire_id dolu olan TUM
+    hayvanlar, guncel durumlari ne olursa olsun. Baba kimligi sire_id ile
+    birlikte hem kupe no (suruye aitse) hem soy kutugu kayit no (girilmisse)
+    olarak dondurulur - gosterim onceligi frontend'de belirlenir (bkz.
+    OffspringBySireRead). Boga adina, sonra dogum tarihine gore siralanir."""
+    stmt = (
+        select(Animal)
+        .join(Sire, Animal.father_sire_id == Sire.id)
+        .options(
+            joinedload(Animal.father_sire).joinedload(Sire.animal),
+            joinedload(Animal.mother),
+            joinedload(Animal.gender),
+            joinedload(Animal.status),
+        )
+        .where(Animal.father_sire_id.isnot(None), Animal.birth_date.isnot(None))
+        .order_by(Sire.name, Animal.birth_date)
+    )
+    rows: list[OffspringBySireRead] = []
+    for animal in db.scalars(stmt).all():
+        sire = animal.father_sire
+        assert sire is not None and animal.birth_date is not None
+        rows.append(
+            OffspringBySireRead(
+                sire_id=sire.id,
+                sire_tag_number=sire.animal.tag_number if sire.animal else None,
+                sire_registry_no=sire.registry_no,
+                sire_name=sire.name,
+                animal_id=animal.id,
+                tag_number=animal.tag_number,
+                name=animal.name,
+                birth_date=animal.birth_date,
+                gender_name=animal.gender.name,
+                mother_tag_number=animal.mother.tag_number if animal.mother else None,
+                status_name=animal.status.name,
             )
         )
     return rows

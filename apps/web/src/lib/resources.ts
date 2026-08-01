@@ -157,6 +157,8 @@ const mainResources: ResourceConfig[] = [
       { slug: 'active-animals', title: 'Hayvan Listesi (Durum Filtresi)' },
       { slug: 'calves', title: 'Buzağı Listesi (0-7 Ay)' },
       { slug: 'heifers-steers', title: 'Düve ve Dana Listesi (7-12 Ay)' },
+      { slug: 'offspring-by-mother', title: 'Anne Bazında Yavru Listesi' },
+      { slug: 'offspring-by-sire', title: 'Baba Bazında Yavru Listesi' },
     ],
   },
   {
