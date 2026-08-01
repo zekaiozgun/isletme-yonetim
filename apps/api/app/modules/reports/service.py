@@ -638,7 +638,7 @@ def list_mother_performance(db: Session) -> list[MotherPerformanceRead]:
     yoksa en sona duser) - frontend'de tiklanarak degistirilebilir.
     Sadece en az bir yavrusu olan anneler listelenir."""
     gain_by_animal = _lifetime_daily_gain_by_animal(db)
-    profit_by_animal = _lifetime_profit_by_animal(db)
+    profit_by_animal: dict[uuid.UUID, Decimal] = {}  # DEBUG: profit hesabı geçici kapatıldı
     dead_ids = set(db.scalars(select(Death.animal_id)).all())
     female_id = get_lookup_by_code(db, Gender, FEMALE_GENDER_CODE).id
 
@@ -684,7 +684,7 @@ def list_sire_performance(db: Session) -> list[SirePerformanceRead]:
     OffspringBySireRead ile ayni onceliktedir (kupe no -> registry_no ->
     sire_id)."""
     gain_by_animal = _lifetime_daily_gain_by_animal(db)
-    profit_by_animal = _lifetime_profit_by_animal(db)
+    profit_by_animal: dict[uuid.UUID, Decimal] = {}  # DEBUG: profit hesabı geçici kapatıldı
     dead_ids = set(db.scalars(select(Death.animal_id)).all())
     female_id = get_lookup_by_code(db, Gender, FEMALE_GENDER_CODE).id
 
