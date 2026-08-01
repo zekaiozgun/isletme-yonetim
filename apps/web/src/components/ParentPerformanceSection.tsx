@@ -20,17 +20,6 @@ export function ParentPerformanceSection({ motherRows, sireRows }: { motherRows:
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Anne Bazında</h2>
-        <ParentPerformanceTable
-          rows={motherRows}
-          getParentLabel={motherLabel}
-          parentColumnLabel="Anne Küpe No"
-          searchPlaceholder="Anne Bazında ara (küpe no)..."
-          exportFilenamePrefix="anne-bazinda-verimlilik"
-          exportTitle="Anne Bazında Verimlilik Sıralaması"
-        />
-      </div>
-      <div>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Baba Bazında</h2>
         <ParentPerformanceTable
           rows={sireRows}
@@ -39,6 +28,17 @@ export function ParentPerformanceSection({ motherRows, sireRows }: { motherRows:
           searchPlaceholder="Baba Bazında ara (ad/kayıt no)..."
           exportFilenamePrefix="baba-bazinda-verimlilik"
           exportTitle="Baba Bazında Verimlilik Sıralaması"
+        />
+      </div>
+      <div>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Anne Bazında</h2>
+        <ParentPerformanceTable
+          rows={motherRows}
+          getParentLabel={motherLabel}
+          parentColumnLabel="Anne Küpe No"
+          searchPlaceholder="Anne Bazında ara (küpe no)..."
+          exportFilenamePrefix="anne-bazinda-verimlilik"
+          exportTitle="Anne Bazında Verimlilik Sıralaması"
         />
       </div>
     </div>
