@@ -10915,7 +10915,9 @@ export interface operations {
     };
     offspring_by_mother_reports_offspring_by_mother_get: {
         parameters: {
-            query?: never;
+            query?: {
+                q?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -10931,11 +10933,22 @@ export interface operations {
                     "application/json": components["schemas"]["OffspringByMotherRead"][];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     offspring_by_sire_reports_offspring_by_sire_get: {
         parameters: {
-            query?: never;
+            query?: {
+                q?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -10949,6 +10962,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OffspringBySireRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
