@@ -1,3 +1,4 @@
+import sentry_sdk
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -24,6 +25,15 @@ from app.modules.valuation.router import router as valuation_router
 from app.modules.weight.router import router as weight_router
 
 settings = get_settings()
+
+# DSN gizli bir anahtar degildir (Sentry'nin kendi dokumantasyonu istemci
+# tarafi/genel kodlara gomulmesini onerir - sadece olay GONDERMEK icin
+# kullanilir, okuma yetkisi vermez), bu yuzden dogrudan koda yazilmasi
+# guvenlik riski olusturmaz.
+sentry_sdk.init(
+    dsn="https://e12046afa4a95f169bc2b88b0a406b19@o4511835793915904.ingest.de.sentry.io/4511835813249104",
+    send_default_pii=False,
+)
 
 app = FastAPI(title="İşletme Yönetim API")
 

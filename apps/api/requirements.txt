@@ -7,3 +7,4 @@ pydantic-settings>=2.6.1
 bcrypt>=4.0.0
 pyjwt>=2.9.0
 weasyprint>=69.0
+sentry-sdk[fastapi]>=2.18.0
