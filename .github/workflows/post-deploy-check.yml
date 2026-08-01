@@ -1,0 +1,46 @@
+name: Deploy Sonrası Kontrol
+
+# main'e her push'ta calisir - Render bu push'u otomatik deploy eder,
+# bu workflow deploy'un fiilen ayakta ve beklenen icerigi dondurdugunu
+# dogrular. Sadece kimlik dogrulama gerektirmeyen (public) uc noktalari
+# kontrol eder - "backend/frontend hic ayaga kalkmadi" sinifindaki
+# hatalari yakalar, oturum acmis kullanici gerektiren sayfa-ozel
+# hatalari (bkz. Server/Client Component siniri) yakalamaz.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Render deploy'unun başlaması için bekle
+        run: sleep 90
+
+      - name: Backend ayakta mı kontrol et
+        run: |
+          for i in $(seq 1 10); do
+            if curl -sf --max-time 10 https://isletme-yonetim.onrender.com/health > /dev/null; then
+              echo "Backend OK (deneme $i)"
+              exit 0
+            fi
+            echo "Backend henüz hazır değil (deneme $i), 20sn bekleniyor..."
+            sleep 20
+          done
+          echo "::error::Backend 10 denemede ayağa kalkmadı"
+          exit 1
+
+      - name: Frontend giriş sayfası kontrol et
+        run: |
+          for i in $(seq 1 10); do
+            body=$(curl -sf --max-time 10 https://isletme-yonetim-web.onrender.com/login || true)
+            if echo "$body" | grep -q "Giriş Yap"; then
+              echo "Frontend OK (deneme $i)"
+              exit 0
+            fi
+            echo "Frontend henüz hazır değil (deneme $i), 20sn bekleniyor..."
+            sleep 20
+          done
+          echo "::error::Frontend 10 denemede beklenen içeriği döndürmedi"
+          exit 1

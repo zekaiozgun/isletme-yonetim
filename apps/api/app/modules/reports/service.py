@@ -1723,15 +1723,113 @@ def _accumulated_cost_try_usd(
     return total_try, total_usd
 
 
+@dataclass
+class _CostContext:
+    """Hayvan Kârlılık Raporu gibi SÜRÜDEKİ birçok hayvanı gezen
+    raporların, her hayvan için ayrı ayrı sağlık/yem sorgusu atmasını
+    (N+1 deseni) önlemek için gerekli ham veriyi TEK seferde önceden
+    yükler. _health_cost_try_usd/_feed_cost_share_for_animal ile
+    MATEMATİKSEL OLARAK AYNI sonucu üretir (aynı filtreler, aynı
+    ağırlıklı ortalama) - sadece hayvan başına ayrı sorgu yerine
+    hafızadaki listelerden okur (bkz. _build_cost_context)."""
+
+    health_events_by_animal: dict[uuid.UUID, list[HealthEvent]]
+    assignments_by_animal: dict[uuid.UUID, list[PenAssignment]]
+    rations_by_pen: dict[int, list[PenRation]]
+    purchases_by_feed_item: dict[int, list[FeedPurchase]]
+
+
+def _build_cost_context(db: Session) -> _CostContext:
+    health_events_by_animal: dict[uuid.UUID, list[HealthEvent]] = {}
+    for he in db.scalars(select(HealthEvent).where(HealthEvent.cost.isnot(None))).all():
+        health_events_by_animal.setdefault(he.animal_id, []).append(he)
+
+    assignments_by_animal: dict[uuid.UUID, list[PenAssignment]] = {}
+    for assignment in db.scalars(select(PenAssignment)).all():
+        assignments_by_animal.setdefault(assignment.animal_id, []).append(assignment)
+
+    rations_by_pen: dict[int, list[PenRation]] = {}
+    rations = (
+        db.scalars(select(PenRation).options(joinedload(PenRation.items).joinedload(RationItem.unit)))
+        .unique()
+        .all()
+    )
+    for ration in rations:
+        rations_by_pen.setdefault(ration.pen_id, []).append(ration)
+
+    purchases_by_feed_item: dict[int, list[FeedPurchase]] = {}
+    purchases = db.scalars(
+        select(FeedPurchase).options(joinedload(FeedPurchase.unit)).where(FeedPurchase.total_cost.isnot(None))
+    ).all()
+    for purchase in purchases:
+        purchases_by_feed_item.setdefault(purchase.feed_item_id, []).append(purchase)
+
+    return _CostContext(health_events_by_animal, assignments_by_animal, rations_by_pen, purchases_by_feed_item)
+
+
+def _feed_avg_cost_per_kg_ctx(ctx: _CostContext, feed_item_id: int, as_of_date: date) -> Decimal | None:
+    total_cost = Decimal("0")
+    total_kg = Decimal("0")
+    for purchase in ctx.purchases_by_feed_item.get(feed_item_id, []):
+        if purchase.purchase_date > as_of_date:
+            continue
+        total_cost += purchase.total_cost
+        total_kg += Decimal(str(_to_kg(purchase.quantity, purchase.unit.code)))
+    if total_kg == 0:
+        return None
+    return total_cost / total_kg
+
+
+def _health_cost_try_usd_ctx(
+    db: Session, ctx: _CostContext, animal_id: uuid.UUID, as_of_date: date, convert_usd: bool = True
+) -> tuple[Decimal, Decimal]:
+    events = [he for he in ctx.health_events_by_animal.get(animal_id, []) if he.event_date <= as_of_date]
+    total_try = sum((he.cost for he in events), Decimal("0"))
+    total_usd = (
+        sum((_try_to_usd(db, he.cost, he.event_date) for he in events), Decimal("0"))
+        if convert_usd
+        else Decimal("0")
+    )
+    return total_try, total_usd
+
+
+def _feed_cost_share_for_animal_ctx(
+    db: Session, ctx: _CostContext, animal_id: uuid.UUID, outcome_date: date, convert_usd: bool = True
+) -> tuple[Decimal, Decimal]:
+    total_try = Decimal("0")
+    total_usd = Decimal("0")
+    for assignment in ctx.assignments_by_animal.get(animal_id, []):
+        window_end = min(assignment.removed_date or outcome_date, outcome_date)
+        if assignment.assigned_date > window_end:
+            continue
+        for ration in ctx.rations_by_pen.get(assignment.pen_id, []):
+            days = _overlap_days_count(
+                assignment.assigned_date, window_end, ration.start_date, ration.end_date or window_end
+            )
+            if days <= 0:
+                continue
+            for item in ration.items:
+                kg = Decimal(str(_to_kg(item.daily_quantity_per_animal, item.unit.code) * days))
+                avg_cost = _feed_avg_cost_per_kg_ctx(ctx, item.feed_item_id, outcome_date)
+                if avg_cost is None:
+                    continue
+                cost_try = kg * avg_cost
+                total_try += cost_try
+                if convert_usd:
+                    total_usd += _try_to_usd(db, cost_try, outcome_date)
+    return total_try, total_usd
+
+
 def _build_profitability_row(
     db: Session,
+    ctx: _CostContext,
     animal: Animal,
     outcome: str,
     outcome_date: date,
     revenue_try: Decimal | None,
 ) -> AnimalProfitabilityRead:
-    health_cost_try, health_cost_usd = _health_cost_try_usd(db, animal.id, outcome_date)
-    feed_cost_try, feed_cost_usd = _feed_cost_share_for_animal(db, animal.id, outcome_date)
+    health_cost_try, health_cost_usd = _health_cost_try_usd_ctx(db, ctx, animal.id, outcome_date)
+    feed_cost_try, feed_cost_usd = _feed_cost_share_for_animal_ctx(db, ctx, animal.id, outcome_date)
 
     entry_value_try = animal.entry_value or Decimal("0")
     entry_value_usd = _try_to_usd(db, entry_value_try, animal.entry_date)
@@ -1773,20 +1871,27 @@ def list_animal_profitability(db: Session, start_date: date, end_date: date) -> 
     aninda bictigi tahmini deger olabilir (biyolojik varlik muhasebesi -
     dogan bir buzagi da bir degerle isletmeye giren bir 'urun'dur; olurse
     bu deger dogrudan zarar yazilir). Aktif hayvanlar bu raporda YOKTUR,
-    karliligi henuz gerceklesmedi (Anayasa m.4/m.5)."""
+    karliligi henuz gerceklesmedi (Anayasa m.4/m.5).
+
+    PERFORMANS: alt-maliyet verisi (sağlık, padok atamaları, rasyonlar,
+    yem alımları) rapordaki HER hayvan için ayrı ayrı değil, TEK seferde
+    _build_cost_context ile önceden yüklenir (bkz. _CostContext) - N+1
+    sorgu deseninden kaçınır, sürü büyüdükçe rapor süresi orantısız
+    artmaz."""
+    ctx = _build_cost_context(db)
     rows: list[AnimalProfitabilityRead] = []
 
     sale_stmt = select(Sale).options(joinedload(Sale.animal)).where(
         Sale.sale_date >= start_date, Sale.sale_date <= end_date
     )
     for sale in db.scalars(sale_stmt).all():
-        rows.append(_build_profitability_row(db, sale.animal, "Satıldı", sale.sale_date, sale.total_amount))
+        rows.append(_build_profitability_row(db, ctx, sale.animal, "Satıldı", sale.sale_date, sale.total_amount))
 
     death_stmt = select(Death).options(joinedload(Death.animal)).where(
         Death.death_date >= start_date, Death.death_date <= end_date
     )
     for death in db.scalars(death_stmt).all():
-        rows.append(_build_profitability_row(db, death.animal, "Öldü", death.death_date, None))
+        rows.append(_build_profitability_row(db, ctx, death.animal, "Öldü", death.death_date, None))
 
     rows.sort(key=lambda r: r.profit_try)
     return rows
