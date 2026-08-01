@@ -1629,100 +1629,6 @@ def list_pen_efficiency(db: Session, start_date: date, end_date: date) -> list[P
     return rows
 
 
-def _feed_cost_share_for_animal(
-    db: Session, animal_id: uuid.UUID, outcome_date: date, convert_usd: bool = True
-) -> tuple[Decimal, Decimal]:
-    """Bir hayvanin pen_assignments gecmisindeki (girisinden cikis tarihine
-    kadar), o padoga uygulanan rasyon donemleriyle KESISEN gunler icin
-    payini hesaplar. Rasyon zaten HAYVAN BASINA tanimli oldugundan (bkz.
-    app/modules/feed/models.py RationItem), eski modeldeki gibi o gunku
-    padok doluluguna bolme YOKTUR - hayvanin payi direkt olarak
-    (rasyon kaleminin hayvan basina gunluk miktari x kesisen gun sayisi)
-    x agirlikli ortalama birim maliyettir. Cikistan (satis/olum) sonraki
-    hicbir gun bu hesaba dahil edilmez.
-
-    convert_usd=False ise USD kismi hesaplanmaz (0 doner) - cok sayida
-    hayvan/kayit uzerinde tek bir istekte calisan raporlarda (surudeki tum
-    hayvanlari gezen raporlar) performans/timeout riski olusturur; öyle bir
-    ihtiyacta USD, tek bir toplu kurla ayrica hesaplanir (bkz. _asset_book_value)."""
-    total_try = Decimal("0")
-    total_usd = Decimal("0")
-    assignments = list(db.scalars(select(PenAssignment).where(PenAssignment.animal_id == animal_id)).all())
-    for assignment in assignments:
-        window_end = min(assignment.removed_date or outcome_date, outcome_date)
-        if assignment.assigned_date > window_end:
-            continue
-        rations = db.scalars(
-            select(PenRation)
-            .options(joinedload(PenRation.items).joinedload(RationItem.unit))
-            .where(PenRation.pen_id == assignment.pen_id)
-        ).unique().all()
-        for ration in rations:
-            days = _overlap_days_count(
-                assignment.assigned_date, window_end, ration.start_date, ration.end_date or window_end
-            )
-            if days <= 0:
-                continue
-            for item in ration.items:
-                kg = Decimal(str(_to_kg(item.daily_quantity_per_animal, item.unit.code) * days))
-                avg_cost = _feed_avg_cost_per_kg(db, item.feed_item_id, outcome_date)
-                if avg_cost is None:
-                    continue
-                cost_try = kg * avg_cost
-                total_try += cost_try
-                if convert_usd:
-                    total_usd += _try_to_usd(db, cost_try, outcome_date)
-    return total_try, total_usd
-
-
-def _health_cost_try_usd(
-    db: Session, animal_id: uuid.UUID, as_of_date: date, convert_usd: bool = True
-) -> tuple[Decimal, Decimal]:
-    """Bir hayvanin as_of_date'e kadar (o tarih dahil) kayitli tum
-    HealthEvent.cost toplami - TL ve USD (her olayin kendi event_date'indeki
-    TCMB kuruyla). convert_usd=False ise USD 0 doner (bkz. _feed_cost_share_for_animal)."""
-    health_events = list(
-        db.scalars(
-            select(HealthEvent).where(
-                HealthEvent.animal_id == animal_id,
-                HealthEvent.cost.isnot(None),
-                HealthEvent.event_date <= as_of_date,
-            )
-        ).all()
-    )
-    total_try = sum((he.cost for he in health_events), Decimal("0"))
-    total_usd = (
-        sum((_try_to_usd(db, he.cost, he.event_date) for he in health_events), Decimal("0"))
-        if convert_usd
-        else Decimal("0")
-    )
-    return total_try, total_usd
-
-
-def _accumulated_cost_try_usd(
-    db: Session, animal: Animal, as_of_date: date, convert_usd: bool = True
-) -> tuple[Decimal, Decimal]:
-    """Bir hayvanin girisinden as_of_date'e kadar biriken toplam maliyetini
-    (giris degeri + saglik + gun agirlikli yem payi) TL ve USD olarak
-    dondurur - "malzeme/stok" durumundaki bir hayvanin defter degeridir
-    (bkz. _asset_book_value). Hem Hayvan Karlilik Raporu (_build_profitability_row,
-    outcome_date ile) hem _asset_book_value (herhangi bir as_of_date ile)
-    bu ortak hesaplamayi kullanir.
-
-    convert_usd=False ise hicbir alt-fact kendi tarihinde TCMB'ye sorulmaz
-    (USD 0 doner, sadece TL toplanir) - _asset_book_value gibi SURUDEKI
-    TUM hayvanlari tek istekte gezen caller'lar bunu kullanip USD'yi TEK
-    bir as_of_date kuruyla toplu hesaplar (performans/timeout riskini
-    onlemek icin)."""
-    health_cost_try, health_cost_usd = _health_cost_try_usd(db, animal.id, as_of_date, convert_usd)
-    feed_cost_try, feed_cost_usd = _feed_cost_share_for_animal(db, animal.id, as_of_date, convert_usd)
-    entry_value_try = animal.entry_value or Decimal("0")
-    entry_value_usd = (_try_to_usd(db, entry_value_try, animal.entry_date)) if convert_usd else Decimal("0")
-    total_try = entry_value_try + health_cost_try + feed_cost_try
-    total_usd = entry_value_usd + health_cost_usd + feed_cost_usd
-    return total_try, total_usd
-
-
 @dataclass
 class _CostContext:
     """Hayvan Kârlılık Raporu gibi SÜRÜDEKİ birçok hayvanı gezen
@@ -1817,6 +1723,30 @@ def _feed_cost_share_for_animal_ctx(
                 total_try += cost_try
                 if convert_usd:
                     total_usd += _try_to_usd(db, cost_try, outcome_date)
+    return total_try, total_usd
+
+
+def _accumulated_cost_try_usd_ctx(
+    db: Session, ctx: _CostContext, animal: Animal, as_of_date: date, convert_usd: bool = True
+) -> tuple[Decimal, Decimal]:
+    """Bir hayvanin girisinden as_of_date'e kadar biriken toplam maliyetini
+    (giris degeri + saglik + gun agirlikli yem payi) TL ve USD olarak
+    dondurur - "malzeme/stok" durumundaki bir hayvanin defter degeridir
+    (bkz. _asset_book_value_ctx). _build_profitability_row'un (Hayvan
+    Kârlılık Raporu) ustundeki mantigin ayni - toplu _CostContext uzerinden
+    calisan sunumu (bkz. _health_cost_try_usd_ctx/_feed_cost_share_for_animal_ctx).
+
+    convert_usd=False ise hicbir alt-fact kendi tarihinde TCMB'ye sorulmaz
+    (USD 0 doner, sadece TL toplanir) - _asset_book_value_ctx gibi
+    SURUDEKI TUM hayvanlari tek istekte gezen caller'lar bunu kullanip
+    USD'yi TEK bir as_of_date kuruyla toplu hesaplar (performans/timeout
+    riskini onlemek icin)."""
+    health_cost_try, health_cost_usd = _health_cost_try_usd_ctx(db, ctx, animal.id, as_of_date, convert_usd)
+    feed_cost_try, feed_cost_usd = _feed_cost_share_for_animal_ctx(db, ctx, animal.id, as_of_date, convert_usd)
+    entry_value_try = animal.entry_value or Decimal("0")
+    entry_value_usd = (_try_to_usd(db, entry_value_try, animal.entry_date)) if convert_usd else Decimal("0")
+    total_try = entry_value_try + health_cost_try + feed_cost_try
+    total_usd = entry_value_usd + health_cost_usd + feed_cost_usd
     return total_try, total_usd
 
 
@@ -1974,56 +1904,96 @@ def list_herd_cost_summary(db: Session, start_date: date, end_date: date) -> lis
 # Biyolojik varlık muhasebesi (IAS 41 pratiği): inek/damızlık boğa bir
 # DURAN VARLIK (demirbaş) gibi amortismana tabidir; büyümekte olan bir
 # buzağı ise bir STOK/MALZEME gibi sadece maliyet biriktirir (bkz.
-# _accumulated_cost_try_usd). Sınıflandırma hiçbir yerde SAKLANMAZ -
+# _accumulated_cost_try_usd_ctx). Sınıflandırma hiçbir yerde SAKLANMAZ -
 # PregnancyCheck/BreedingEvent gecmisinden her istek aninda turetilir
 # (Anayasa m.4/m.5).
 
 
-def _first_confirmed_pregnancy_date(db: Session, animal_id: uuid.UUID) -> date | None:
-    """Bir disi hayvana (dam) ait TUM PregnancyCheck kayitlari arasinda
-    sonucu 'GEBE' olan EN ERKEN check_date - bu, hayvanin 'malzeme'den
-    'demirbasa' gectigi andir. _classify_female'in aksine yalnizca AKTIF
-    tohumlama dongusune degil hayvanin TUM gecmisine bakar: bir kez gebe
-    kaldiysa (o dongu daha sonra bos/kaybedilmis olsa bile) bir daha
-    malzemeye donmez."""
-    stmt = (
-        select(func.min(PregnancyCheck.check_date))
-        .select_from(PregnancyCheck)
-        .join(BreedingEvent, PregnancyCheck.breeding_event_id == BreedingEvent.id)
-        .join(PregnancyResult, PregnancyCheck.result_id == PregnancyResult.id)
-        .where(BreedingEvent.dam_id == animal_id, PregnancyResult.code == CONFIRMED_PREGNANCY_RESULT_CODE)
+@dataclass
+class _AssetContext:
+    """list_herd_animal_market_values'un SÜRÜDEKİ TÜM hayvanları tek
+    istekte gezmesi sırasında, her hayvan için ayrı ayrı "ilk onaylı
+    gebelik tarihi" / "ilk damızlık kullanım tarihi" / "güncel gebelik
+    durumu" sorgusu atmasını (N+1 deseni) önlemek için gerekli ham veriyi
+    TEK seferde önceden yükler - bkz. _build_asset_context. Orijinal
+    tek-hayvanlık sorgularla (bkz. eski _first_confirmed_pregnancy_date/
+    _bull_transition_date/_is_currently_pregnant) MATEMATİKSEL OLARAK AYNI
+    sonucu üretir, sadece hafızadaki sözlüklerden okur."""
+
+    first_confirmed_pregnancy_by_dam: dict[uuid.UUID, date]
+    earliest_sire_service_by_animal: dict[uuid.UUID, date]
+    latest_breeding_event_by_dam: dict[uuid.UUID, BreedingEvent]
+    latest_pregnancy_check_by_event: dict[int, PregnancyCheck]
+
+
+def _build_asset_context(db: Session) -> _AssetContext:
+    first_confirmed_pregnancy_by_dam: dict[uuid.UUID, date] = dict(
+        db.execute(
+            select(BreedingEvent.dam_id, func.min(PregnancyCheck.check_date))
+            .select_from(PregnancyCheck)
+            .join(BreedingEvent, PregnancyCheck.breeding_event_id == BreedingEvent.id)
+            .join(PregnancyResult, PregnancyCheck.result_id == PregnancyResult.id)
+            .where(PregnancyResult.code == CONFIRMED_PREGNANCY_RESULT_CODE)
+            .group_by(BreedingEvent.dam_id)
+        ).all()
     )
-    return db.scalar(stmt)
 
+    earliest_sire_service_by_animal: dict[uuid.UUID, date] = dict(
+        db.execute(
+            select(BreedingEvent.sire_animal_id, func.min(BreedingEvent.service_date))
+            .where(BreedingEvent.sire_animal_id.isnot(None))
+            .group_by(BreedingEvent.sire_animal_id)
+        ).all()
+    )
 
-def _bull_transition_date(db: Session, animal: Animal) -> date | None:
-    """Bir erkek hayvanin 'malzeme'den 'demirbasa' (damizlik boga) gectigi
-    an: satin alindiysa giristen itibaren (Satin Alma = zaten boga olarak
-    alindigi varsayilir); suruden dogduysa, ilk kez bir Tohumlama kaydinda
-    dogal asim bogasi (sire_animal_id) olarak kullanildigi tarih."""
-    if animal.entry_source.code == PURCHASE_ENTRY_SOURCE_CODE:
-        return animal.entry_date
-    return db.scalar(
-        select(func.min(BreedingEvent.service_date)).where(BreedingEvent.sire_animal_id == animal.id)
+    latest_breeding_event_by_dam: dict[uuid.UUID, BreedingEvent] = {}
+    for event in db.scalars(select(BreedingEvent).order_by(BreedingEvent.service_date)).all():
+        latest_breeding_event_by_dam[event.dam_id] = event
+
+    latest_pregnancy_check_by_event: dict[int, PregnancyCheck] = {}
+    for check in db.scalars(
+        select(PregnancyCheck).options(joinedload(PregnancyCheck.result)).order_by(PregnancyCheck.check_date)
+    ).all():
+        latest_pregnancy_check_by_event[check.breeding_event_id] = check
+
+    return _AssetContext(
+        first_confirmed_pregnancy_by_dam,
+        earliest_sire_service_by_animal,
+        latest_breeding_event_by_dam,
+        latest_pregnancy_check_by_event,
     )
 
 
-def _asset_transition_date(db: Session, animal: Animal) -> date | None:
+def _asset_transition_date_ctx(ctx: _AssetContext, animal: Animal) -> date | None:
+    """Bir hayvanin 'malzeme'den 'demirbasa' gectigi an. Disi: TUM
+    gecmisindeki EN ERKEN onayli ('GEBE') gebelik kontrolu tarihi - bir kez
+    gebe kaldiysa (o dongu daha sonra bos/kaybedilmis olsa bile) bir daha
+    malzemeye donmez. Erkek: satin alindiysa giristen itibaren (Satin Alma
+    = zaten boga olarak alindigi varsayilir); suruden dogduysa, ilk kez bir
+    Tohumlama kaydinda dogal asim bogasi (sire_animal_id) olarak
+    kullanildigi tarih."""
     if animal.gender.code == FEMALE_GENDER_CODE:
-        return _first_confirmed_pregnancy_date(db, animal.id)
+        return ctx.first_confirmed_pregnancy_by_dam.get(animal.id)
     if animal.gender.code == MALE_GENDER_CODE:
-        return _bull_transition_date(db, animal)
+        if animal.entry_source.code == PURCHASE_ENTRY_SOURCE_CODE:
+            return animal.entry_date
+        return ctx.earliest_sire_service_by_animal.get(animal.id)
     return None
 
 
-def _asset_book_value(
-    db: Session, animal: Animal, as_of_date: date, as_of_rate: Decimal | None = None
+def _asset_book_value_ctx(
+    db: Session,
+    cost_ctx: _CostContext,
+    asset_ctx: _AssetContext,
+    animal: Animal,
+    as_of_date: date,
+    as_of_rate: Decimal | None = None,
 ) -> tuple[Decimal, Decimal, str]:
     """Bir hayvanin as_of_date'teki defter degerini (TL, USD) ve durumunu
     ("Demirbaş" | "Malzeme") dondurur.
 
-    Malzeme: _accumulated_cost_try_usd (giris degeri + saglik + yem payi),
-    TEK bir as_of_date kuruyla USD'ye cevrilir.
+    Malzeme: _accumulated_cost_try_usd_ctx (giris degeri + saglik + yem
+    payi), TEK bir as_of_date kuruyla USD'ye cevrilir.
 
     Demirbaş: transition anindaki malzeme maliyeti (USD'ye o gunun TCMB
     kuruyla cevrilir) acilis degeri olur; %50 hurda deger, 10 yil faydali
@@ -2032,26 +2002,29 @@ def _asset_book_value(
     "bu hayvan bugun TL olarak ne degerde" sorusuna cevap versin diye.
 
     PERFORMANS: Hayvan Kârlılık Raporu'nun aksine (orada her fact kendi
-    tarihindeki kurla cevrilir - bkz. _accumulated_cost_try_usd docstring),
-    bu fonksiyon SURUDEKI TUM hayvanlar icin tek istekte cagrildigindan
-    (bkz. list_herd_animal_market_values) alt-fact'lerin USD donusumu
-    KAPATILIR (convert_usd=False) ve yerine
-    TEK bir as_of_date kuru kullanilir -
-    aksi halde her hayvanin her giris/saglik/yem tarihi icin ayri bir TCMB
-    sorgusu tetiklenip rapor onlarca-yuzlerce ag cagrisiyla zaman asimina
-    ugrar (gercek bir prodüksiyon hatasi olarak gözlemlendi). as_of_rate
-    caller tarafindan onceden cekilip tum hayvanlar icin yeniden kullanilir
-    (verilmezse burada tek seferlik cekilir)."""
+    tarihindeki kurla cevrilir - bkz. _accumulated_cost_try_usd_ctx
+    docstring), bu fonksiyon SURUDEKI TUM hayvanlar icin tek istekte
+    cagrildigindan (bkz. list_herd_animal_market_values) alt-fact'lerin USD
+    donusumu KAPATILIR (convert_usd=False) ve yerine TEK bir as_of_date
+    kuru kullanilir - aksi halde her hayvanin her giris/saglik/yem tarihi
+    icin ayri bir TCMB sorgusu tetiklenip rapor onlarca-yuzlerce ag
+    cagrisiyla zaman asimina ugrar (gercek bir prodüksiyon hatasi olarak
+    gözlemlendi). as_of_rate caller tarafindan onceden cekilip tum
+    hayvanlar icin yeniden kullanilir (verilmezse burada tek seferlik
+    cekilir). cost_ctx/asset_ctx caller (list_herd_animal_market_values)
+    tarafindan SURU GENELINDE TEK seferde onceden yuklenir - hayvan basina
+    ayri sorgu atmaz (N+1 sorgu deseninden kacinir, bkz. _CostContext/
+    _AssetContext)."""
     if as_of_rate is None:
         as_of_rate = fx_service.get_usd_try_rate(db, as_of_date)
 
-    transition_date = _asset_transition_date(db, animal)
+    transition_date = _asset_transition_date_ctx(asset_ctx, animal)
     if transition_date is None or as_of_date < transition_date:
-        total_try, _ = _accumulated_cost_try_usd(db, animal, as_of_date, convert_usd=False)
+        total_try, _ = _accumulated_cost_try_usd_ctx(db, cost_ctx, animal, as_of_date, convert_usd=False)
         total_usd = total_try / as_of_rate if as_of_rate else Decimal("0")
         return _round_money(total_try), _round_money(total_usd), "Malzeme"
 
-    acquisition_try, _ = _accumulated_cost_try_usd(db, animal, transition_date, convert_usd=False)
+    acquisition_try, _ = _accumulated_cost_try_usd_ctx(db, cost_ctx, animal, transition_date, convert_usd=False)
     transition_rate = fx_service.get_usd_try_rate(db, transition_date)
     acquisition_usd = acquisition_try / transition_rate if transition_rate else Decimal("0")
 
@@ -2140,30 +2113,22 @@ def _interpolate_market_value_try(entry_value_try: Decimal, checkpoints: dict[in
     return prev_value
 
 
-def _is_currently_pregnant(db: Session, animal_id: uuid.UUID) -> bool:
+def _is_currently_pregnant_ctx(asset_ctx: _AssetContext, animal_id: uuid.UUID) -> bool:
     """Hayvanin en son tohumlama dongusunde onaylanmis (GEBE) bir gebelik
     kontrolu var mi - bkz. _classify_female'deki ayni kontrolun sadelestirilmis
     hali. NOT: zaman serisi raporlarinda GECMIS tarihler icin de bu GUNCEL
     durum kullanilir (kasitli basitlestirme) - o tarihte gercekten gebe/acik
     olup olmadigini yeniden insa etmek ayri bir tarihsel siniflandirma
-    gerektirir; bkz. _market_value_estimate_try caller'i."""
-    latest_event = db.scalar(
-        select(BreedingEvent).where(BreedingEvent.dam_id == animal_id).order_by(BreedingEvent.service_date.desc()).limit(1)
-    )
+    gerektirir; bkz. _market_value_estimate_try_ctx caller'i."""
+    latest_event = asset_ctx.latest_breeding_event_by_dam.get(animal_id)
     if latest_event is None:
         return False
-    latest_check = db.scalar(
-        select(PregnancyCheck)
-        .options(joinedload(PregnancyCheck.result))
-        .where(PregnancyCheck.breeding_event_id == latest_event.id)
-        .order_by(PregnancyCheck.check_date.desc())
-        .limit(1)
-    )
+    latest_check = asset_ctx.latest_pregnancy_check_by_event.get(latest_event.id)
     return latest_check is not None and latest_check.result.code == CONFIRMED_PREGNANCY_RESULT_CODE
 
 
-def _market_value_estimate_try(
-    db: Session,
+def _market_value_estimate_try_ctx(
+    asset_ctx: _AssetContext,
     animal: Animal,
     as_of_date: date,
     growth_checkpoints_by_gender: dict[str, dict[int, Decimal]],
@@ -2173,14 +2138,14 @@ def _market_value_estimate_try(
     cipasina) gore tahmini piyasa degeri (TL); cipa girilmemisse VEYA
     (erkek + Demirbas donemi gibi) uygulanamaz bir durumsa None doner
     (caller maliyet-bazli degere geri duser)."""
-    transition_date = _asset_transition_date(db, animal)
+    transition_date = _asset_transition_date_ctx(asset_ctx, animal)
     if transition_date is not None and as_of_date >= transition_date:
         if animal.gender.code != FEMALE_GENDER_CODE:
             return None
         mature_checkpoints = mature_checkpoints_by_gender.get(FEMALE_GENDER_CODE)
         if not mature_checkpoints:
             return None
-        status_code = "GEBE" if _is_currently_pregnant(db, animal.id) else "BOS"
+        status_code = "GEBE" if _is_currently_pregnant_ctx(asset_ctx, animal.id) else "BOS"
         return mature_checkpoints.get(status_code)
 
     checkpoints = growth_checkpoints_by_gender.get(animal.gender.code)
@@ -2193,8 +2158,10 @@ def _market_value_estimate_try(
     return _interpolate_market_value_try(entry_value_try, checkpoints, age_days)
 
 
-def _estimated_market_value_usd_try(
+def _estimated_market_value_usd_try_ctx(
     db: Session,
+    cost_ctx: _CostContext,
+    asset_ctx: _AssetContext,
     animal: Animal,
     as_of_date: date,
     growth_checkpoints_by_gender: dict[str, dict[int, Decimal]],
@@ -2204,33 +2171,43 @@ def _estimated_market_value_usd_try(
     """'Tahmini Piyasa Değeri' göstergesi (TL, USD, kaynak). Çıpa
     üzerinden hesaplanabiliyorsa onu (TL, kullanıcının girdiği gibi - USD
     karşılığı as_of_date'teki TCMB kuruyla TEK seferde türetilir), aksi
-    halde mevcut maliyet-bazlı _asset_book_value'yu kullanır - source_code
-    hangisinin kullanıldığını açıkça belirtir."""
+    halde mevcut maliyet-bazlı _asset_book_value_ctx'i kullanır -
+    source_code hangisinin kullanıldığını açıkça belirtir."""
     if as_of_rate is None:
         as_of_rate = fx_service.get_usd_try_rate(db, as_of_date)
 
-    market_try = _market_value_estimate_try(db, animal, as_of_date, growth_checkpoints_by_gender, mature_checkpoints_by_gender)
+    market_try = _market_value_estimate_try_ctx(
+        asset_ctx, animal, as_of_date, growth_checkpoints_by_gender, mature_checkpoints_by_gender
+    )
     if market_try is not None:
         market_usd = market_try / as_of_rate if as_of_rate else Decimal("0")
         return _round_money(market_try), _round_money(market_usd), "market_estimate"
 
-    book_try, book_usd, _ = _asset_book_value(db, animal, as_of_date, as_of_rate)
+    book_try, book_usd, _ = _asset_book_value_ctx(db, cost_ctx, asset_ctx, animal, as_of_date, as_of_rate)
     return book_try, book_usd, "cost_basis"
 
 
 def list_herd_animal_market_values(db: Session, as_of_date: date) -> list[AnimalMarketValueRead]:
     """as_of_date itibariyla YAŞAYAN tüm hayvanların 'Tahmini Piyasa
-    Değeri'ni TEK TEK listeler (bkz. _estimated_market_value_usd_try) -
+    Değeri'ni TEK TEK listeler (bkz. _estimated_market_value_usd_try_ctx) -
     hayvan hayvan bir döküm verir. Alım/satım öncesi birden fazla hayvanı bir
     arada değerlendirmek için (kullanıcı arayüzünde istediği satırları
     seçip toplamını görebilir - bu seçim/toplam client-side yapılır,
-    burada sadece tam liste döner)."""
+    burada sadece tam liste döner).
+
+    PERFORMANS: transition tarihi/güncel gebelik durumu/sağlık/yem gibi
+    alt-maliyet verisi rapordaki HER hayvan için ayrı ayrı değil, TEK
+    seferde _build_cost_context + _build_asset_context ile önceden
+    yüklenir (bkz. _CostContext/_AssetContext) - N+1 sorgu deseninden
+    kaçınır, sürü büyüdükçe rapor süresi orantısız artmaz."""
     growth_checkpoints_by_gender, mature_checkpoints_by_gender = _checkpoint_maps(db)
     rate = fx_service.get_usd_try_rate(db, as_of_date)
+    cost_ctx = _build_cost_context(db)
+    asset_ctx = _build_asset_context(db)
     rows: list[AnimalMarketValueRead] = []
     for animal in _animals_alive_at(db, as_of_date):
-        amount_try, amount_usd, source_code = _estimated_market_value_usd_try(
-            db, animal, as_of_date, growth_checkpoints_by_gender, mature_checkpoints_by_gender, rate
+        amount_try, amount_usd, source_code = _estimated_market_value_usd_try_ctx(
+            db, cost_ctx, asset_ctx, animal, as_of_date, growth_checkpoints_by_gender, mature_checkpoints_by_gender, rate
         )
         age_months = full_months_between(animal.birth_date, as_of_date) if animal.birth_date else None
         rows.append(
