@@ -83,6 +83,7 @@ export default async function PenRationsPage() {
                       <DeleteButton
                         action={deletePenRationAction.bind(null, Number(ration.id))}
                         confirmMessage="Bu rasyon kaydını kalıcı olarak silmek istediğinize emin misiniz?"
+                        redirectTo="/pen-rations"
                       />
                     </td>
                   </tr>

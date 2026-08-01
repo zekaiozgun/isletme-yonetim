@@ -72,6 +72,7 @@ export default async function EditResourcePage({ params }: { params: Promise<{ r
         submitLabel="Kaydet"
         initialValues={record}
         readOnly={isLockedForCalisan}
+        redirectTo={`/${resource.slug}`}
       />
 
       {!isLockedForCalisan && canDeleteResource(resource.slug, me.role) && (
@@ -84,6 +85,7 @@ export default async function EditResourcePage({ params }: { params: Promise<{ r
           <DeleteButton
             action={deleteAction}
             confirmMessage={`Bu ${resource.singularTitle.toLowerCase()} kaydını silmek istediğinize emin misiniz?`}
+            redirectTo={`/${resource.slug}`}
           />
         </div>
       )}
@@ -97,6 +99,7 @@ export default async function EditResourcePage({ params }: { params: Promise<{ r
           <CancelEntryButton
             action={cancelEntryAction}
             confirmMessage="Bu hayvan kaydını 'Hatalı Giriş İptali' statüsüne alarak pasife almak istediğinize emin misiniz?"
+            redirectTo="/animals"
           />
         </div>
       )}

@@ -1,8 +1,9 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
-export type FormState = { error?: string } | null;
+export type FormState = { error?: string; success?: true } | null;
 
 interface DeleteButtonProps {
   action: (prevState: FormState, formData: FormData) => Promise<FormState>;
@@ -10,10 +11,28 @@ interface DeleteButtonProps {
   /** Varsayılan "Sil" - kalıcı silme olmayan işlemler için (örn. "Pasifleştir") özelleştirilebilir. */
   label?: string;
   pendingLabel?: string;
+  /** Belirtilirse, action basarili olunca (state.success) bu yola yonlendirilir
+   * - bkz. lib/actions.ts basindaki not (sunucu-tarafi redirect() bazen
+   * takili kaliyordu, istemci tarafi router.push() daha guvenilir). */
+  redirectTo?: string;
 }
 
-export function DeleteButton({ action, confirmMessage, label = 'Sil', pendingLabel = 'Siliniyor...' }: DeleteButtonProps) {
+export function DeleteButton({
+  action,
+  confirmMessage,
+  label = 'Sil',
+  pendingLabel = 'Siliniyor...',
+  redirectTo,
+}: DeleteButtonProps) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(action, null);
+  const router = useRouter();
+  const isRedirecting = Boolean(state?.success && redirectTo);
+
+  useEffect(() => {
+    if (isRedirecting) {
+      router.push(redirectTo!);
+    }
+  }, [isRedirecting, redirectTo, router]);
 
   return (
     <form
@@ -29,10 +48,10 @@ export function DeleteButton({ action, confirmMessage, label = 'Sil', pendingLab
       )}
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || isRedirecting}
         className="rounded border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
       >
-        {pending ? pendingLabel : label}
+        {pending || isRedirecting ? pendingLabel : label}
       </button>
     </form>
   );

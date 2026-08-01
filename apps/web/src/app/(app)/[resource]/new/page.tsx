@@ -59,6 +59,7 @@ export default async function NewResourcePage({ params }: { params: Promise<{ re
         submitLabel={`${resource.singularTitle} Ekle`}
         requireConfirmation={requireConfirmation}
         warningField={warningField}
+        redirectTo={`/${resource.slug}`}
       />
     </div>
   );

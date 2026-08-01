@@ -1,10 +1,11 @@
 'use client';
 
-import { useActionState, useRef, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { FieldType } from '@/lib/resources';
 import { formatDateDMY } from '@/lib/format';
 
-export type FormState = { error?: string } | null;
+export type FormState = { error?: string; success?: true } | null;
 
 interface SelectOption {
   value: string;
@@ -42,6 +43,15 @@ interface ResourceFormProps {
   /** true ise: form salt-okunur gosterilir (kilitli kayit), kaydetme yok. */
   readOnly?: boolean;
   /**
+   * Belirtilirse, action basariyla tamamlanip state.success=true dondugunde
+   * bu yola yonlendirilir (router.push - istemci tarafinda). Action'in
+   * kendisi ARTIK redirect() cagirmiyor (bkz. lib/actions.ts basindaki not -
+   * bazi kayitlarda backend'de basarili olsa bile "Kaydediliyor..." yazip
+   * takili kalma gozlemlendi, sunucu-tarafi redirect()'e guvenmek yerine
+   * bu daha guvenilir).
+   */
+  redirectTo?: string;
+  /**
    * Belirli bir select alaninin secilen degeri matchValues icindeyse,
    * formu ENGELLEMEDEN ustunde bir uyari banner'i gosterir (orn. "bu
    * hayvan zaten gebe olarak kayitli" - aşım kaydı girerken). Sistem
@@ -66,12 +76,21 @@ export function ResourceForm({
   requireConfirmation = false,
   readOnly = false,
   warningField,
+  redirectTo,
 }: ResourceFormProps) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(action, null);
   const [step, setStep] = useState<'form' | 'review'>('form');
   const [reviewData, setReviewData] = useState<FormData | null>(null);
   const [activeWarning, setActiveWarning] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const router = useRouter();
+  const isRedirecting = Boolean(state?.success && redirectTo);
+
+  useEffect(() => {
+    if (isRedirecting) {
+      router.push(redirectTo!);
+    }
+  }, [isRedirecting, redirectTo, router]);
 
   const showingReview = requireConfirmation && step === 'review' && reviewData !== null;
 
@@ -157,10 +176,10 @@ export function ResourceForm({
           ) : (
             <button
               type="submit"
-              disabled={pending}
+              disabled={pending || isRedirecting}
               className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
             >
-              {pending ? 'Kaydediliyor...' : requireConfirmation ? 'Onayla ve Kaydet' : submitLabel}
+              {pending || isRedirecting ? 'Kaydediliyor...' : requireConfirmation ? 'Onayla ve Kaydet' : submitLabel}
             </button>
           )}
         </div>

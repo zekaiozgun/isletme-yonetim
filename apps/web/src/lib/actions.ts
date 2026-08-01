@@ -1,11 +1,19 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 import { apiDelete, apiPost, apiPut } from './api';
 import { getResource, type FieldConfig } from './resources';
 
-export type FormState = { error?: string } | null;
+// NOT: basari durumunda BURADA redirect() cagrilmaz - istemci tarafinda
+// (bkz. ResourceForm/DeleteButton/CancelEntryButton'daki redirectTo prop'u)
+// state.success gorulunce router.push() ile yonlendirilir. Server Action
+// icinden redirect() cagirmak normalde calisir, ama bazi kayitlarda
+// "Kaydediliyor..." yazip takili kalma (kayit backend'de basariyla
+// gerceklesse bile) gozlemlendi - muhtemelen redirect()'in attigi ozel
+// NEXT_REDIRECT sinyalinin bir ara katman (orn. Sentry'nin action sarma
+// mekanizmasi) tarafindan yutulmasi. Basari/hata durumunu acikca DONDURUP
+// yonlendirmeyi istemciye birakmak, ara katmanlardan bagimsiz calisir.
+export type FormState = { error?: string; success?: true } | null;
 
 function buildPayload(fields: FieldConfig[], formData: FormData): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
@@ -48,7 +56,7 @@ export async function createResource(resourceSlug: string, _prevState: FormState
   }
 
   revalidatePath(`/${resource.slug}`);
-  redirect(`/${resource.slug}`);
+  return { success: true };
 }
 
 export async function updateResource(
@@ -70,7 +78,7 @@ export async function updateResource(
   }
 
   revalidatePath(`/${resource.slug}`);
-  redirect(`/${resource.slug}`);
+  return { success: true };
 }
 
 export async function deleteResource(
@@ -91,7 +99,7 @@ export async function deleteResource(
   }
 
   revalidatePath(`/${resource.slug}`);
-  redirect(`/${resource.slug}`);
+  return { success: true };
 }
 
 export interface BulkWeightEntry {
@@ -152,7 +160,7 @@ export async function cancelAnimalEntryAction(
   }
 
   revalidatePath(`/animals/${animalId}`);
-  redirect('/animals');
+  return { success: true };
 }
 
 export interface RationItemInput {
@@ -202,5 +210,5 @@ export async function deletePenRationAction(
   }
 
   revalidatePath('/pen-rations');
-  redirect('/pen-rations');
+  return { success: true };
 }
