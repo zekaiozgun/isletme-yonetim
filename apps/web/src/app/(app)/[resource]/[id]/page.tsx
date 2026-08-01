@@ -4,11 +4,9 @@ import { apiGet, apiGetSafe, type ApiRecord } from '@/lib/api';
 import { cancelAnimalEntryAction, deleteResource, updateResource } from '@/lib/actions';
 import { loadFormOptions } from '@/lib/formOptions';
 import { getResource } from '@/lib/resources';
-import { formatDateDMY } from '@/lib/format';
 import { ResourceForm } from '@/components/ResourceForm';
 import { DeleteButton } from '@/components/DeleteButton';
 import { CancelEntryButton } from '@/components/CancelEntryButton';
-import { TrendLineChart, type TrendPoint } from '@/components/TrendLineChart';
 
 interface MeResponse {
   role: 'YONETICI' | 'CALISAN';
@@ -44,16 +42,6 @@ export default async function EditResourcePage({ params }: { params: Promise<{ r
   const isAnimal = resource.slug === 'animals';
   const isLockedForCalisan = isAnimal && Boolean(record.is_locked) && me.role === 'CALISAN';
 
-  // En az 2 tartı olmadan bir "trend" göstermenin anlamı yok (tek nokta
-  // çizgi oluşturmaz) - bkz. TrendLineChart'ın kendi guard'ı da aynı kural.
-  const weightRecords = isAnimal ? await apiGetSafe<ApiRecord[]>(`/weight-records/animals/${id}`, []) : [];
-  const weightPoints: TrendPoint[] = weightRecords
-    .filter((w) => typeof w.weigh_date === 'string' && typeof w.weight_kg !== 'undefined' && w.weight_kg !== null)
-    .map((w) => ({ date: String(w.weigh_date), value: Number(w.weight_kg) }));
-  const firstWeight = weightPoints[0];
-  const lastWeight = weightPoints[weightPoints.length - 1];
-  const weightChange = firstWeight && lastWeight ? lastWeight.value - firstWeight.value : null;
-
   return (
     <div>
       <div className="mb-4 flex items-center gap-3">
@@ -78,36 +66,6 @@ export default async function EditResourcePage({ params }: { params: Promise<{ r
         initialValues={record}
         readOnly={isLockedForCalisan}
       />
-
-      {isAnimal && (
-        <div className="mt-8 max-w-xl border-t border-slate-200 pt-6">
-          <h2 className="mb-1 text-sm font-semibold text-slate-700">Kilo Trend Grafiği</h2>
-          {weightPoints.length >= 2 ? (
-            <>
-              <p className="mb-3 text-sm text-slate-500">
-                {formatDateDMY(firstWeight.date)}: {firstWeight.value} kg → {formatDateDMY(lastWeight.date)}: {lastWeight.value} kg
-                {weightChange !== null && (
-                  <span className={weightChange < 0 ? 'font-medium text-red-600' : 'font-medium text-emerald-700'}>
-                    {' '}
-                    ({weightChange >= 0 ? '+' : ''}
-                    {weightChange} kg)
-                  </span>
-                )}
-              </p>
-              <TrendLineChart points={weightPoints} unit="kg" />
-            </>
-          ) : (
-            <p className="text-sm text-slate-500">
-              {weightPoints.length === 0
-                ? 'Bu hayvan için henüz tartı kaydı yok.'
-                : 'Grafik için en az 2 tartı kaydı gerekir, şu an sadece 1 kayıt var.'}{' '}
-              <Link href="/weight-records/new" className="font-medium text-slate-700 hover:underline">
-                Tartı kaydı ekle →
-              </Link>
-            </p>
-          )}
-        </div>
-      )}
 
       {!isLockedForCalisan && canDeleteResource(resource.slug, me.role) && (
         <div className="mt-8 max-w-xl border-t border-slate-200 pt-6">
