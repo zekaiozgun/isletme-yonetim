@@ -71,10 +71,9 @@ export default async function ReportPage({
   if (asOfDate) query.set('as_of_date', asOfDate);
   for (const id of selectedStatusIds) query.append('status_ids', String(id));
   const separator = report.endpoint.includes('?') ? '&' : '?';
-  const [rows, sireRows] = await Promise.all([
-    apiGetSafe<ApiRecord[]>(`${report.endpoint}${separator}${query.toString()}`, []),
-    report.slug === 'parent-performance' ? apiGetSafe<ApiRecord[]>('/reports/sire-performance', []) : Promise.resolve([]),
-  ]);
+  const rows = await apiGetSafe<ApiRecord[]>(`${report.endpoint}${separator}${query.toString()}`, []);
+  const sireRows =
+    report.slug === 'parent-performance' ? await apiGetSafe<ApiRecord[]>('/reports/sire-performance', []) : [];
 
   const showCustomFilter = report.singleDate || report.statusFilter;
 
