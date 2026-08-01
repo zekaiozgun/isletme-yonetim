@@ -23,7 +23,16 @@ export async function getAuthHeader(): Promise<Record<string, string>> {
 
 export async function apiGet<T>(path: string): Promise<T> {
   const authHeader = await getAuthHeader();
-  const res = await fetch(`${API_URL}${path}`, { cache: 'no-store', headers: authHeader });
+  // fetch() varsayilan olarak sinirsiz bekler - backend cok yavaslarsa
+  // (orn. suru capinda cok sayida kucuk sorgu yapan bir rapor) sayfa
+  // Render'in kendi proxy timeout'una kadar askida kalip cirkin bir
+  // "server error" sayfasi gosterirdi. 25 saniye sonra iptal edilir,
+  // apiGetSafe bunu yakalayip bos veri dondurur (cokmez).
+  const res = await fetch(`${API_URL}${path}`, {
+    cache: 'no-store',
+    headers: authHeader,
+    signal: AbortSignal.timeout(25_000),
+  });
   if (res.status === 401) {
     redirect('/login');
   }
