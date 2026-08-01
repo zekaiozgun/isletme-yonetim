@@ -70,13 +70,19 @@ export async function ResourceTable({ resource, rows }: { resource: ResourceConf
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50">
             <tr>
-              <th className="px-3 py-2 text-left font-medium text-slate-600">#</th>
+              <th className="w-[1%] px-[0.5ch] py-1.5 text-left font-medium text-slate-600">#</th>
               {resource.columns.map((column) => (
-                <th key={column.key} className="px-3 py-2 text-left font-medium text-slate-600">
+                <th key={column.key} className="whitespace-nowrap px-[0.5ch] py-1.5 text-left font-medium text-slate-600">
                   {column.label}
                 </th>
               ))}
-              <th className="px-3 py-2 text-left font-medium text-slate-600">İşlemler</th>
+              {/* sticky: geniş tablolarda (çok sütunlu kaynaklar) yatay kaydırma
+                  gerekse bile İşlemler her zaman sağ kenarda görünür kalır -
+                  kullanıcı Profil/Düzenle'ye ulaşmak için kaydırmak zorunda
+                  kalmasın diye (bkz. kullanıcı geri bildirimi). */}
+              <th className="sticky right-0 w-[1%] whitespace-nowrap border-l border-slate-200 bg-slate-50 px-[0.5ch] py-1.5 text-left font-medium text-slate-600">
+                İşlemler
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -84,14 +90,14 @@ export async function ResourceTable({ resource, rows }: { resource: ResourceConf
               const searchText = cellValues.join(' ').toLocaleLowerCase('tr-TR');
               return (
                 <tr key={String(row.id)} data-search={searchText}>
-                  <td className="whitespace-nowrap px-3 py-2 text-slate-500">{index + 1}</td>
+                  <td className="w-[1%] whitespace-nowrap px-[0.5ch] py-1.5 text-slate-500">{index + 1}</td>
                   {resource.columns.map((column, columnIndex) => (
-                    <td key={column.key} className="whitespace-nowrap px-3 py-2 text-slate-700">
+                    <td key={column.key} className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">
                       {cellValues[columnIndex]}
                     </td>
                   ))}
-                  <td className="whitespace-nowrap px-3 py-2">
-                    <div className="flex items-center gap-3">
+                  <td className="sticky right-0 w-[1%] whitespace-nowrap border-l border-slate-200 bg-white px-[0.5ch] py-1.5">
+                    <div className="flex items-center gap-2">
                       {resource.slug === 'animals' && (
                         <Link href={`/animals/${row.id}/profile`} className="text-sm text-slate-600 hover:text-slate-900 hover:underline">
                           Profil
