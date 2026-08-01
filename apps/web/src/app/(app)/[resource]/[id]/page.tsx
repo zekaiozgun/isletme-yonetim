@@ -49,7 +49,14 @@ export default async function EditResourcePage({ params }: { params: Promise<{ r
           ← {resource.title}
         </Link>
       </div>
-      <h1 className="mb-4 text-xl font-semibold text-slate-900">{resource.singularTitle} Düzenle</h1>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-xl font-semibold text-slate-900">{resource.singularTitle} Düzenle</h1>
+        {isAnimal && (
+          <Link href={`/animals/${id}/profile`} className="text-sm font-medium text-slate-600 hover:text-slate-900 hover:underline">
+            Profili Gör →
+          </Link>
+        )}
+      </div>
 
       {isLockedForCalisan && (
         <p className="mb-4 max-w-xl rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">

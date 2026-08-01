@@ -91,9 +91,16 @@ export async function ResourceTable({ resource, rows }: { resource: ResourceConf
                     </td>
                   ))}
                   <td className="whitespace-nowrap px-3 py-2">
-                    <Link href={`/${resource.slug}/${row.id}`} className="text-sm text-slate-600 hover:text-slate-900 hover:underline">
-                      Düzenle
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      {resource.slug === 'animals' && (
+                        <Link href={`/animals/${row.id}/profile`} className="text-sm text-slate-600 hover:text-slate-900 hover:underline">
+                          Profil
+                        </Link>
+                      )}
+                      <Link href={`/${resource.slug}/${row.id}`} className="text-sm text-slate-600 hover:text-slate-900 hover:underline">
+                        Düzenle
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               );
