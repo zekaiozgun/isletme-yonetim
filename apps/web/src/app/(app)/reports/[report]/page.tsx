@@ -34,6 +34,7 @@ export default async function ReportPage({
     as_of_date?: string;
     filtered?: string;
     status_ids?: string | string[];
+    q?: string;
   }>;
 }) {
   const { report: slug } = await params;
@@ -65,11 +66,14 @@ export default async function ReportPage({
     }
   }
 
+  const searchQuery = report.serverSearch ? (sp.q ?? '').trim() : undefined;
+
   const query = new URLSearchParams();
   if (rangeStart) query.set('start_date', rangeStart);
   if (rangeEnd) query.set('end_date', rangeEnd);
   if (asOfDate) query.set('as_of_date', asOfDate);
   for (const id of selectedStatusIds) query.append('status_ids', String(id));
+  if (searchQuery) query.set('q', searchQuery);
   const separator = report.endpoint.includes('?') ? '&' : '?';
   const rows = await apiGetSafe<ApiRecord[]>(`${report.endpoint}${separator}${query.toString()}`, []);
   const sireRows =
@@ -116,7 +120,7 @@ export default async function ReportPage({
       ) : report.slug === 'parent-performance' ? (
         <ParentPerformanceSection motherRows={rows} sireRows={sireRows} />
       ) : (
-        <ReportTable report={report} rows={rows} />
+        <ReportTable report={report} rows={rows} serverQuery={searchQuery} />
       )}
     </div>
   );

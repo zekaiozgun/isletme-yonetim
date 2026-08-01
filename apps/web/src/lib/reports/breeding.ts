@@ -46,6 +46,7 @@ export const breedingReports: ReportConfig[] = [
       'Anne küpe numarasına göre sıralı, tüm yavrular (satılmış/ölmüş olanlar dahil) - bir soy kaydıdır, aktif sürü listesi değildir. Belirli bir anneyi görmek için arama kutusuna küpe no yazın.',
     endpoint: '/reports/offspring-by-mother',
     group: 'Üreme',
+    serverSearch: true,
     columns: [
       { key: 'mother_tag_number', label: 'Anne Küpe No', width: 'narrow' },
       { key: 'tag_number', label: 'Yavru Küpe No', width: 'narrow' },
@@ -61,6 +62,7 @@ export const breedingReports: ReportConfig[] = [
       'Boğa kimliğine göre sıralı, tüm yavrular (satılmış/ölmüş olanlar dahil) - bir soy kaydıdır, aktif sürü listesi değildir. Belirli bir boğayı görmek için arama kutusuna adını veya kayıt no\'sunu yazın.',
     endpoint: '/reports/offspring-by-sire',
     group: 'Üreme',
+    serverSearch: true,
     columns: [
       { key: 'sire_id', label: 'Baba', format: formatSireIdentity, width: 'narrow' },
       { key: 'tag_number', label: 'Yavru Küpe No', width: 'narrow' },

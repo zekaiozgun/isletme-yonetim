@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, aliased, joinedload
 
 from app.core.date_utils import add_months, full_months_between
@@ -515,20 +515,35 @@ def list_calvings(db: Session, start_date: date, end_date: date) -> list[Calving
     return rows
 
 
-def list_offspring_by_mother(db: Session) -> list[OffspringByMotherRead]:
+def list_offspring_by_mother(db: Session, q: str | None = None) -> list[OffspringByMotherRead]:
     """Anne bazinda yavru (soy) listesi - mother_id dolu olan TUM hayvanlar,
     guncel durumlari ne olursa olsun (satilmis/olmus yavrular da dahildir,
     cunku bu bir soy kaydidir, aktif suru listesi degildir). Anne kupe
     numarasina, sonra dogum tarihine gore siralanir - boylece ayni anneden
-    gelen yavrular listede ardisik gorunur."""
+    gelen yavrular listede ardisik gorunur.
+
+    q verilirse (anne kupe no / yavru kupe no / yavru adi icinde,
+    buyuk-kucuk harf duyarsiz) sunucu tarafinda filtrelenir - bu rapor bir
+    soy kaydi oldugundan (asla kucuulmez, sadece buyur) TUM satirlari
+    onceden indirip istemcide gizlemek yerine SADECE eslesenler donulur
+    (Faz 5: sunucu tarafli arama)."""
     mother_alias = aliased(Animal)
     stmt = (
         select(Animal)
         .join(mother_alias, Animal.mother_id == mother_alias.id)
         .options(joinedload(Animal.mother), joinedload(Animal.gender), joinedload(Animal.status))
         .where(Animal.mother_id.isnot(None), Animal.birth_date.isnot(None))
-        .order_by(mother_alias.tag_number, Animal.birth_date)
     )
+    if q:
+        needle = f"%{q.strip()}%"
+        stmt = stmt.where(
+            or_(
+                mother_alias.tag_number.ilike(needle),
+                Animal.tag_number.ilike(needle),
+                Animal.name.ilike(needle),
+            )
+        )
+    stmt = stmt.order_by(mother_alias.tag_number, Animal.birth_date)
     rows: list[OffspringByMotherRead] = []
     for animal in db.scalars(stmt).all():
         assert animal.mother is not None and animal.birth_date is not None
@@ -547,15 +562,21 @@ def list_offspring_by_mother(db: Session) -> list[OffspringByMotherRead]:
     return rows
 
 
-def list_offspring_by_sire(db: Session) -> list[OffspringBySireRead]:
+def list_offspring_by_sire(db: Session, q: str | None = None) -> list[OffspringBySireRead]:
     """Baba bazinda yavru (soy) listesi - father_sire_id dolu olan TUM
     hayvanlar, guncel durumlari ne olursa olsun. Baba kimligi sire_id ile
     birlikte hem kupe no (suruye aitse) hem soy kutugu kayit no (girilmisse)
     olarak dondurulur - gosterim onceligi frontend'de belirlenir (bkz.
-    OffspringBySireRead). Boga adina, sonra dogum tarihine gore siralanir."""
+    OffspringBySireRead). Boga adina, sonra dogum tarihine gore siralanir.
+
+    q verilirse (boga adi / boga kupe no / boga kayit no / yavru kupe no
+    icinde, buyuk-kucuk harf duyarsiz) sunucu tarafinda filtrelenir - bkz.
+    list_offspring_by_mother docstring'i (Faz 5: sunucu tarafli arama)."""
+    sire_animal_alias = aliased(Animal)
     stmt = (
         select(Animal)
         .join(Sire, Animal.father_sire_id == Sire.id)
+        .outerjoin(sire_animal_alias, Sire.animal_id == sire_animal_alias.id)
         .options(
             joinedload(Animal.father_sire).joinedload(Sire.animal),
             joinedload(Animal.mother),
@@ -563,8 +584,18 @@ def list_offspring_by_sire(db: Session) -> list[OffspringBySireRead]:
             joinedload(Animal.status),
         )
         .where(Animal.father_sire_id.isnot(None), Animal.birth_date.isnot(None))
-        .order_by(Sire.name, Animal.birth_date)
     )
+    if q:
+        needle = f"%{q.strip()}%"
+        stmt = stmt.where(
+            or_(
+                Sire.name.ilike(needle),
+                Sire.registry_no.ilike(needle),
+                sire_animal_alias.tag_number.ilike(needle),
+                Animal.tag_number.ilike(needle),
+            )
+        )
+    stmt = stmt.order_by(Sire.name, Animal.birth_date)
     rows: list[OffspringBySireRead] = []
     for animal in db.scalars(stmt).all():
         sire = animal.father_sire

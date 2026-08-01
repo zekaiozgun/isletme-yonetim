@@ -67,13 +67,13 @@ def calving(
 
 
 @router.get("/offspring-by-mother", response_model=list[OffspringByMotherRead])
-def offspring_by_mother(db: Session = Depends(get_db)) -> list[OffspringByMotherRead]:
-    return service.list_offspring_by_mother(db)
+def offspring_by_mother(db: Session = Depends(get_db), q: str | None = Query(None)) -> list[OffspringByMotherRead]:
+    return service.list_offspring_by_mother(db, q)
 
 
 @router.get("/offspring-by-sire", response_model=list[OffspringBySireRead])
-def offspring_by_sire(db: Session = Depends(get_db)) -> list[OffspringBySireRead]:
-    return service.list_offspring_by_sire(db)
+def offspring_by_sire(db: Session = Depends(get_db), q: str | None = Query(None)) -> list[OffspringBySireRead]:
+    return service.list_offspring_by_sire(db, q)
 
 
 @router.get("/mother-performance", response_model=list[MotherPerformanceRead])

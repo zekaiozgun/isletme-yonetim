@@ -58,4 +58,11 @@ export interface ReportConfig {
    * sayısı özeti gösterilir (örn. "Toplam: 45 · Aktif: 40 · Öldü: 3 · Satıldı: 2").
    * Sütunun kendi label'ı grup adı olarak kullanılır. */
   groupSummaryKey?: string;
+  /** true ise arama TÜM satırları önceden indirip istemcide gizlemek
+   * (varsayılan davranış) yerine SUNUCU TARAFINDA yapılır: kutuya yazıp
+   * Enter'a basmak `q` query param'ıyla sayfayı yeniden yükler, backend
+   * SADECE eşleşen satırları döner. Zamanla sınırsız büyüyebilecek (soy
+   * kaydı gibi asla küçülmeyen) raporlar için kullanılır - bkz.
+   * apps/api'deki ilgili list_* fonksiyonunun `q` parametresi. */
+  serverSearch?: boolean;
 }

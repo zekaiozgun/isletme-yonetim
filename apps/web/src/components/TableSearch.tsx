@@ -8,6 +8,12 @@ interface TableSearchProps {
   /** Arama kutusuyla aynı satırda gösterilecek ek kontroller (örn. CSV indirme butonu). */
   actions?: React.ReactNode;
   children: React.ReactNode;
+  /** Belirtilirse arama CLIENT-SIDE (satırları JS ile gizleme) değil
+   * SUNUCU TARAFINDA yapılır: kutu, mevcut `q` değeriyle önceden
+   * doldurulmuş bir GET formu olarak render edilir - Enter'a basmak (ya
+   * da butona tıklamak) sayfayı `?q=...` ile yeniden yükler, satırlar
+   * zaten backend tarafından filtrelenmiş gelir (bkz. ReportConfig.serverSearch). */
+  serverQuery?: string;
 }
 
 /**
@@ -22,6 +28,7 @@ export function TableSearch({
   emptyMessage = 'Aramanızla eşleşen kayıt yok.',
   actions,
   children,
+  serverQuery,
 }: TableSearchProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState('');
@@ -38,6 +45,27 @@ export function TableSearch({
       if (match) visibleCount += 1;
     });
     setNoMatches(needle !== '' && visibleCount === 0);
+  }
+
+  if (serverQuery !== undefined) {
+    return (
+      <div>
+        <form method="get" className="mb-3 flex flex-wrap items-center gap-3 print:hidden">
+          <input
+            type="search"
+            name="q"
+            defaultValue={serverQuery}
+            placeholder={placeholder}
+            className="w-full max-w-sm rounded border border-slate-300 px-3 py-1.5 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
+          />
+          <button type="submit" className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700">
+            Ara
+          </button>
+          {actions}
+        </form>
+        <div>{children}</div>
+      </div>
+    );
   }
 
   return (

@@ -56,8 +56,20 @@ function GroupSummary({ rows, groupKey }: { rows: ApiRecord[]; groupKey: string 
   );
 }
 
-export function ReportTable({ report, rows }: { report: ReportConfig; rows: ApiRecord[] }) {
-  if (rows.length === 0) {
+export function ReportTable({
+  report,
+  rows,
+  serverQuery,
+}: {
+  report: ReportConfig;
+  rows: ApiRecord[];
+  /** report.serverSearch true ise mevcut arama sorgusu (bkz. TableSearch) -
+   * verilirse, 0 satır dönse bile arama kutusu (sorguyu değiştirebilsin
+   * diye) HER ZAMAN gösterilir; verilmezse (client-side arama) 0 satırda
+   * eskisi gibi tek bir "kayıt yok" mesajıyla erken çıkılır. */
+  serverQuery?: string;
+}) {
+  if (rows.length === 0 && serverQuery === undefined) {
     return <p className="text-sm text-slate-500">Bu raporda şu anda gösterilecek kayıt yok.</p>;
   }
 
@@ -76,6 +88,7 @@ export function ReportTable({ report, rows }: { report: ReportConfig; rows: ApiR
       {report.groupSummaryKey && <GroupSummary rows={rows} groupKey={report.groupSummaryKey} />}
       <TableSearch
         placeholder={`${report.title} içinde ara...`}
+        serverQuery={serverQuery}
         actions={
           <>
             <PdfExportButton
@@ -90,53 +103,57 @@ export function ReportTable({ report, rows }: { report: ReportConfig; rows: ApiR
           </>
         }
       >
-        <div className="overflow-x-auto rounded border border-slate-200 print:overflow-visible print:rounded-none print:border-none">
-          <table className="w-full divide-y divide-slate-200 text-sm print:text-[10px]">
-            <thead className="bg-slate-50 print:bg-transparent">
-              <tr className="divide-x divide-slate-200">
-                <th className="w-[1%] px-[0.5ch] py-1.5 text-left font-medium leading-tight text-slate-600">#</th>
-                {report.columns.map((column) => (
-                  <th
-                    key={column.key}
-                    className={`text-left font-medium text-slate-600 ${headerClass(column.width)}`}
-                  >
-                    {column.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {rows.map((row, index) => {
-                const highlighted = report.rowHighlight?.(row) ?? false;
-                const cellValues = report.columns.map((column) => formatCell(row, column));
-                const searchText = cellValues.join(' ').toLocaleLowerCase('tr-TR');
-                const rowBg = highlighted ? 'bg-amber-50' : index % 2 === 1 ? 'bg-slate-50/70' : undefined;
-                return (
-                  <tr
-                    key={String(row.animal_id ?? row.pen_id ?? row.breeding_event_id ?? index)}
-                    data-search={searchText}
-                    className={`divide-x divide-slate-100 ${rowBg ?? ''}`}
-                  >
-                    <td
-                      className={`w-[1%] whitespace-nowrap px-[0.5ch] py-1.5 ${highlighted ? 'font-medium text-amber-900' : 'text-slate-500'}`}
+        {rows.length === 0 ? (
+          <p className="text-sm text-slate-500">Aramanızla eşleşen kayıt yok.</p>
+        ) : (
+          <div className="overflow-x-auto rounded border border-slate-200 print:overflow-visible print:rounded-none print:border-none">
+            <table className="w-full divide-y divide-slate-200 text-sm print:text-[10px]">
+              <thead className="bg-slate-50 print:bg-transparent">
+                <tr className="divide-x divide-slate-200">
+                  <th className="w-[1%] px-[0.5ch] py-1.5 text-left font-medium leading-tight text-slate-600">#</th>
+                  {report.columns.map((column) => (
+                    <th
+                      key={column.key}
+                      className={`text-left font-medium text-slate-600 ${headerClass(column.width)}`}
                     >
-                      {index + 1}
-                    </td>
-                    {report.columns.map((column, columnIndex) => {
-                      const cellExtra = column.cellClassName?.(row);
-                      const textClass = cellExtra ?? (highlighted ? 'font-medium text-amber-900' : 'text-slate-700');
-                      return (
-                        <td key={column.key} className={`${widthClass(column.width)} ${textClass}`}>
-                          {cellValues[columnIndex]}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      {column.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {rows.map((row, index) => {
+                  const highlighted = report.rowHighlight?.(row) ?? false;
+                  const cellValues = report.columns.map((column) => formatCell(row, column));
+                  const searchText = cellValues.join(' ').toLocaleLowerCase('tr-TR');
+                  const rowBg = highlighted ? 'bg-amber-50' : index % 2 === 1 ? 'bg-slate-50/70' : undefined;
+                  return (
+                    <tr
+                      key={String(row.animal_id ?? row.pen_id ?? row.breeding_event_id ?? index)}
+                      data-search={searchText}
+                      className={`divide-x divide-slate-100 ${rowBg ?? ''}`}
+                    >
+                      <td
+                        className={`w-[1%] whitespace-nowrap px-[0.5ch] py-1.5 ${highlighted ? 'font-medium text-amber-900' : 'text-slate-500'}`}
+                      >
+                        {index + 1}
+                      </td>
+                      {report.columns.map((column, columnIndex) => {
+                        const cellExtra = column.cellClassName?.(row);
+                        const textClass = cellExtra ?? (highlighted ? 'font-medium text-amber-900' : 'text-slate-700');
+                        return (
+                          <td key={column.key} className={`${widthClass(column.width)} ${textClass}`}>
+                            {cellValues[columnIndex]}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </TableSearch>
     </>
   );
