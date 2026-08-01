@@ -26,12 +26,14 @@ from app.modules.reports.schemas import (
     HerdFlowReportRead,
     HerdInventoryRead,
     HerdStatusSummaryRead,
+    MotherPerformanceRead,
     OffspringByMotherRead,
     OffspringBySireRead,
     PenEfficiencyRead,
     PenOccupancyRead,
     PregnancyCheckResultRead,
     SalesReportRead,
+    SirePerformanceRead,
     WeightGainRead,
     WithdrawalPeriodRead,
     YoungAnimalRead,
@@ -72,6 +74,16 @@ def offspring_by_mother(db: Session = Depends(get_db)) -> list[OffspringByMother
 @router.get("/offspring-by-sire", response_model=list[OffspringBySireRead])
 def offspring_by_sire(db: Session = Depends(get_db)) -> list[OffspringBySireRead]:
     return service.list_offspring_by_sire(db)
+
+
+@router.get("/mother-performance", response_model=list[MotherPerformanceRead])
+def mother_performance(db: Session = Depends(get_db)) -> list[MotherPerformanceRead]:
+    return service.list_mother_performance(db)
+
+
+@router.get("/sire-performance", response_model=list[SirePerformanceRead])
+def sire_performance(db: Session = Depends(get_db)) -> list[SirePerformanceRead]:
+    return service.list_sire_performance(db)
 
 
 @router.get("/breeding-performance", response_model=list[BreedingPerformanceRead])

@@ -159,6 +159,7 @@ const mainResources: ResourceConfig[] = [
       { slug: 'heifers-steers', title: 'Düve ve Dana Listesi (7-12 Ay)' },
       { slug: 'offspring-by-mother', title: 'Anne Bazında Yavru Listesi' },
       { slug: 'offspring-by-sire', title: 'Baba Bazında Yavru Listesi' },
+      { slug: 'parent-performance', title: 'Anne ve Baba Bazında Verimlilik Sıralaması' },
     ],
   },
   {

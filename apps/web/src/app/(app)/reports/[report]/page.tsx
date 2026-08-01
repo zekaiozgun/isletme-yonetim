@@ -4,6 +4,7 @@ import { apiGetSafe, type ApiRecord } from '@/lib/api';
 import { getReport } from '@/lib/reports';
 import { ReportTable } from '@/components/ReportTable';
 import { HerdAnimalValueTable } from '@/components/HerdAnimalValueTable';
+import { ParentPerformanceSection } from '@/components/ParentPerformanceSection';
 import { DateRangeFilter } from '@/components/DateRangeFilter';
 import { MarketValueSeriesFilter } from '@/components/MarketValueSeriesFilter';
 
@@ -71,6 +72,8 @@ export default async function ReportPage({
   for (const id of selectedStatusIds) query.append('status_ids', String(id));
   const separator = report.endpoint.includes('?') ? '&' : '?';
   const rows = await apiGetSafe<ApiRecord[]>(`${report.endpoint}${separator}${query.toString()}`, []);
+  const sireRows =
+    report.slug === 'parent-performance' ? await apiGetSafe<ApiRecord[]>('/reports/sire-performance', []) : [];
 
   const showCustomFilter = report.singleDate || report.statusFilter;
 
@@ -110,6 +113,8 @@ export default async function ReportPage({
       )}
       {report.slug === 'herd-animal-market-values' ? (
         <HerdAnimalValueTable rows={rows} />
+      ) : report.slug === 'parent-performance' ? (
+        <ParentPerformanceSection motherRows={rows} sireRows={sireRows} />
       ) : (
         <ReportTable report={report} rows={rows} />
       )}

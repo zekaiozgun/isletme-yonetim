@@ -132,7 +132,7 @@ function formatParentage(value: unknown, row: ApiRecord): string {
  * facttir - sadece hangisinin gösterileceği değişir (bkz. backend
  * OffspringBySireRead). Her durumda boğa adıyla birlikte gösterilir.
  */
-function formatSireIdentity(value: unknown, row: ApiRecord): string {
+export function formatSireIdentity(value: unknown, row: ApiRecord): string {
   const name = typeof row.sire_name === 'string' && row.sire_name ? row.sire_name : '—';
   if (typeof row.sire_tag_number === 'string' && row.sire_tag_number) {
     return `${row.sire_tag_number} — ${name}`;
@@ -233,6 +233,20 @@ export const reports: ReportConfig[] = [
       { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate, width: 'narrow' },
       { key: 'gender_name', label: 'Cinsiyet', width: 'narrow' },
       { key: 'status_name', label: 'Güncel Durum', width: 'narrow' },
+    ],
+  },
+  {
+    slug: 'parent-performance',
+    title: 'Anne ve Baba Bazında Verimlilik Sıralaması',
+    description:
+      'Her annenin/boğanın TÜM yavrularının (satılmış/ölmüş/hala aktif) ortalama günlük kilo artışı, ortalama kâr/zarar ve kayıp oranına göre sıralanması - sütun başlığına tıklayarak sıralama kriterini değiştirebilirsiniz. Ort. Kâr/Zarar sadece satılmış/ölmüş (kapanmış) yavruların ortalamasıdır, hala büyüyen yavrular henüz gerçekleşmemiş bir kâr/zarara sahip olamayacağı için dahil edilmez. Babalarda örneklem genelde daha hızlı büyür (bir boğa aynı dönemde birden fazla anneden yavru alabilir), bu yüzden Baba Bazında sıralama erken aşamada daha anlamlı olabilir.',
+    endpoint: '/reports/mother-performance',
+    columns: [
+      { key: 'mother_tag_number', label: 'Anne Küpe No / Baba', width: 'narrow' },
+      { key: 'offspring_count', label: 'Yavru Sayısı (Dişi/Erkek)', width: 'narrow' },
+      { key: 'avg_daily_gain_kg', label: 'Ort. Günlük Kilo Artışı', width: 'narrow' },
+      { key: 'avg_profit_try', label: 'Ort. Kâr/Zarar (TL)', format: formatCurrency, width: 'narrow' },
+      { key: 'loss_rate', label: 'Kayıp Oranı', format: formatPercent, width: 'narrow' },
     ],
   },
   {

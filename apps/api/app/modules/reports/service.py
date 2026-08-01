@@ -57,12 +57,14 @@ from app.modules.reports.schemas import (
     HerdFlowReportRead,
     HerdInventoryRead,
     HerdStatusSummaryRead,
+    MotherPerformanceRead,
     OffspringByMotherRead,
     OffspringBySireRead,
     PenEfficiencyRead,
     PenOccupancyRead,
     PregnancyCheckResultRead,
     SalesReportRead,
+    SirePerformanceRead,
     WeightGainRead,
     WithdrawalPeriodRead,
     YoungAnimalRead,
@@ -582,6 +584,141 @@ def list_offspring_by_sire(db: Session) -> list[OffspringBySireRead]:
                 status_name=animal.status.name,
             )
         )
+    return rows
+
+
+def _lifetime_daily_gain_by_animal(db: Session) -> dict[uuid.UUID, float]:
+    """En az iki tartisi olan HER hayvan icin, ilk-son tarti arasindaki
+    (tarih araligi olmadan tum zaman) ortalama gunluk canli agirlik
+    artisini (ADG) hesaplar - Agirlik Artisi Raporu'ndaki (list_weight_gains)
+    ayni mantigin, tarih araligi kisiti olmayan hali."""
+    stmt = select(WeightRecord).order_by(WeightRecord.animal_id, WeightRecord.weigh_date)
+    by_animal: dict[uuid.UUID, list[WeightRecord]] = {}
+    for record in db.scalars(stmt).all():
+        by_animal.setdefault(record.animal_id, []).append(record)
+    result: dict[uuid.UUID, float] = {}
+    for animal_id, records in by_animal.items():
+        if len(records) < 2:
+            continue
+        first, last = records[0], records[-1]
+        days = (last.weigh_date - first.weigh_date).days
+        if days <= 0:
+            continue
+        result[animal_id] = float(last.weight_kg - first.weight_kg) / days
+    return result
+
+
+def _lifetime_profit_by_animal(db: Session) -> dict[uuid.UUID, Decimal]:
+    """Kapanmis (satilmis/olmus) TUM hayvanlarin yasam boyu kar/zararini
+    (Hayvan Karlilik Raporu ile ayni hesap - _build_profitability_row -
+    ama tarih araligi olmadan tum zaman) animal_id'ye gore dondurur. Hala
+    aktif hayvanlar bu haritada YOKTUR, karliligi henuz gerceklesmedi
+    (Anayasa m.4/m.5, bkz. list_animal_profitability)."""
+    result: dict[uuid.UUID, Decimal] = {}
+    for sale in db.scalars(select(Sale).options(joinedload(Sale.animal))).all():
+        row = _build_profitability_row(db, sale.animal, "Satıldı", sale.sale_date, sale.total_amount)
+        result[sale.animal_id] = row.profit_try
+    for death in db.scalars(select(Death).options(joinedload(Death.animal))).all():
+        row = _build_profitability_row(db, death.animal, "Öldü", death.death_date, None)
+        result[death.animal_id] = row.profit_try
+    return result
+
+
+def list_mother_performance(db: Session) -> list[MotherPerformanceRead]:
+    """Anne bazinda yavru verimlilik siralamasi - her annenin TUM
+    yavrularini (satilmis/olmus/hala aktif) uc metrikte gruplar:
+    avg_daily_gain_kg (omur boyu ADG ortalamasi, tarti verisi olan
+    yavrularda), avg_profit_try (SADECE kapanmis yavrularda - bkz.
+    _lifetime_profit_by_animal) ve loss_rate (TUM yavrularin yuzde kaci
+    oldu). Varsayilan siralama avg_daily_gain_kg'a gore azalandir (veri
+    yoksa en sona duser) - frontend'de tiklanarak degistirilebilir.
+    Sadece en az bir yavrusu olan anneler listelenir."""
+    gain_by_animal = _lifetime_daily_gain_by_animal(db)
+    profit_by_animal = _lifetime_profit_by_animal(db)
+    dead_ids = set(db.scalars(select(Death.animal_id)).all())
+    female_id = get_lookup_by_code(db, Gender, FEMALE_GENDER_CODE).id
+
+    mother_alias = aliased(Animal)
+    stmt = (
+        select(Animal)
+        .join(mother_alias, Animal.mother_id == mother_alias.id)
+        .options(joinedload(Animal.mother), joinedload(Animal.gender))
+        .where(Animal.mother_id.isnot(None))
+    )
+    by_mother: dict[uuid.UUID, list[Animal]] = {}
+    mother_tag: dict[uuid.UUID, str] = {}
+    for animal in db.scalars(stmt).all():
+        assert animal.mother_id is not None
+        by_mother.setdefault(animal.mother_id, []).append(animal)
+        mother_tag[animal.mother_id] = animal.mother.tag_number
+
+    rows: list[MotherPerformanceRead] = []
+    for mother_id, offspring in by_mother.items():
+        gains = [gain_by_animal[a.id] for a in offspring if a.id in gain_by_animal]
+        profits = [profit_by_animal[a.id] for a in offspring if a.id in profit_by_animal]
+        died_count = sum(1 for a in offspring if a.id in dead_ids)
+        female_count = sum(1 for a in offspring if a.gender_id == female_id)
+        rows.append(
+            MotherPerformanceRead(
+                mother_id=mother_id,
+                mother_tag_number=mother_tag[mother_id],
+                offspring_count=len(offspring),
+                female_count=female_count,
+                male_count=len(offspring) - female_count,
+                avg_daily_gain_kg=round(sum(gains) / len(gains), 3) if gains else None,
+                avg_profit_try=round(float(sum(profits)) / len(profits), 2) if profits else None,
+                loss_rate=round(died_count / len(offspring) * 100, 1),
+            )
+        )
+    rows.sort(key=lambda r: (r.avg_daily_gain_kg is None, -(r.avg_daily_gain_kg or 0)))
+    return rows
+
+
+def list_sire_performance(db: Session) -> list[SirePerformanceRead]:
+    """Baba bazinda yavru verimlilik siralamasi - list_mother_performance
+    ile ayni uc metrik, boga bazinda gruplanir. Kimlik gosterimi
+    OffspringBySireRead ile ayni onceliktedir (kupe no -> registry_no ->
+    sire_id)."""
+    gain_by_animal = _lifetime_daily_gain_by_animal(db)
+    profit_by_animal = _lifetime_profit_by_animal(db)
+    dead_ids = set(db.scalars(select(Death.animal_id)).all())
+    female_id = get_lookup_by_code(db, Gender, FEMALE_GENDER_CODE).id
+
+    stmt = (
+        select(Animal)
+        .join(Sire, Animal.father_sire_id == Sire.id)
+        .options(joinedload(Animal.father_sire).joinedload(Sire.animal), joinedload(Animal.gender))
+        .where(Animal.father_sire_id.isnot(None))
+    )
+    by_sire: dict[int, list[Animal]] = {}
+    sire_by_id: dict[int, Sire] = {}
+    for animal in db.scalars(stmt).all():
+        assert animal.father_sire_id is not None and animal.father_sire is not None
+        by_sire.setdefault(animal.father_sire_id, []).append(animal)
+        sire_by_id[animal.father_sire_id] = animal.father_sire
+
+    rows: list[SirePerformanceRead] = []
+    for sire_id, offspring in by_sire.items():
+        sire = sire_by_id[sire_id]
+        gains = [gain_by_animal[a.id] for a in offspring if a.id in gain_by_animal]
+        profits = [profit_by_animal[a.id] for a in offspring if a.id in profit_by_animal]
+        died_count = sum(1 for a in offspring if a.id in dead_ids)
+        female_count = sum(1 for a in offspring if a.gender_id == female_id)
+        rows.append(
+            SirePerformanceRead(
+                sire_id=sire.id,
+                sire_tag_number=sire.animal.tag_number if sire.animal else None,
+                sire_registry_no=sire.registry_no,
+                sire_name=sire.name,
+                offspring_count=len(offspring),
+                female_count=female_count,
+                male_count=len(offspring) - female_count,
+                avg_daily_gain_kg=round(sum(gains) / len(gains), 3) if gains else None,
+                avg_profit_try=round(float(sum(profits)) / len(profits), 2) if profits else None,
+                loss_rate=round(died_count / len(offspring) * 100, 1),
+            )
+        )
+    rows.sort(key=lambda r: (r.avg_daily_gain_kg is None, -(r.avg_daily_gain_kg or 0)))
     return rows
 
 
