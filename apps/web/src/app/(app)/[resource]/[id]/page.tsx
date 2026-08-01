@@ -79,20 +79,33 @@ export default async function EditResourcePage({ params }: { params: Promise<{ r
         readOnly={isLockedForCalisan}
       />
 
-      {weightPoints.length >= 2 && (
+      {isAnimal && (
         <div className="mt-8 max-w-xl border-t border-slate-200 pt-6">
           <h2 className="mb-1 text-sm font-semibold text-slate-700">Kilo Trend Grafiği</h2>
-          <p className="mb-3 text-sm text-slate-500">
-            {formatDateDMY(firstWeight.date)}: {firstWeight.value} kg → {formatDateDMY(lastWeight.date)}: {lastWeight.value} kg
-            {weightChange !== null && (
-              <span className={weightChange < 0 ? 'font-medium text-red-600' : 'font-medium text-emerald-700'}>
-                {' '}
-                ({weightChange >= 0 ? '+' : ''}
-                {weightChange} kg)
-              </span>
-            )}
-          </p>
-          <TrendLineChart points={weightPoints} unit="kg" />
+          {weightPoints.length >= 2 ? (
+            <>
+              <p className="mb-3 text-sm text-slate-500">
+                {formatDateDMY(firstWeight.date)}: {firstWeight.value} kg → {formatDateDMY(lastWeight.date)}: {lastWeight.value} kg
+                {weightChange !== null && (
+                  <span className={weightChange < 0 ? 'font-medium text-red-600' : 'font-medium text-emerald-700'}>
+                    {' '}
+                    ({weightChange >= 0 ? '+' : ''}
+                    {weightChange} kg)
+                  </span>
+                )}
+              </p>
+              <TrendLineChart points={weightPoints} unit="kg" />
+            </>
+          ) : (
+            <p className="text-sm text-slate-500">
+              {weightPoints.length === 0
+                ? 'Bu hayvan için henüz tartı kaydı yok.'
+                : 'Grafik için en az 2 tartı kaydı gerekir, şu an sadece 1 kayıt var.'}{' '}
+              <Link href="/weight-records/new" className="font-medium text-slate-700 hover:underline">
+                Tartı kaydı ekle →
+              </Link>
+            </p>
+          )}
         </div>
       )}
 
