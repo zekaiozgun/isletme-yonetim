@@ -9,6 +9,7 @@ export const financialReports: ReportConfig[] = [
     description:
       'Aralıkta satılan veya ölen hayvanların yaşam boyu maliyeti (giriş değeri + sağlık + gün ağırlıklı yem payı) satış geliriyle karşılaştırılır. Giriş değeri, satın alınan hayvanlarda alım tutarı, işletmede doğanlarda ise doğumda biçilen tahmini değerdir - ölen bir hayvanın giriş değeri doğrudan zarar yazılır. TL tutarlar tarihsel/nominal, USD karşılığı işlem tarihindeki TCMB kuruyla hesaplanır. Zarar eden hayvanlar vurgulu.',
     endpoint: '/reports/animal-profitability',
+    group: 'Mali',
     dateRange: true,
     defaultRangeDays: 365,
     columns: [
@@ -34,6 +35,7 @@ export const financialReports: ReportConfig[] = [
     description:
       'Aralıkta gerçekleşen yem, sağlık ve alım maliyeti ile satış gelirinin TL ve USD (her kalemin kendi tarihindeki TCMB kuruyla) genel özeti - planlama için.',
     endpoint: '/reports/herd-cost-summary',
+    group: 'Mali',
     dateRange: true,
     columns: [
       { key: 'category', label: 'Kalem', width: 'narrow' },
@@ -48,6 +50,7 @@ export const financialReports: ReportConfig[] = [
     description:
       'Belirtilen tarih itibarıyla yaşayan TÜM hayvanların tahmini piyasa değeri tek tek listelenir - büyüme çıpası girilmiş genç hayvanlar için piyasa tahmini, diğerleri için maliyet-bazlı defter değeri kullanılır. Alım/satım öncesi birden fazla hayvanı bir arada değerlendirmek için satırları işaretleyip seçilenlerin toplamını görebilirsiniz.',
     endpoint: '/reports/herd-animal-market-values',
+    group: 'Mali',
     singleDate: true,
     usesGrowthCheckpoints: true,
     columns: [

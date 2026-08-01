@@ -23,6 +23,7 @@ export const breedingReports: ReportConfig[] = [
     description:
       'Belirtilen tarih aralığında doğan hayvanlar; cinsiyet, doğum tipi (tekiz/ikiz) ve doğum ağırlığı ile birlikte. Güç doğum (distoni) vakaları vurgulu.',
     endpoint: '/reports/calving',
+    group: 'Üreme',
     dateRange: true,
     groupSummaryKey: 'status_name',
     columns: [
@@ -44,6 +45,7 @@ export const breedingReports: ReportConfig[] = [
     description:
       'Anne küpe numarasına göre sıralı, tüm yavrular (satılmış/ölmüş olanlar dahil) - bir soy kaydıdır, aktif sürü listesi değildir. Belirli bir anneyi görmek için arama kutusuna küpe no yazın.',
     endpoint: '/reports/offspring-by-mother',
+    group: 'Üreme',
     columns: [
       { key: 'mother_tag_number', label: 'Anne Küpe No', width: 'narrow' },
       { key: 'tag_number', label: 'Yavru Küpe No', width: 'narrow' },
@@ -58,6 +60,7 @@ export const breedingReports: ReportConfig[] = [
     description:
       'Boğa kimliğine göre sıralı, tüm yavrular (satılmış/ölmüş olanlar dahil) - bir soy kaydıdır, aktif sürü listesi değildir. Belirli bir boğayı görmek için arama kutusuna adını veya kayıt no\'sunu yazın.',
     endpoint: '/reports/offspring-by-sire',
+    group: 'Üreme',
     columns: [
       { key: 'sire_id', label: 'Baba', format: formatSireIdentity, width: 'narrow' },
       { key: 'tag_number', label: 'Yavru Küpe No', width: 'narrow' },
@@ -73,6 +76,7 @@ export const breedingReports: ReportConfig[] = [
     description:
       'Her annenin/boğanın TÜM yavrularının (satılmış/ölmüş/hala aktif) ortalama günlük kilo artışı ve kayıp oranına göre sıralanması - sütun başlığına tıklayarak sıralama kriterini değiştirebilirsiniz. Babalarda örneklem genelde daha hızlı büyür (bir boğa aynı dönemde birden fazla anneden yavru alabilir), bu yüzden Baba Bazında sıralama erken aşamada daha anlamlı olabilir.',
     endpoint: '/reports/mother-performance',
+    group: 'Üreme',
     columns: [
       { key: 'mother_tag_number', label: 'Anne Küpe No / Baba', width: 'narrow' },
       { key: 'offspring_count', label: 'Yavru Sayısı (Dişi/Erkek)', width: 'narrow' },
@@ -86,6 +90,7 @@ export const breedingReports: ReportConfig[] = [
     description:
       'Aralıktaki aşım kayıtları; doğal/suni tohumlama dağılımı, boğa veya sperma partisi bazında gebe kalma oranı.',
     endpoint: '/reports/breeding-performance',
+    group: 'Üreme',
     dateRange: true,
     defaultRangeDays: 365,
     columns: [
@@ -105,6 +110,7 @@ export const breedingReports: ReportConfig[] = [
     title: 'Gebelik Kontrol Sonuçları Özeti',
     description: 'Aralıkta yapılan gebelik kontrolleri; hayvan, kontrol yöntemi ve sonuç bazında.',
     endpoint: '/reports/pregnancy-check-results',
+    group: 'Üreme',
     dateRange: true,
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
@@ -122,6 +128,7 @@ export const breedingReports: ReportConfig[] = [
     description:
       'Her inek için son iki doğumu arasındaki gün farkı ve sürü ortalaması. Tarih aralığı gerektirmez. 400 günü aşanlar vurgulu.',
     endpoint: '/reports/calving-intervals',
+    group: 'Üreme',
     columns: [
       { key: 'tag_number', label: 'Hayvan', width: 'narrow' },
       { key: 'previous_calving_date', label: 'Önceki Doğum', format: formatDate, width: 'narrow' },
@@ -137,6 +144,7 @@ export const breedingReports: ReportConfig[] = [
     description:
       '12 ay yaşına ulaşan düveler, doğum yapmış inekler (doğum sonrası bekleme süresini tamamlayıp tamamlamadığına göre "Post Partum" veya "Tohumlanacak" olarak ayrılır) ve gebelik kontrolünde "Boş" çıkan (tekrar kızgınlık) hayvanlar - hepsi tek listede, Sebep sütunuyla ayırt edilir. Her grup kendi içinde en uzun süredir bekleyen üstte olacak şekilde sıralanır. Bekleme Süresi, sebebe göre farklı bir başlangıçtan sayılır: "Boş Çıkan"da son başarısız kontrolden, "Tohumlanacak (Doğum Sonrası)"/"Post Partum"da son doğumdan, "İlk Tohumlama"da 12 aylık yaşa girdiği tarihten bu yana. Deneme Sayısı, son doğumundan bu yana kaç kez tohumlandığını gösterir - yüksek sayı fertilite sorununa işaret edebilir.',
     endpoint: '/reports/breeding-candidates',
+    group: 'Üreme',
     helpNote:
       'Bir hayvan doğurduğunda (buzağısı sisteme anne bilgisiyle kaydedildiğinde), o hayvan ANINDA "Gebe" statüsünden çıkar - bunun için ayrıca bir işlem yapmanıza gerek yoktur. Doğum yapan TÜM hayvanlar bu listede görünür, ama sebep sütunu ikiye ayrılır: doğumdan sonraki ilk 45 gün boyunca (toparlanma süresi) hayvan "Post Partum" olarak görünür - bu sadece bilgilendirme amaçlıdır, henüz bir aksiyon gerektirmez. 45 gün dolduğunda hayvan otomatik olarak "Tohumlanacak" sebebiyle listede görünmeye devam eder - artık tohumlanmaya hazır demektir. Dashboard\'daki "Tohumlanacak Hayvan" sayacı sadece gerçekten aksiyon gerektirenleri (Post Partum hariç) sayar.',
     columns: [
@@ -159,6 +167,7 @@ export const breedingReports: ReportConfig[] = [
     description:
       'Tohumlaması yapılmış, aktif üreme döngüsündeki hayvanlar - kontrol bekleyenler, şüpheli sonuçlar ve gebeliği onaylanmış olanlar tek listede (Durum sütunuyla ayırt edilir). Tahmini Doğum, kontrol sonucu onaylanmış olsun olmasın tohumlama tarihinden hesaplanır. Gebelik kontrolü gerekenler üstte listelenir. Deneme Sayısı, son doğumundan bu yana (bu tohumlama dahil) kaçıncı deneme olduğunu gösterir.',
     endpoint: '/reports/bred-animals',
+    group: 'Üreme',
     groupSummaryKey: 'check_status',
     helpNote:
       'Bir hayvan doğurduğunda (buzağısı sisteme anne bilgisiyle kaydedildiğinde) bu listeden ANINDA çıkar - ayrıca bir işlem yapmanıza gerek yoktur. "Tahmini Doğum" tarihi, henüz gebelik kontrolü yapılmamış ya da "Şüpheli" çıkmış satırlarda da gösterilir - bu satırlarda kontrol sonucu HENÜZ ONAYLANMAMIŞTIR, tarih sadece tohumlama tarihine dayalı bir projeksiyondur. Durum sütunu kırmızı/kalın görünüyorsa dikkat gerekir: kontrol zamanı gelmiş (Tohumlu, süre dolmuş, ya da Şüpheli) ya da bu tohumlamadan önce aynı döngüde onaylı bir gebelik vardı ama artık geçerli değil (sebebi düşük mü, yanlış giriş mi, not alanına elle kaydedilmelidir).',

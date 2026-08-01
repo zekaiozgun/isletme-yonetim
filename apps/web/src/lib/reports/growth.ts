@@ -9,6 +9,7 @@ export const growthReports: ReportConfig[] = [
     description:
       'Aralıkta en az iki tartısı olan hayvanlar için, ilk ve son tartı arasındaki günlük ortalama canlı ağırlık artışı (ADG).',
     endpoint: '/reports/weight-gains',
+    group: 'Büyüme',
     dateRange: true,
     defaultRangeDays: 180,
     columns: [

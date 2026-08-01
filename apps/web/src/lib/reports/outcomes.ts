@@ -8,6 +8,7 @@ export const outcomeReports: ReportConfig[] = [
     title: 'Satış Raporu',
     description: 'Aralıktaki satışlar; toplam gelir, ortalama satış ağırlığı/fiyatı, alıcı bazında kırılım.',
     endpoint: '/reports/sales',
+    group: 'Satış ve Kayıp',
     dateRange: true,
     columns: [
       { key: 'buyer_name', label: 'Alıcı' },
@@ -24,6 +25,7 @@ export const outcomeReports: ReportConfig[] = [
     description:
       'Aralıktaki ölümler; buzağı (0-7 ay) ve yetişkin kaybı ayrı ayrı, neden dağılımı ve kayıp oranı. "Toplam" satırı ikisinin birleşik oranını gösterir - Dashboard\'daki "Yıllık Kayıp Oranı" ile karşılaştırmak için (o tek bir sürü-geneli oran verir, buradaki iki ayrı satır ağırlıklı ortalaması alınınca ona eşit olur).',
     endpoint: '/reports/deaths',
+    group: 'Satış ve Kayıp',
     dateRange: true,
     defaultRangeDays: 365,
     columns: [
@@ -40,6 +42,7 @@ export const outcomeReports: ReportConfig[] = [
     title: 'Sürü Giriş-Çıkış Özeti',
     description: 'Aralıkta işletmeye giren (doğum/satın alma) ve çıkan (satış/ölüm) hayvan sayıları; net büyüme.',
     endpoint: '/reports/herd-flow',
+    group: 'Satış ve Kayıp',
     dateRange: true,
     defaultRangeDays: 365,
     columns: [

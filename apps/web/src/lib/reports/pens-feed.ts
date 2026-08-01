@@ -9,6 +9,7 @@ export const pensFeedReports: ReportConfig[] = [
     description:
       'Aralıkta rasyon dönemleri ve padoğun fiilen dolu olduğu günlerden türetilen yem tüketimi, padok/yem tipi bazında.',
     endpoint: '/reports/feed-consumption',
+    group: 'Padok ve Yem',
     dateRange: true,
     columns: [
       { key: 'pen_code', label: 'Padok Kodu', width: 'narrow' },
@@ -25,6 +26,7 @@ export const pensFeedReports: ReportConfig[] = [
     description:
       'Yem ürünü bazında toplam alım, tüketim, mevcut stok (kg) ve ağırlıklı ortalama maliyetle hesaplanan stok değeri (TL).',
     endpoint: '/reports/feed-stock-status',
+    group: 'Padok ve Yem',
     singleDate: true,
     columns: [
       { key: 'feed_item_name', label: 'Yem Ürünü', width: 'narrow' },
@@ -42,6 +44,7 @@ export const pensFeedReports: ReportConfig[] = [
     title: 'Padok Doluluk Durumu',
     description: 'Padokların kapasite ve güncel doluluk oranları.',
     endpoint: '/reports/pen-occupancy',
+    group: 'Padok ve Yem',
     columns: [
       { key: 'code', label: 'Kod', width: 'narrow' },
       { key: 'name', label: 'Ad', width: 'narrow' },
@@ -57,6 +60,7 @@ export const pensFeedReports: ReportConfig[] = [
     description:
       'Aralıkta padoğa dağıtılan yem (miktar, TL ve TCMB kuruyla USD) ile o padoktaki hayvanların gerçek kilo artışı karşılaştırılır: yem dönüşüm oranı (FCR) ve kg canlı ağırlık başına maliyet.',
     endpoint: '/reports/pen-efficiency',
+    group: 'Padok ve Yem',
     dateRange: true,
     defaultRangeDays: 180,
     columns: [

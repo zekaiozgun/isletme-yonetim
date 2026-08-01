@@ -9,6 +9,7 @@ export const herdReports: ReportConfig[] = [
     description:
       'Seçilen statülerdeki (varsayılan: Aktif) hayvanlar, yaş (ay) dahil. Satılan/ölen hayvanları da görmek için ilgili statüleri işaretleyin. CSV olarak indirilebilir.',
     endpoint: '/reports/active-animals',
+    group: 'Sürü Listeleri',
     statusFilter: true,
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
@@ -25,6 +26,7 @@ export const herdReports: ReportConfig[] = [
     title: 'Buzağı Listesi (0-7 Ay)',
     description: '0-7 ay yaşındaki aktif hayvanlar.',
     endpoint: '/reports/calves',
+    group: 'Sürü Listeleri',
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
       { key: 'gender_name', label: 'Cinsiyet', width: 'narrow' },
@@ -40,6 +42,7 @@ export const herdReports: ReportConfig[] = [
     title: 'Düve ve Dana Listesi (7-12 Ay)',
     description: '7-12 ay yaşındaki aktif hayvanlar (dişi: düve, erkek: dana).',
     endpoint: '/reports/heifers-steers',
+    group: 'Sürü Listeleri',
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
       { key: 'gender_name', label: 'Cinsiyet', width: 'narrow' },
@@ -56,6 +59,7 @@ export const herdReports: ReportConfig[] = [
     description:
       'Aktif sürünün tek tabloda özeti: yaş kovaları (Buzağı/Düve-Tosun/Yetişkin Erkek) ile doğurgan yaştaki dişilerin üreme alt-durumları (Tohumlanacak/Tohumlu/Şüpheli/Gebe) bir arada. "Doğurgan Yaştaki Dişi" satırı, altındaki 7 alt-durumun toplamına tam olarak eşittir.',
     endpoint: '/reports/herd-status-summary',
+    group: 'Sürü Listeleri',
     columns: [
       { key: 'category', label: 'Kategori', format: formatHerdStatusCategory, width: 'wide', cellClassName: herdStatusRowClass },
       { key: 'count', label: 'Sayı', width: 'narrow', cellClassName: herdStatusRowClass },

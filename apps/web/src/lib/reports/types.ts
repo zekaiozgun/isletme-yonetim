@@ -22,6 +22,9 @@ export interface ReportConfig {
   slug: string;
   title: string;
   description: string;
+  /** Raporlar hub sayfasında (`/reports`) kartları konuya göre bölümlere
+   * ayırmak için kullanılır - bkz. `groupedDateRangeReports()`. */
+  group: string;
   endpoint: string;
   columns: ReportColumn[];
   /** true dönerse satır dikkat çekecek şekilde vurgulanır (örn. gecikmiş gebelik kontrolü). */

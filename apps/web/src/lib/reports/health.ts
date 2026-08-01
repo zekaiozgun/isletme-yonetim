@@ -8,6 +8,7 @@ export const healthReports: ReportConfig[] = [
     title: 'Sağlık Olayları Raporu',
     description: 'Aralıktaki hastalık/tedavi kayıtları; hastalık dağılımı, ilaç kullanım sıklığı.',
     endpoint: '/reports/health-events',
+    group: 'Sağlık',
     dateRange: true,
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
@@ -26,6 +27,7 @@ export const healthReports: ReportConfig[] = [
     description:
       'Arınma süresi (ilacın vücuttan tamamen atıldığı, satışa/kesime uygun hale geldiği süre) henüz dolmamış aktif hayvanlar.',
     endpoint: '/reports/withdrawal-periods',
+    group: 'Sağlık',
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
       { key: 'medication_name', label: 'İlaç', width: 'narrow' },

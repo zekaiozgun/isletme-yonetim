@@ -31,3 +31,19 @@ export function getReport(slug: string): ReportConfig | undefined {
 export function dateRangeReports(): ReportConfig[] {
   return reports.filter((r) => r.dateRange || r.singleDate || r.statusFilter);
 }
+
+/** /reports hub sayfasındaki kartları konuya göre bölümlere ayırmak için -
+ * dateRangeReports()'u `group` alanına göre kümeler (resources.ts'teki
+ * groupedResources() ile aynı desen). */
+export function groupedDateRangeReports(): { group: string; items: ReportConfig[] }[] {
+  const groups: { group: string; items: ReportConfig[] }[] = [];
+  for (const report of dateRangeReports()) {
+    let bucket = groups.find((g) => g.group === report.group);
+    if (!bucket) {
+      bucket = { group: report.group, items: [] };
+      groups.push(bucket);
+    }
+    bucket.items.push(report);
+  }
+  return groups;
+}
