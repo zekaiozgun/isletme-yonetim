@@ -25,6 +25,7 @@ from app.modules.reports.schemas import (
     HerdCostSummaryRead,
     HerdFlowReportRead,
     HerdInventoryRead,
+    HerdStatusSummaryRead,
     PenEfficiencyRead,
     PenOccupancyRead,
     PregnancyCheckResultRead,
@@ -168,6 +169,11 @@ def pen_occupancy(db: Session = Depends(get_db)) -> list[PenOccupancyRead]:
 @router.get("/herd-inventory", response_model=HerdInventoryRead)
 def herd_inventory(db: Session = Depends(get_db)) -> HerdInventoryRead:
     return service.get_herd_inventory(db)
+
+
+@router.get("/herd-status-summary", response_model=list[HerdStatusSummaryRead])
+def herd_status_summary(db: Session = Depends(get_db)) -> list[HerdStatusSummaryRead]:
+    return service.list_herd_status_summary(db)
 
 
 @router.get("/dashboard-summary", response_model=DashboardSummaryRead)

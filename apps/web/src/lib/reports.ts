@@ -146,6 +146,19 @@ function formatUsd(value: unknown): string {
   return `$${String(value)}`;
 }
 
+/** Sürü Durum Özeti raporunda "Doğurgan Yaştaki Dişi" altındaki üreme
+ * alt-durumu satırlarını (level=1) girintiyle gösterir - bu satırların
+ * toplamı üstteki ara toplama tam eşit olduğu için görsel olarak da
+ * o satıra bağlı bir kırılım gibi okunsun diye. */
+function formatHerdStatusCategory(value: unknown, row: ApiRecord): string {
+  const label = typeof value === 'string' ? value : '—';
+  return row.level === 1 ? `— ${label}` : label;
+}
+
+function herdStatusRowClass(row: ApiRecord): string {
+  return row.is_total === true ? 'font-semibold text-slate-900' : 'text-slate-700';
+}
+
 export function formatSourceCode(value: unknown): string {
   if (value === 'market_estimate') return 'Piyasa Tahmini';
   if (value === 'cost_basis') return 'Maliyet Bazlı';
@@ -446,6 +459,17 @@ export const reports: ReportConfig[] = [
       { key: 'age_months', label: 'Yaş', format: formatMonths, width: 'narrow' },
       { key: 'mother_tag_number', label: 'Anne/Baba', format: formatParentage, width: 'narrow' },
       { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
+    ],
+  },
+  {
+    slug: 'herd-status-summary',
+    title: 'Sürü Durum Özeti',
+    description:
+      'Aktif sürünün tek tabloda özeti: yaş kovaları (Buzağı/Düve-Tosun/Yetişkin Erkek) ile doğurgan yaştaki dişilerin üreme alt-durumları (Tohumlanacak/Tohumlu/Şüpheli/Gebe) bir arada. "Doğurgan Yaştaki Dişi" satırı, altındaki 7 alt-durumun toplamına tam olarak eşittir.',
+    endpoint: '/reports/herd-status-summary',
+    columns: [
+      { key: 'category', label: 'Kategori', format: formatHerdStatusCategory, width: 'wide', cellClassName: herdStatusRowClass },
+      { key: 'count', label: 'Sayı', width: 'narrow', cellClassName: herdStatusRowClass },
     ],
   },
   {

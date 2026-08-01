@@ -56,6 +56,7 @@ from app.modules.reports.schemas import (
     HerdCostSummaryRead,
     HerdFlowReportRead,
     HerdInventoryRead,
+    HerdStatusSummaryRead,
     PenEfficiencyRead,
     PenOccupancyRead,
     PregnancyCheckResultRead,
@@ -1188,6 +1189,63 @@ def get_herd_inventory(db: Session, today: date | None = None) -> HerdInventoryR
         breeding_age_female_count=breeding_age_female_count,
         adult_male_count=adult_male_count,
     )
+
+
+def list_herd_status_summary(db: Session, today: date | None = None) -> list[HerdStatusSummaryRead]:
+    """Surunun guncel durumunun tek tabloda ozeti - Aktif Hayvanlar
+    raporundaki yas kovalarini (Buzagi/Duve-Tosun/Yetiskin Erkek) ile
+    Tohumlanacak Hayvanlar + Tohumlu ve Gebe Hayvanlar raporlarindaki
+    ureme alt-durumlarini BIRLESTIRIR.
+
+    "Dogurgan Yasta Disi" ara toplami, altindaki 7 ureme alt-durumunun
+    toplamina TAM OLARAK esittir: her aktif disi _classify_female'de bu 7
+    durumdan (candidate_new, postpartum_waiting, candidate_postpartum,
+    open, pending, suspicious, pregnant) birine ya da "none"a duser;
+    "none" sadece 12 aydan kucuk ya da dogum tarihi bilinmeyen disilerde
+    olusur ve zaten dogurgan yas kovasina hic girmez (bkz. dosya basi
+    docstring, get_herd_inventory). Yeni bir hesap eklemez, sadece
+    get_herd_inventory + list_breeding_candidates + list_bred_animals
+    sonuclarini yeniden duzenler.
+    """
+    today = today or date.today()
+    inventory = get_herd_inventory(db, today)
+    candidates = list_breeding_candidates(db, today)
+    bred = list_bred_animals(db, today)
+
+    candidate_counts = {"candidate_new": 0, "postpartum_waiting": 0, "candidate_postpartum": 0, "open": 0}
+    for c in candidates:
+        if c.reason_code in candidate_counts:
+            candidate_counts[c.reason_code] += 1
+
+    bred_counts = {"Tohumlu": 0, "Şüpheli": 0, "Gebe": 0}
+    for b in bred:
+        if b.check_status in bred_counts:
+            bred_counts[b.check_status] += 1
+
+    return [
+        HerdStatusSummaryRead(category="Buzağı", count=inventory.calves_count),
+        HerdStatusSummaryRead(category="Düve/Tosun", count=inventory.heifers_steers_count),
+        HerdStatusSummaryRead(
+            category="Doğurgan Yaştaki Dişi (Toplam)", count=inventory.breeding_age_female_count, is_total=True
+        ),
+        HerdStatusSummaryRead(
+            category="Tohumlanacak (İlk Tohumlama)", count=candidate_counts["candidate_new"], level=1
+        ),
+        HerdStatusSummaryRead(
+            category="Post Partum (Bekliyor)", count=candidate_counts["postpartum_waiting"], level=1
+        ),
+        HerdStatusSummaryRead(
+            category="Tohumlanacak (Doğum Sonrası)", count=candidate_counts["candidate_postpartum"], level=1
+        ),
+        HerdStatusSummaryRead(category="Tekrar Kızgınlık / Boş", count=candidate_counts["open"], level=1),
+        HerdStatusSummaryRead(category="Tohumlu (Kontrol Bekliyor)", count=bred_counts["Tohumlu"], level=1),
+        HerdStatusSummaryRead(
+            category="Şüpheli (Tekrar Kontrol Gerekli)", count=bred_counts["Şüpheli"], level=1
+        ),
+        HerdStatusSummaryRead(category="Gebe", count=bred_counts["Gebe"], level=1),
+        HerdStatusSummaryRead(category="Yetişkin Erkek", count=inventory.adult_male_count),
+        HerdStatusSummaryRead(category="Toplam Aktif", count=inventory.total_active, is_total=True),
+    ]
 
 
 def get_dashboard_summary(db: Session, today: date | None = None) -> DashboardSummaryRead:

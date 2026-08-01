@@ -250,6 +250,18 @@ class HerdInventoryRead(BaseModel):
     adult_male_count: int
 
 
+class HerdStatusSummaryRead(BaseModel):
+    category: str
+    count: int
+    # 0: ust seviye yas kovasi (Buzagi/Duve-Tosun/Dogurgan Disi/Yetiskin
+    # Erkek/Toplam Aktif) - 1: "Dogurgan Yastaki Disi" alti ureme
+    # alt-durumu (frontend'in girinti vermesi icin).
+    level: int = 0
+    # true ise: bu satir bir ara/genel toplamdir (Dogurgan Yastaki Disi,
+    # Toplam Aktif) - frontend'in kalin gostermesi icin.
+    is_total: bool = False
+
+
 class PenEfficiencyRead(BaseModel):
     pen_id: int
     code: str
