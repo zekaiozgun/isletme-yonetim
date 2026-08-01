@@ -608,37 +608,15 @@ def _lifetime_daily_gain_by_animal(db: Session) -> dict[uuid.UUID, float]:
     return result
 
 
-def _lifetime_profit_by_animal(db: Session) -> dict[uuid.UUID, Decimal]:
-    """Kapanmis (satilmis/olmus) TUM hayvanlarin yasam boyu kar/zararini
-    (Hayvan Karlilik Raporu ile ayni hesap - _build_profitability_row -
-    ama tarih araligi olmadan tum zaman) animal_id'ye gore dondurur. Hala
-    aktif hayvanlar bu haritada YOKTUR, karliligi henuz gerceklesmedi
-    (Anayasa m.4/m.5, bkz. list_animal_profitability). SURUDEKI TUM
-    sold/died hayvanlari tek istekte gezdigi icin convert_usd=False ile
-    cagirir (yalnizca profit_try kullanilir, USD hic hesaplanmaz) - aksi
-    halde her hayvan icin cok sayida TCMB sorgusu performans/timeout
-    riski olustururdu (bkz. _build_profitability_row)."""
-    result: dict[uuid.UUID, Decimal] = {}
-    for sale in db.scalars(select(Sale).options(joinedload(Sale.animal))).all():
-        row = _build_profitability_row(db, sale.animal, "Satıldı", sale.sale_date, sale.total_amount, convert_usd=False)
-        result[sale.animal_id] = row.profit_try
-    for death in db.scalars(select(Death).options(joinedload(Death.animal))).all():
-        row = _build_profitability_row(db, death.animal, "Öldü", death.death_date, None, convert_usd=False)
-        result[death.animal_id] = row.profit_try
-    return result
-
-
 def list_mother_performance(db: Session) -> list[MotherPerformanceRead]:
     """Anne bazinda yavru verimlilik siralamasi - her annenin TUM
-    yavrularini (satilmis/olmus/hala aktif) uc metrikte gruplar:
+    yavrularini (satilmis/olmus/hala aktif) iki metrikte gruplar:
     avg_daily_gain_kg (omur boyu ADG ortalamasi, tarti verisi olan
-    yavrularda), avg_profit_try (SADECE kapanmis yavrularda - bkz.
-    _lifetime_profit_by_animal) ve loss_rate (TUM yavrularin yuzde kaci
-    oldu). Varsayilan siralama avg_daily_gain_kg'a gore azalandir (veri
-    yoksa en sona duser) - frontend'de tiklanarak degistirilebilir.
-    Sadece en az bir yavrusu olan anneler listelenir."""
+    yavrularda) ve loss_rate (TUM yavrularin yuzde kaci oldu). Varsayilan
+    siralama avg_daily_gain_kg'a gore azalandir (veri yoksa en sona
+    duser) - frontend'de tiklanarak degistirilebilir. Sadece en az bir
+    yavrusu olan anneler listelenir."""
     gain_by_animal = _lifetime_daily_gain_by_animal(db)
-    profit_by_animal: dict[uuid.UUID, Decimal] = {}  # DEBUG: profit hesabı geçici kapatıldı
     dead_ids = set(db.scalars(select(Death.animal_id)).all())
     female_id = get_lookup_by_code(db, Gender, FEMALE_GENDER_CODE).id
 
@@ -659,7 +637,6 @@ def list_mother_performance(db: Session) -> list[MotherPerformanceRead]:
     rows: list[MotherPerformanceRead] = []
     for mother_id, offspring in by_mother.items():
         gains = [gain_by_animal[a.id] for a in offspring if a.id in gain_by_animal]
-        profits = [profit_by_animal[a.id] for a in offspring if a.id in profit_by_animal]
         died_count = sum(1 for a in offspring if a.id in dead_ids)
         female_count = sum(1 for a in offspring if a.gender_id == female_id)
         rows.append(
@@ -670,7 +647,6 @@ def list_mother_performance(db: Session) -> list[MotherPerformanceRead]:
                 female_count=female_count,
                 male_count=len(offspring) - female_count,
                 avg_daily_gain_kg=round(sum(gains) / len(gains), 3) if gains else None,
-                avg_profit_try=round(float(sum(profits)) / len(profits), 2) if profits else None,
                 loss_rate=round(died_count / len(offspring) * 100, 1),
             )
         )
@@ -680,11 +656,10 @@ def list_mother_performance(db: Session) -> list[MotherPerformanceRead]:
 
 def list_sire_performance(db: Session) -> list[SirePerformanceRead]:
     """Baba bazinda yavru verimlilik siralamasi - list_mother_performance
-    ile ayni uc metrik, boga bazinda gruplanir. Kimlik gosterimi
+    ile ayni iki metrik, boga bazinda gruplanir. Kimlik gosterimi
     OffspringBySireRead ile ayni onceliktedir (kupe no -> registry_no ->
     sire_id)."""
     gain_by_animal = _lifetime_daily_gain_by_animal(db)
-    profit_by_animal: dict[uuid.UUID, Decimal] = {}  # DEBUG: profit hesabı geçici kapatıldı
     dead_ids = set(db.scalars(select(Death.animal_id)).all())
     female_id = get_lookup_by_code(db, Gender, FEMALE_GENDER_CODE).id
 
@@ -705,7 +680,6 @@ def list_sire_performance(db: Session) -> list[SirePerformanceRead]:
     for sire_id, offspring in by_sire.items():
         sire = sire_by_id[sire_id]
         gains = [gain_by_animal[a.id] for a in offspring if a.id in gain_by_animal]
-        profits = [profit_by_animal[a.id] for a in offspring if a.id in profit_by_animal]
         died_count = sum(1 for a in offspring if a.id in dead_ids)
         female_count = sum(1 for a in offspring if a.gender_id == female_id)
         rows.append(
@@ -718,7 +692,6 @@ def list_sire_performance(db: Session) -> list[SirePerformanceRead]:
                 female_count=female_count,
                 male_count=len(offspring) - female_count,
                 avg_daily_gain_kg=round(sum(gains) / len(gains), 3) if gains else None,
-                avg_profit_try=round(float(sum(profits)) / len(profits), 2) if profits else None,
                 loss_rate=round(died_count / len(offspring) * 100, 1),
             )
         )
@@ -1756,27 +1729,17 @@ def _build_profitability_row(
     outcome: str,
     outcome_date: date,
     revenue_try: Decimal | None,
-    convert_usd: bool = True,
 ) -> AnimalProfitabilityRead:
-    """convert_usd=False ise hicbir alt-fact TCMB'ye sorulmaz (tum USD
-    alanlari 0/None doner, sadece TL hesaplanir) - Hayvan Karlilik
-    Raporu'nun kendisi (tek bir tarih araligindaki az sayida kapanmis
-    hayvan) varsayilan True ile cagirir; SURUDEKI TUM sold/died
-    hayvanlari tek istekte gezen caller'lar (bkz. _lifetime_profit_by_animal)
-    performans/timeout riskini onlemek icin False gecer (bkz. ayni desen
-    _accumulated_cost_try_usd/_asset_book_value'de)."""
-    health_cost_try, health_cost_usd = _health_cost_try_usd(db, animal.id, outcome_date, convert_usd)
-    feed_cost_try, feed_cost_usd = _feed_cost_share_for_animal(db, animal.id, outcome_date, convert_usd)
+    health_cost_try, health_cost_usd = _health_cost_try_usd(db, animal.id, outcome_date)
+    feed_cost_try, feed_cost_usd = _feed_cost_share_for_animal(db, animal.id, outcome_date)
 
     entry_value_try = animal.entry_value or Decimal("0")
-    entry_value_usd = _try_to_usd(db, entry_value_try, animal.entry_date) if convert_usd else Decimal("0")
+    entry_value_usd = _try_to_usd(db, entry_value_try, animal.entry_date)
 
     total_cost_try = entry_value_try + health_cost_try + feed_cost_try
     total_cost_usd = entry_value_usd + health_cost_usd + feed_cost_usd
 
-    revenue_usd = (
-        (_try_to_usd(db, revenue_try, outcome_date) if revenue_try is not None else None) if convert_usd else None
-    )
+    revenue_usd = _try_to_usd(db, revenue_try, outcome_date) if revenue_try is not None else None
 
     profit_try = (revenue_try or Decimal("0")) - total_cost_try
     profit_usd = (revenue_usd or Decimal("0")) - total_cost_usd

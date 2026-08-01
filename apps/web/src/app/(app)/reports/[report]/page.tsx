@@ -114,10 +114,11 @@ export default async function ReportPage({
       )}
       {report.slug === 'herd-animal-market-values' ? (
         <HerdAnimalValueTable rows={rows} />
+      ) : report.slug === 'parent-performance' ? (
+        <ParentPerformanceSection motherRows={rows} sireRows={sireRows} />
       ) : (
         <ReportTable report={report} rows={rows} />
       )}
-      <p>DEBUG sireRows count: {sireRows.length}</p>
     </div>
   );
 }

@@ -239,13 +239,12 @@ export const reports: ReportConfig[] = [
     slug: 'parent-performance',
     title: 'Anne ve Baba Bazında Verimlilik Sıralaması',
     description:
-      'Her annenin/boğanın TÜM yavrularının (satılmış/ölmüş/hala aktif) ortalama günlük kilo artışı, ortalama kâr/zarar ve kayıp oranına göre sıralanması - sütun başlığına tıklayarak sıralama kriterini değiştirebilirsiniz. Ort. Kâr/Zarar sadece satılmış/ölmüş (kapanmış) yavruların ortalamasıdır, hala büyüyen yavrular henüz gerçekleşmemiş bir kâr/zarara sahip olamayacağı için dahil edilmez. Babalarda örneklem genelde daha hızlı büyür (bir boğa aynı dönemde birden fazla anneden yavru alabilir), bu yüzden Baba Bazında sıralama erken aşamada daha anlamlı olabilir.',
+      'Her annenin/boğanın TÜM yavrularının (satılmış/ölmüş/hala aktif) ortalama günlük kilo artışı ve kayıp oranına göre sıralanması - sütun başlığına tıklayarak sıralama kriterini değiştirebilirsiniz. Babalarda örneklem genelde daha hızlı büyür (bir boğa aynı dönemde birden fazla anneden yavru alabilir), bu yüzden Baba Bazında sıralama erken aşamada daha anlamlı olabilir.',
     endpoint: '/reports/mother-performance',
     columns: [
       { key: 'mother_tag_number', label: 'Anne Küpe No / Baba', width: 'narrow' },
       { key: 'offspring_count', label: 'Yavru Sayısı (Dişi/Erkek)', width: 'narrow' },
       { key: 'avg_daily_gain_kg', label: 'Ort. Günlük Kilo Artışı', width: 'narrow' },
-      { key: 'avg_profit_try', label: 'Ort. Kâr/Zarar (TL)', format: formatCurrency, width: 'narrow' },
       { key: 'loss_rate', label: 'Kayıp Oranı', format: formatPercent, width: 'narrow' },
     ],
   },

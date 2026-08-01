@@ -110,10 +110,6 @@ class MotherPerformanceRead(BaseModel):
     # araligi olmadan) gunluk canli agirlik artisi (ADG). Hicbir yavrunun
     # yeterli tartisi yoksa None.
     avg_daily_gain_kg: float | None = None
-    # SADECE kapanmis (satilmis/olmus) yavrularin yasam boyu kar/zarar
-    # ortalamasi - hala aktif/buyuyen yavrular bu ortalamaya dahil
-    # edilmez, karliligi henuz gerceklesmedi (Anayasa m.4/m.5).
-    avg_profit_try: float | None = None
     # TUM yavrularin (hala aktif olanlar dahil) yuzde kaci oldu.
     loss_rate: float | None = None
 
@@ -128,7 +124,6 @@ class SirePerformanceRead(BaseModel):
     female_count: int
     male_count: int
     avg_daily_gain_kg: float | None = None
-    avg_profit_try: float | None = None
     loss_rate: float | None = None
 
 
