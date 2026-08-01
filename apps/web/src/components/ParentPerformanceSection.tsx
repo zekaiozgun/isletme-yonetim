@@ -1,3 +1,5 @@
+'use client';
+
 import type { ApiRecord } from '@/lib/api';
 import { formatSireIdentity } from '@/lib/reports';
 import { ParentPerformanceTable } from '@/components/ParentPerformanceTable';
