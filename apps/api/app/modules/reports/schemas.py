@@ -25,12 +25,15 @@ class BreedingCandidateRead(BaseModel):
     # mantik kurmasi icin (bkz. reports/service.py _BREEDING_CANDIDATE_REASONS).
     reason_code: str
     last_calving_date: date | None = None
+    # Yalnizca reason="Tekrar Kızgınlık / Boş" satirlarinda dolu.
     last_service_date: date | None = None
-    # Yalnizca reason="Tekrar Kızgınlık / Boş" satirlarinda dolu -
-    # eskiden ayri bir "Tekrar Kızgınlık / Boş Çıkanlar" raporunda olan
-    # bu iki alan, o rapor bu listenin bir alt kumesi oldugu icin (aynı
-    # hayvanlar, aynı sebep) buraya taşındı.
+    # "Bekleme Süresi" - HER reason'da dolar, baslangic noktasi reason'a
+    # gore degisir: "Boş Çıkan"da last_service_date'ten, "Tohumlanacak
+    # (Doğum Sonrası)"/"Post Partum"da last_calving_date'ten, "İlk
+    # Tohumlama"da tohumlanabilir yasa (12 ay) girdigi tarihten bu yana
+    # gecen gun (bkz. reports/service.py list_breeding_candidates).
     days_open: int | None = None
+    # Yalnizca reason="Tekrar Kızgınlık / Boş" satirlarinda dolu.
     service_method_name: str | None = None
     # Hayvanin son dogumundan (hic dogurmadiysa girisinden) bu yana kac
     # kez tohumlandigi - fertilite sorunlarini gormek icin (bkz.

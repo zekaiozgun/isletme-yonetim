@@ -25,7 +25,7 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, aliased, joinedload
 
-from app.core.date_utils import full_months_between
+from app.core.date_utils import add_months, full_months_between
 from app.core.lookup_helpers import get_lookup_by_code
 from app.modules.animal.lookups import AnimalStatus, EntrySource, Gender
 from app.modules.animal.models import Animal
@@ -303,7 +303,16 @@ def list_breeding_candidates(db: Session, today: date | None = None) -> list[Bre
     Doğum yapan TÜM hayvanlar bu listede görünür - doğum sonrası bekleme
     süresini (POSTPARTUM_WAIT_DAYS, 45 gün) henüz tamamlamamışlar
     reason="Post Partum" ile (henüz aksiyon gerektirmez, bilgi amaçlıdır),
-    tamamlamış olanlar reason="Tohumlanacak" ile görünür (bkz. _classify_female)."""
+    tamamlamış olanlar reason="Tohumlanacak" ile görünür (bkz. _classify_female).
+
+    days_open ("Bekleme Süresi"), HER reason'da doldurulur - baslangic
+    noktasi reason'a gore degisir: "Boş Çıkan"da son basarisiz kontrolden
+    (last_service_date), "Tohumlanacak (Doğum Sonrası)"/"Post Partum"da son
+    dogumdan (last_calving_date), "İlk Tohumlama"da tohumlanabilir yasa
+    (BREEDING_AGE_MONTHS) girdigi tarihten bu yana gecen gun. Post Partum
+    satirlari henuz aksiyon gerektirmese de sayi gizlenmez - raporu okuyan
+    kullanici zaten "Post Partum" etiketinden bunun bilgi amacli oldugunu
+    anlar."""
     today = today or date.today()
     last_calving_by_dam = _latest_calving_by_dam(db)
     entries: list[tuple[int, BreedingCandidateRead]] = []
@@ -311,17 +320,27 @@ def list_breeding_candidates(db: Session, today: date | None = None) -> list[Bre
         if classification.kind not in _BREEDING_CANDIDATE_REASONS:
             continue
         last_service_date = None
-        days_open = None
         service_method_name = None
         returned_from_pregnancy = False
         if classification.kind == "open":
             assert classification.breeding_event is not None
             last_service_date = classification.breeding_event.service_date
-            days_open = (today - last_service_date).days
             service_method_name = classification.breeding_event.service_method.name
             returned_from_pregnancy = _returned_from_pregnancy(
                 db, animal.id, last_service_date, last_calving_by_dam.get(animal.id)
             )
+
+        if classification.kind == "open":
+            assert last_service_date is not None
+            days_open = (today - last_service_date).days
+        elif classification.kind in ("candidate_postpartum", "postpartum_waiting"):
+            assert classification.last_calving_date is not None
+            days_open = (today - classification.last_calving_date).days
+        elif classification.kind == "candidate_new" and animal.birth_date is not None:
+            days_open = (today - add_months(animal.birth_date, BREEDING_AGE_MONTHS)).days
+        else:
+            days_open = None
+
         attempt_count = _service_attempt_count(db, animal.id, last_calving_by_dam.get(animal.id))
         row = BreedingCandidateRead(
             animal_id=animal.id,

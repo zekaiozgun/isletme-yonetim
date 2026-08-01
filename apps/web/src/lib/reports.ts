@@ -421,7 +421,7 @@ export const reports: ReportConfig[] = [
     slug: 'breeding-candidates',
     title: 'Tohumlanacak Hayvanlar',
     description:
-      '12 ay yaşına ulaşan düveler, doğum yapmış inekler (doğum sonrası bekleme süresini tamamlayıp tamamlamadığına göre "Post Partum" veya "Tohumlanacak" olarak ayrılır) ve gebelik kontrolünde "Boş" çıkan (tekrar kızgınlık) hayvanlar - hepsi tek listede, Sebep sütunuyla ayırt edilir. "Boş" çıkanlar en uzun süredir açık olan üstte olacak şekilde sıralanır. Deneme Sayısı, son doğumundan bu yana kaç kez tohumlandığını gösterir - yüksek sayı fertilite sorununa işaret edebilir.',
+      '12 ay yaşına ulaşan düveler, doğum yapmış inekler (doğum sonrası bekleme süresini tamamlayıp tamamlamadığına göre "Post Partum" veya "Tohumlanacak" olarak ayrılır) ve gebelik kontrolünde "Boş" çıkan (tekrar kızgınlık) hayvanlar - hepsi tek listede, Sebep sütunuyla ayırt edilir. Her grup kendi içinde en uzun süredir bekleyen üstte olacak şekilde sıralanır. Bekleme Süresi, sebebe göre farklı bir başlangıçtan sayılır: "Boş Çıkan"da son başarısız kontrolden, "Tohumlanacak (Doğum Sonrası)"/"Post Partum"da son doğumdan, "İlk Tohumlama"da 12 aylık yaşa girdiği tarihten bu yana. Deneme Sayısı, son doğumundan bu yana kaç kez tohumlandığını gösterir - yüksek sayı fertilite sorununa işaret edebilir.',
     endpoint: '/reports/breeding-candidates',
     helpNote:
       'Bir hayvan doğurduğunda (buzağısı sisteme anne bilgisiyle kaydedildiğinde), o hayvan ANINDA "Gebe" statüsünden çıkar - bunun için ayrıca bir işlem yapmanıza gerek yoktur. Doğum yapan TÜM hayvanlar bu listede görünür, ama sebep sütunu ikiye ayrılır: doğumdan sonraki ilk 45 gün boyunca (toparlanma süresi) hayvan "Post Partum" olarak görünür - bu sadece bilgilendirme amaçlıdır, henüz bir aksiyon gerektirmez. 45 gün dolduğunda hayvan otomatik olarak "Tohumlanacak" sebebiyle listede görünmeye devam eder - artık tohumlanmaya hazır demektir. Dashboard\'daki "Tohumlanacak Hayvan" sayacı sadece gerçekten aksiyon gerektirenleri (Post Partum hariç) sayar.',
@@ -431,7 +431,7 @@ export const reports: ReportConfig[] = [
       { key: 'reason', label: 'Sebep', width: 'wide' },
       { key: 'last_calving_date', label: 'Son Doğum Tarihi', format: formatDate, width: 'narrow' },
       { key: 'last_service_date', label: 'Son Tohumlama Tarihi', format: formatDate, width: 'narrow' },
-      { key: 'days_open', label: 'Açık Süre', format: formatDays, width: 'narrow' },
+      { key: 'days_open', label: 'Bekleme Süresi', format: formatDays, width: 'narrow' },
       { key: 'service_method_name', label: 'Yöntem (Boş Çıkanlar)', format: formatPlain, width: 'narrow' },
       { key: 'service_attempt_count', label: 'Deneme Sayısı', width: 'narrow' },
       { key: 'returned_from_pregnancy', label: 'Uyarı', format: formatReturnedFromPregnancy, width: 'narrow' },
