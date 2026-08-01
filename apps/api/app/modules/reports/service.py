@@ -613,13 +613,17 @@ def _lifetime_profit_by_animal(db: Session) -> dict[uuid.UUID, Decimal]:
     (Hayvan Karlilik Raporu ile ayni hesap - _build_profitability_row -
     ama tarih araligi olmadan tum zaman) animal_id'ye gore dondurur. Hala
     aktif hayvanlar bu haritada YOKTUR, karliligi henuz gerceklesmedi
-    (Anayasa m.4/m.5, bkz. list_animal_profitability)."""
+    (Anayasa m.4/m.5, bkz. list_animal_profitability). SURUDEKI TUM
+    sold/died hayvanlari tek istekte gezdigi icin convert_usd=False ile
+    cagirir (yalnizca profit_try kullanilir, USD hic hesaplanmaz) - aksi
+    halde her hayvan icin cok sayida TCMB sorgusu performans/timeout
+    riski olustururdu (bkz. _build_profitability_row)."""
     result: dict[uuid.UUID, Decimal] = {}
     for sale in db.scalars(select(Sale).options(joinedload(Sale.animal))).all():
-        row = _build_profitability_row(db, sale.animal, "Satıldı", sale.sale_date, sale.total_amount)
+        row = _build_profitability_row(db, sale.animal, "Satıldı", sale.sale_date, sale.total_amount, convert_usd=False)
         result[sale.animal_id] = row.profit_try
     for death in db.scalars(select(Death).options(joinedload(Death.animal))).all():
-        row = _build_profitability_row(db, death.animal, "Öldü", death.death_date, None)
+        row = _build_profitability_row(db, death.animal, "Öldü", death.death_date, None, convert_usd=False)
         result[death.animal_id] = row.profit_try
     return result
 
@@ -1752,17 +1756,27 @@ def _build_profitability_row(
     outcome: str,
     outcome_date: date,
     revenue_try: Decimal | None,
+    convert_usd: bool = True,
 ) -> AnimalProfitabilityRead:
-    health_cost_try, health_cost_usd = _health_cost_try_usd(db, animal.id, outcome_date)
-    feed_cost_try, feed_cost_usd = _feed_cost_share_for_animal(db, animal.id, outcome_date)
+    """convert_usd=False ise hicbir alt-fact TCMB'ye sorulmaz (tum USD
+    alanlari 0/None doner, sadece TL hesaplanir) - Hayvan Karlilik
+    Raporu'nun kendisi (tek bir tarih araligindaki az sayida kapanmis
+    hayvan) varsayilan True ile cagirir; SURUDEKI TUM sold/died
+    hayvanlari tek istekte gezen caller'lar (bkz. _lifetime_profit_by_animal)
+    performans/timeout riskini onlemek icin False gecer (bkz. ayni desen
+    _accumulated_cost_try_usd/_asset_book_value'de)."""
+    health_cost_try, health_cost_usd = _health_cost_try_usd(db, animal.id, outcome_date, convert_usd)
+    feed_cost_try, feed_cost_usd = _feed_cost_share_for_animal(db, animal.id, outcome_date, convert_usd)
 
     entry_value_try = animal.entry_value or Decimal("0")
-    entry_value_usd = _try_to_usd(db, entry_value_try, animal.entry_date)
+    entry_value_usd = _try_to_usd(db, entry_value_try, animal.entry_date) if convert_usd else Decimal("0")
 
     total_cost_try = entry_value_try + health_cost_try + feed_cost_try
     total_cost_usd = entry_value_usd + health_cost_usd + feed_cost_usd
 
-    revenue_usd = _try_to_usd(db, revenue_try, outcome_date) if revenue_try is not None else None
+    revenue_usd = (
+        (_try_to_usd(db, revenue_try, outcome_date) if revenue_try is not None else None) if convert_usd else None
+    )
 
     profit_try = (revenue_try or Decimal("0")) - total_cost_try
     profit_usd = (revenue_usd or Decimal("0")) - total_cost_usd
