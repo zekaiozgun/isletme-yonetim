@@ -1,0 +1,38 @@
+name: API Tip Uyumu Kontrolü
+on:
+  push:
+    branches: [main]
+    paths: ["apps/api/**", "packages/types/**"]
+  pull_request:
+    paths: ["apps/api/**", "packages/types/**"]
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+      - name: Backend bağımlılıklarını kur
+        working-directory: apps/api
+        run: pip install -r requirements.txt
+      - name: OpenAPI şemasını üret
+        working-directory: apps/api
+        run: python scripts/export_openapi.py
+      - name: Frontend bağımlılıklarını kur
+        run: pnpm install --frozen-lockfile --filter=@isletme/types
+      - name: TypeScript tiplerini üret
+        working-directory: packages/types
+        run: pnpm run generate:api-types
+      - name: Üretilen tiplerin commit'lenmiş sürümle aynı olduğunu doğrula
+        run: |
+          if ! git diff --exit-code packages/types/src/generated/api.ts; then
+            echo "::error::apps/api'deki OpenAPI şeması değişmiş ama packages/types/src/generated/api.ts yeniden üretilip commit'lenmemiş. Bkz. packages/types/README.md."
+            exit 1
+          fi

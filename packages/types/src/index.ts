@@ -14,4 +14,10 @@ export interface Timestamped {
   updatedAt: string;
 }
 
+// apps/api'nin OpenAPI semasindan uretilir (bkz. README.md) - backend bir
+// alani silip/yeniden adlandirdiginda, bu tipleri kullanan kod derleme
+// zamaninda kirilir. Su an hicbir yerde import edilmiyor (bilincli tercih -
+// bkz. README); ihtiyac oldukca opt-in olarak kullanilabilir.
+export type { paths as ApiPaths, components as ApiComponents } from './generated/api';
+
 export {};

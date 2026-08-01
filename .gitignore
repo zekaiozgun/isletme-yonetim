@@ -52,3 +52,7 @@ android/
 
 # Misc
 .env.vault
+
+# Uretilmis OpenAPI semasi (packages/types/generate:api-types adiminin ara
+# ciktisi) - kaynak degil, her seferinde apps/api'den yeniden uretilir.
+packages/types/openapi.json
