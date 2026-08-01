@@ -1,0 +1,178 @@
+import type { ReportConfig } from './types';
+import {
+  formatDate,
+  formatDays,
+  formatKg,
+  formatMonths,
+  formatParentage,
+  formatPercent,
+  formatPlain,
+  formatReturnedFromPregnancy,
+  formatSireIdentity,
+  bredAnimalStatusClass,
+  formatServiceMethodShort,
+  formatDaysUntilCalving,
+} from './formatters';
+
+/** Üreme/genetik ile ilgili raporlar: doğum, soy kaydı, verimlilik, tohumlama,
+ * gebelik kontrolü, yavrulama aralığı. */
+export const breedingReports: ReportConfig[] = [
+  {
+    slug: 'calving',
+    title: 'Doğum/Buzağılama Raporu',
+    description:
+      'Belirtilen tarih aralığında doğan hayvanlar; cinsiyet, doğum tipi (tekiz/ikiz) ve doğum ağırlığı ile birlikte. Güç doğum (distoni) vakaları vurgulu.',
+    endpoint: '/reports/calving',
+    dateRange: true,
+    groupSummaryKey: 'status_name',
+    columns: [
+      { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
+      { key: 'mother_tag_number', label: 'Anne/Baba', format: formatParentage, width: 'narrow' },
+      { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate, width: 'narrow' },
+      { key: 'gender_name', label: 'Cinsiyet', width: 'narrow' },
+      { key: 'birth_type_name', label: 'Doğum Şekli', format: formatPlain, width: 'narrow' },
+      { key: 'litter_type_name', label: 'Doğum Tipi', format: formatPlain, width: 'narrow' },
+      { key: 'birth_weight_kg', label: 'Doğum Ağırlığı', format: formatKg, width: 'narrow' },
+      { key: 'status_name', label: 'Son Durum', width: 'narrow' },
+      { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
+    ],
+    rowHighlight: (row) => Boolean(row.is_difficult_birth),
+  },
+  {
+    slug: 'offspring-by-mother',
+    title: 'Anne Bazında Yavru Listesi',
+    description:
+      'Anne küpe numarasına göre sıralı, tüm yavrular (satılmış/ölmüş olanlar dahil) - bir soy kaydıdır, aktif sürü listesi değildir. Belirli bir anneyi görmek için arama kutusuna küpe no yazın.',
+    endpoint: '/reports/offspring-by-mother',
+    columns: [
+      { key: 'mother_tag_number', label: 'Anne Küpe No', width: 'narrow' },
+      { key: 'tag_number', label: 'Yavru Küpe No', width: 'narrow' },
+      { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate, width: 'narrow' },
+      { key: 'gender_name', label: 'Cinsiyet', width: 'narrow' },
+      { key: 'status_name', label: 'Güncel Durum', width: 'narrow' },
+    ],
+  },
+  {
+    slug: 'offspring-by-sire',
+    title: 'Baba Bazında Yavru Listesi',
+    description:
+      'Boğa kimliğine göre sıralı, tüm yavrular (satılmış/ölmüş olanlar dahil) - bir soy kaydıdır, aktif sürü listesi değildir. Belirli bir boğayı görmek için arama kutusuna adını veya kayıt no\'sunu yazın.',
+    endpoint: '/reports/offspring-by-sire',
+    columns: [
+      { key: 'sire_id', label: 'Baba', format: formatSireIdentity, width: 'narrow' },
+      { key: 'tag_number', label: 'Yavru Küpe No', width: 'narrow' },
+      { key: 'mother_tag_number', label: 'Anne Küpe No', format: formatPlain, width: 'narrow' },
+      { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate, width: 'narrow' },
+      { key: 'gender_name', label: 'Cinsiyet', width: 'narrow' },
+      { key: 'status_name', label: 'Güncel Durum', width: 'narrow' },
+    ],
+  },
+  {
+    slug: 'parent-performance',
+    title: 'Anne ve Baba Bazında Verimlilik Sıralaması',
+    description:
+      'Her annenin/boğanın TÜM yavrularının (satılmış/ölmüş/hala aktif) ortalama günlük kilo artışı ve kayıp oranına göre sıralanması - sütun başlığına tıklayarak sıralama kriterini değiştirebilirsiniz. Babalarda örneklem genelde daha hızlı büyür (bir boğa aynı dönemde birden fazla anneden yavru alabilir), bu yüzden Baba Bazında sıralama erken aşamada daha anlamlı olabilir.',
+    endpoint: '/reports/mother-performance',
+    columns: [
+      { key: 'mother_tag_number', label: 'Anne Küpe No / Baba', width: 'narrow' },
+      { key: 'offspring_count', label: 'Yavru Sayısı (Dişi/Erkek)', width: 'narrow' },
+      { key: 'avg_daily_gain_kg', label: 'Ort. Günlük Kilo Artışı', width: 'narrow' },
+      { key: 'loss_rate', label: 'Kayıp Oranı', format: formatPercent, width: 'narrow' },
+    ],
+  },
+  {
+    slug: 'breeding-performance',
+    title: 'Tohumlama Performans Raporu',
+    description:
+      'Aralıktaki aşım kayıtları; doğal/suni tohumlama dağılımı, boğa veya sperma partisi bazında gebe kalma oranı.',
+    endpoint: '/reports/breeding-performance',
+    dateRange: true,
+    defaultRangeDays: 365,
+    columns: [
+      { key: 'source_type', label: 'Yöntem', width: 'narrow' },
+      { key: 'source_label', label: 'Boğa / Sperma Partisi', width: 'wide' },
+      { key: 'service_count', label: 'Tohumlama Sayısı', width: 'narrow' },
+      { key: 'pregnant_count', label: 'Gebe Kalan', width: 'narrow' },
+      { key: 'open_count', label: 'Boş Çıkan', width: 'narrow' },
+      { key: 'suspicious_count', label: 'Şüpheli', width: 'narrow' },
+      { key: 'pending_count', label: 'Kontrol Bekliyor', width: 'narrow' },
+      { key: 'pregnancy_rate', label: 'Gebe Kalma Oranı', format: formatPercent, width: 'narrow' },
+    ],
+    rowHighlight: (row) => typeof row.pregnancy_rate === 'number' && row.pregnancy_rate < 40,
+  },
+  {
+    slug: 'pregnancy-check-results',
+    title: 'Gebelik Kontrol Sonuçları Özeti',
+    description: 'Aralıkta yapılan gebelik kontrolleri; hayvan, kontrol yöntemi ve sonuç bazında.',
+    endpoint: '/reports/pregnancy-check-results',
+    dateRange: true,
+    columns: [
+      { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
+      { key: 'service_date', label: 'Tohumlama Tarihi', format: formatDate, width: 'narrow' },
+      { key: 'check_date', label: 'Kontrol Tarihi', format: formatDate, width: 'narrow' },
+      { key: 'method_name', label: 'Kontrol Yöntemi', width: 'narrow' },
+      { key: 'result_name', label: 'Sonuç', width: 'narrow' },
+      { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
+    ],
+    rowHighlight: (row) => Boolean(row.is_suspicious),
+  },
+  {
+    slug: 'calving-intervals',
+    title: 'Yavrulama Aralığı (Calving Interval) Raporu',
+    description:
+      'Her inek için son iki doğumu arasındaki gün farkı ve sürü ortalaması. Tarih aralığı gerektirmez. 400 günü aşanlar vurgulu.',
+    endpoint: '/reports/calving-intervals',
+    columns: [
+      { key: 'tag_number', label: 'Hayvan', width: 'narrow' },
+      { key: 'previous_calving_date', label: 'Önceki Doğum', format: formatDate, width: 'narrow' },
+      { key: 'last_calving_date', label: 'Son Doğum', format: formatDate, width: 'narrow' },
+      { key: 'interval_days', label: 'Yavrulama Aralığı', format: formatDays, width: 'narrow' },
+      { key: 'calving_count', label: 'Toplam Doğum Sayısı', width: 'narrow' },
+    ],
+    rowHighlight: (row) => Boolean(row.is_summary) || (typeof row.interval_days === 'number' && row.interval_days > 400),
+  },
+  {
+    slug: 'breeding-candidates',
+    title: 'Tohumlanacak Hayvanlar',
+    description:
+      '12 ay yaşına ulaşan düveler, doğum yapmış inekler (doğum sonrası bekleme süresini tamamlayıp tamamlamadığına göre "Post Partum" veya "Tohumlanacak" olarak ayrılır) ve gebelik kontrolünde "Boş" çıkan (tekrar kızgınlık) hayvanlar - hepsi tek listede, Sebep sütunuyla ayırt edilir. Her grup kendi içinde en uzun süredir bekleyen üstte olacak şekilde sıralanır. Bekleme Süresi, sebebe göre farklı bir başlangıçtan sayılır: "Boş Çıkan"da son başarısız kontrolden, "Tohumlanacak (Doğum Sonrası)"/"Post Partum"da son doğumdan, "İlk Tohumlama"da 12 aylık yaşa girdiği tarihten bu yana. Deneme Sayısı, son doğumundan bu yana kaç kez tohumlandığını gösterir - yüksek sayı fertilite sorununa işaret edebilir.',
+    endpoint: '/reports/breeding-candidates',
+    helpNote:
+      'Bir hayvan doğurduğunda (buzağısı sisteme anne bilgisiyle kaydedildiğinde), o hayvan ANINDA "Gebe" statüsünden çıkar - bunun için ayrıca bir işlem yapmanıza gerek yoktur. Doğum yapan TÜM hayvanlar bu listede görünür, ama sebep sütunu ikiye ayrılır: doğumdan sonraki ilk 45 gün boyunca (toparlanma süresi) hayvan "Post Partum" olarak görünür - bu sadece bilgilendirme amaçlıdır, henüz bir aksiyon gerektirmez. 45 gün dolduğunda hayvan otomatik olarak "Tohumlanacak" sebebiyle listede görünmeye devam eder - artık tohumlanmaya hazır demektir. Dashboard\'daki "Tohumlanacak Hayvan" sayacı sadece gerçekten aksiyon gerektirenleri (Post Partum hariç) sayar.',
+    columns: [
+      { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
+      { key: 'age_months', label: 'Yaş', format: formatMonths, width: 'narrow' },
+      { key: 'reason', label: 'Sebep', width: 'wide' },
+      { key: 'last_calving_date', label: 'Son Doğum Tarihi', format: formatDate, width: 'narrow' },
+      { key: 'last_service_date', label: 'Son Tohumlama Tarihi', format: formatDate, width: 'narrow' },
+      { key: 'days_open', label: 'Bekleme Süresi', format: formatDays, width: 'narrow' },
+      { key: 'service_method_name', label: 'Yöntem (Boş Çıkanlar)', format: formatPlain, width: 'narrow' },
+      { key: 'service_attempt_count', label: 'Deneme Sayısı', width: 'narrow' },
+      { key: 'returned_from_pregnancy', label: 'Uyarı', format: formatReturnedFromPregnancy, width: 'narrow' },
+      { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
+    ],
+    rowHighlight: (row) => row.reason_code === 'open' || row.returned_from_pregnancy === true,
+  },
+  {
+    slug: 'bred-animals',
+    title: 'Tohumlu ve Gebe Hayvanlar',
+    description:
+      'Tohumlaması yapılmış, aktif üreme döngüsündeki hayvanlar - kontrol bekleyenler, şüpheli sonuçlar ve gebeliği onaylanmış olanlar tek listede (Durum sütunuyla ayırt edilir). Tahmini Doğum, kontrol sonucu onaylanmış olsun olmasın tohumlama tarihinden hesaplanır. Gebelik kontrolü gerekenler üstte listelenir. Deneme Sayısı, son doğumundan bu yana (bu tohumlama dahil) kaçıncı deneme olduğunu gösterir.',
+    endpoint: '/reports/bred-animals',
+    groupSummaryKey: 'check_status',
+    helpNote:
+      'Bir hayvan doğurduğunda (buzağısı sisteme anne bilgisiyle kaydedildiğinde) bu listeden ANINDA çıkar - ayrıca bir işlem yapmanıza gerek yoktur. "Tahmini Doğum" tarihi, henüz gebelik kontrolü yapılmamış ya da "Şüpheli" çıkmış satırlarda da gösterilir - bu satırlarda kontrol sonucu HENÜZ ONAYLANMAMIŞTIR, tarih sadece tohumlama tarihine dayalı bir projeksiyondur. Durum sütunu kırmızı/kalın görünüyorsa dikkat gerekir: kontrol zamanı gelmiş (Tohumlu, süre dolmuş, ya da Şüpheli) ya da bu tohumlamadan önce aynı döngüde onaylı bir gebelik vardı ama artık geçerli değil (sebebi düşük mü, yanlış giriş mi, not alanına elle kaydedilmelidir).',
+    columns: [
+      { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
+      { key: 'service_date', label: 'Tohum Tar.', format: formatDate, width: 'narrow' },
+      { key: 'service_method_name', label: 'Yöntem', format: formatServiceMethodShort, width: 'narrow' },
+      { key: 'days_since_service', label: 'G.Süre', format: formatDays, width: 'narrow' },
+      { key: 'check_status', label: 'Durum', width: 'narrow', cellClassName: bredAnimalStatusClass },
+      { key: 'expected_calving_date', label: 'Tah.Tarih', format: formatDate, width: 'narrow' },
+      { key: 'days_until_calving', label: 'D.K.Gün', format: formatDaysUntilCalving, width: 'narrow' },
+      { key: 'service_attempt_count', label: 'Den.Sayı', width: 'narrow' },
+      { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
+    ],
+    rowHighlight: (row) => Boolean(row.pregnancy_check_due) || row.returned_from_pregnancy === true,
+  },
+];
