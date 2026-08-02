@@ -43,12 +43,20 @@ interface ResourceFormProps {
   /** true ise: form salt-okunur gosterilir (kilitli kayit), kaydetme yok. */
   readOnly?: boolean;
   /**
-   * Belirtilirse, action basariyla tamamlanip state.success=true dondugunde
-   * bu yola yonlendirilir (router.push - istemci tarafinda). Action'in
-   * kendisi ARTIK redirect() cagirmiyor (bkz. lib/actions.ts basindaki not -
-   * bazi kayitlarda backend'de basarili olsa bile "Kaydediliyor..." yazip
-   * takili kalma gozlemlendi, sunucu-tarafi redirect()'e guvenmek yerine
-   * bu daha guvenilir).
+   * Belirtilirse, action tamamlaninca bu yola yonlendirilir. IKI mekanizma
+   * birden kullanilir:
+   * 1) state.success=true olunca router.push() (normal, hizli yol).
+   * 2) pending 6 saniyeden uzun surerse window.location.href (SERT
+   *    yenileme) - guvenlik agi. Arastirma sirasinda dogrulandi: bazi
+   *    kayitlarda backend basariyla tamamlaniyor (sunucu loglarinda
+   *    state.success=true goruluyor) ama istemci tarayici bu yaniti HICBIR
+   *    ZAMAN islemiyor - "Kaydediliyor..." sonsuza kadar takili kaliyor.
+   *    Bu, Next.js'in Server Action yaniti (RSC/Flight formati) istemci
+   *    tarafinda islenirken olusan, kok nedeni tam olarak tespit
+   *    edilemeyen bir sorun (Sentry KAYNAKLI OLMADIGI dogrulandi). Sert
+   *    yenileme, React'in kendi yaniti anlamasina bagli olmadan calisir -
+   *    normal durumda (1) zaten 1 saniyeden once tetiklenir, (2) sadece
+   *    bu nadir durumda devreye girer.
    */
   redirectTo?: string;
   /**
@@ -85,12 +93,30 @@ export function ResourceForm({
   const formRef = useRef<HTMLFormElement>(null);
   const router = useRouter();
   const isRedirecting = Boolean(state?.success && redirectTo);
+  const navigatedRef = useRef(false);
 
   useEffect(() => {
     if (isRedirecting) {
+      navigatedRef.current = true;
       router.push(redirectTo!);
     }
   }, [isRedirecting, redirectTo, router]);
+
+  // Guvenlik agi: her submit denemesinde (useActionState'in pending/state
+  // gecislerinden BAGIMSIZ - bkz. redirectTo prop dokumantasyonu, bu
+  // gecisler bazi durumlarda hic gerceklesmiyor) 6 saniyelik bir zamanlayici
+  // kurulur. Normal akis (yukaridaki useEffect) zamaninda calisirsa
+  // navigatedRef.current=true olur ve zamanlayici sessizce hicbir sey
+  // yapmaz; calismazsa sert yenileme ile kullaniciyi kurtarir.
+  function handleSubmitSafetyNet() {
+    if (!redirectTo) return;
+    navigatedRef.current = false;
+    setTimeout(() => {
+      if (!navigatedRef.current) {
+        window.location.href = redirectTo;
+      }
+    }, 6000);
+  }
 
   const showingReview = requireConfirmation && step === 'review' && reviewData !== null;
 
@@ -102,7 +128,7 @@ export function ResourceForm({
   }
 
   return (
-    <form ref={formRef} action={formAction} className="max-w-xl space-y-4">
+    <form ref={formRef} action={formAction} onSubmit={handleSubmitSafetyNet} className="max-w-xl space-y-4">
       {state?.error && (
         <div className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</div>
       )}

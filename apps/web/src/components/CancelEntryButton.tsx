@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect } from 'react';
+import { useActionState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 export type FormState = { error?: string; success?: true } | null;
@@ -20,12 +20,29 @@ export function CancelEntryButton({ action, confirmMessage, redirectTo }: Cancel
   const [state, formAction, pending] = useActionState<FormState, FormData>(action, null);
   const router = useRouter();
   const isRedirecting = Boolean(state?.success && redirectTo);
+  const navigatedRef = useRef(false);
 
   useEffect(() => {
     if (isRedirecting) {
+      navigatedRef.current = true;
       router.push(redirectTo!);
     }
   }, [isRedirecting, redirectTo, router]);
+
+  // Guvenlik agi: bkz. ResourceForm.tsx'teki ayni desenin dokumantasyonu -
+  // istemci Server Action yanitini bazen hic islemiyor, bu yuzden
+  // pending/state gecislerine degil dogrudan native submit olayina bagli
+  // bir zamanlayici kurulur; normal yol zamaninda tetiklenirse
+  // navigatedRef.current=true olur ve zamanlayici hicbir sey yapmaz.
+  function handleSubmitSafetyNet() {
+    if (!redirectTo) return;
+    navigatedRef.current = false;
+    setTimeout(() => {
+      if (!navigatedRef.current) {
+        window.location.href = redirectTo;
+      }
+    }, 6000);
+  }
 
   return (
     <form
@@ -33,7 +50,9 @@ export function CancelEntryButton({ action, confirmMessage, redirectTo }: Cancel
       onSubmit={(event) => {
         if (!window.confirm(confirmMessage)) {
           event.preventDefault();
+          return;
         }
+        handleSubmitSafetyNet();
       }}
     >
       {state?.error && (
