@@ -1,4 +1,5 @@
 import type { ApiRecord } from './api';
+import { formatCurrencyTRY } from './format';
 
 export type FieldType = 'text' | 'number' | 'decimal' | 'date' | 'select' | 'checkbox' | 'textarea' | 'password';
 
@@ -127,7 +128,7 @@ const mainResources: ResourceConfig[] = [
       { key: 'age_months', label: 'Yaş', format: formatAgeMonths },
       { key: 'status_id', label: 'Statü', lookup: animalStatuses },
       { key: 'birth_date', label: 'Doğum Tarihi', date: true },
-      { key: 'entry_value', label: 'Giriş Değeri (TL)' },
+      { key: 'entry_value', label: 'Giriş Değeri (TL)', format: formatCurrencyTRY },
     ],
     fields: [
       { name: 'tag_number', label: 'Küpe No', type: 'text', required: true },
@@ -332,7 +333,7 @@ const mainResources: ResourceConfig[] = [
       { key: 'event_type_id', label: 'Tip', lookup: healthEventTypes },
       { key: 'event_date', label: 'Tarih', date: true },
       { key: 'medication_id', label: 'İlaç', lookup: medications },
-      { key: 'cost', label: 'Maliyet (TL)' },
+      { key: 'cost', label: 'Maliyet (TL)', format: formatCurrencyTRY },
     ],
     fields: [
       { name: 'animal_id', label: 'Hayvan', type: 'select', options: animals, required: true },
@@ -397,7 +398,7 @@ const mainResources: ResourceConfig[] = [
       { key: 'feed_item_id', label: 'Yem Ürünü', lookup: feedItems },
       { key: 'purchase_date', label: 'Tarih', date: true },
       { key: 'quantity', label: 'Miktar' },
-      { key: 'total_cost', label: 'Toplam Maliyet (TL)' },
+      { key: 'total_cost', label: 'Toplam Maliyet (TL)', format: formatCurrencyTRY },
     ],
     fields: [
       { name: 'feed_item_id', label: 'Yem Ürünü', type: 'select', options: feedItems, required: true },

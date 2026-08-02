@@ -18,6 +18,29 @@ export function formatDateDMY(value: unknown): string {
  * rapor sayfaları bu Server Component'te render edildiği anı damgalar,
  * böylece daha sonra "bu rapor ne zaman alınmıştı" diye bakılabilir.
  */
+/**
+ * Bir parasal değeri Türkçe noktalama kuralıyla (binlik ayırıcı nokta,
+ * ondalık ayırıcı virgül - örn. 1.234,56) gösterir - tüm uygulamada
+ * (rapor sütunları, kaynak liste tabloları) tek para birimi format
+ * kaynağı. API'den gelen ham değer her zaman nokta ondalıklı bir sayı/
+ * string'tir (örn. 1234.5), bu fonksiyon olmadan doğrudan gösterilirse
+ * binlik ayırıcı hiç olmaz ve virgül yerine nokta görünür.
+ */
+export function formatCurrencyTRY(value: unknown): string {
+  if (value === null || value === undefined || value === '') return '—';
+  const num = Number(value);
+  if (Number.isNaN(num)) return String(value);
+  return `${num.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`;
+}
+
+/** formatCurrencyTRY ile aynı noktalama kuralı, USD için (₺ yerine $ önekiyle). */
+export function formatUsdValue(value: unknown): string {
+  if (value === null || value === undefined || value === '') return '—';
+  const num = Number(value);
+  if (Number.isNaN(num)) return String(value);
+  return `$${num.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 export function formatNowIstanbulDMYHM(): string {
   const parts = new Intl.DateTimeFormat('tr-TR', {
     timeZone: 'Europe/Istanbul',

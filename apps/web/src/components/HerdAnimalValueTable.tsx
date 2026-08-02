@@ -3,17 +3,10 @@
 import { useMemo, useState } from 'react';
 import type { ApiRecord } from '@/lib/api';
 import { formatMonths, formatSourceCode } from '@/lib/reports';
+import { formatCurrencyTRY as formatCurrency, formatUsdValue as formatUsd } from '@/lib/format';
 import { TableSearch } from '@/components/TableSearch';
 import { CsvExportButton } from '@/components/CsvExportButton';
 import { PdfExportButton } from '@/components/PdfExportButton';
-
-function formatCurrency(value: number): string {
-  return `${value.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`;
-}
-
-function formatUsd(value: number): string {
-  return `$${value.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
 
 export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());

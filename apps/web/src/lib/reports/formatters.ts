@@ -1,5 +1,5 @@
 import type { ApiRecord } from '../api';
-import { formatDateDMY as formatDate } from '../format';
+import { formatDateDMY as formatDate, formatCurrencyTRY, formatUsdValue } from '../format';
 
 export { formatDate };
 
@@ -99,15 +99,9 @@ export function formatKgPerDay(value: unknown): string {
   return `${String(value)} kg/gün`;
 }
 
-export function formatCurrency(value: unknown): string {
-  if (value === null || value === undefined || value === '') return '—';
-  return `${String(value)} ₺`;
-}
+export const formatCurrency = formatCurrencyTRY;
 
-export function formatUsd(value: unknown): string {
-  if (value === null || value === undefined || value === '') return '—';
-  return `$${String(value)}`;
-}
+export const formatUsd = formatUsdValue;
 
 /** Sürü Durum Özeti raporunda "Doğurgan Yaştaki Dişi" altındaki üreme
  * alt-durumu satırlarını (level=1) girintiyle gösterir - bu satırların
