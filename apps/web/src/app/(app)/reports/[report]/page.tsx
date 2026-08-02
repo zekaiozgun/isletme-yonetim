@@ -84,19 +84,21 @@ export default async function ReportPage({
 
   return (
     <div>
-      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+      <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h1 className="text-xl font-semibold text-slate-900">{report.title}</h1>
-        {report.usesGrowthCheckpoints && (
-          <Link
-            href="/growth-valuation-checkpoints"
-            className="text-sm font-medium text-slate-500 hover:text-slate-800 hover:underline print:hidden"
-          >
-            Büyüme Değerleme Çıpalarını Düzenle →
-          </Link>
-        )}
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          {report.usesGrowthCheckpoints && (
+            <Link
+              href="/growth-valuation-checkpoints"
+              className="text-sm font-medium text-slate-500 hover:text-slate-800 hover:underline print:hidden"
+            >
+              Büyüme Değerleme Çıpalarını Düzenle →
+            </Link>
+          )}
+          <span className="whitespace-nowrap text-xs text-slate-400">Oluşturulma: {formatNowIstanbulDMYHM()}</span>
+        </div>
       </div>
-      <p className="text-sm text-slate-500">{report.description}</p>
-      <p className="mb-4 text-xs text-slate-400">Oluşturulma tarihi: {formatNowIstanbulDMYHM()}</p>
+      <p className="mb-4 text-sm text-slate-500">{report.description}</p>
       {report.helpNote && (
         <details className="mb-4 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 print:hidden">
           <summary className="cursor-pointer font-medium text-slate-700">Bu rapor nasıl çalışır?</summary>
