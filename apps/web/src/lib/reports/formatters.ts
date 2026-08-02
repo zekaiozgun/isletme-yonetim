@@ -1,5 +1,5 @@
 import type { ApiRecord } from '../api';
-import { formatDateDMY as formatDate, formatCurrencyTRY, formatUsdValue } from '../format';
+import { formatDateDMY as formatDate, formatCurrencyTRY, formatUsdValue, formatNumberTR } from '../format';
 
 export { formatDate };
 
@@ -25,7 +25,7 @@ export function formatPlain(value: unknown): string {
 
 export function formatKg(value: unknown): string {
   if (value === null || value === undefined || value === '') return '—';
-  return `${String(value)} kg`;
+  return `${formatNumberTR(value)} kg`;
 }
 
 export function formatReturnedFromPregnancy(value: unknown): string {
@@ -96,7 +96,7 @@ export function formatDosage(value: unknown, row: ApiRecord): string {
 
 export function formatKgPerDay(value: unknown): string {
   if (value === null || value === undefined || value === '') return '—';
-  return `${String(value)} kg/gün`;
+  return `${formatNumberTR(value, 3)} kg/gün`;
 }
 
 export const formatCurrency = formatCurrencyTRY;

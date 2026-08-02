@@ -1,5 +1,11 @@
 import type { ApiRecord } from './api';
-import { formatCurrencyTRY } from './format';
+import { formatCurrencyTRY, formatNumberTR } from './format';
+
+/** formatNumberTR'nin ColumnConfig.format imzasına (value, row) uyarlanmış
+ * hali - kaynak liste tablolarındaki ondalık sütunlarda kullanılır. */
+function formatDecimalColumn(value: unknown): string {
+  return formatNumberTR(value);
+}
 
 export type FieldType = 'text' | 'number' | 'decimal' | 'date' | 'select' | 'checkbox' | 'textarea' | 'password';
 
@@ -263,7 +269,7 @@ const mainResources: ResourceConfig[] = [
     columns: [
       { key: 'animal_id', label: 'Hayvan', lookup: animals },
       { key: 'weigh_date', label: 'Tarih', date: true },
-      { key: 'weight_kg', label: 'Ağırlık (kg)' },
+      { key: 'weight_kg', label: 'Ağırlık (kg)', format: formatDecimalColumn },
       { key: 'weighing_method_id', label: 'Yöntem', lookup: weighingMethods },
     ],
     fields: [
@@ -397,7 +403,7 @@ const mainResources: ResourceConfig[] = [
     columns: [
       { key: 'feed_item_id', label: 'Yem Ürünü', lookup: feedItems },
       { key: 'purchase_date', label: 'Tarih', date: true },
-      { key: 'quantity', label: 'Miktar' },
+      { key: 'quantity', label: 'Miktar', format: formatDecimalColumn },
       { key: 'total_cost', label: 'Toplam Maliyet (TL)', format: formatCurrencyTRY },
     ],
     fields: [
@@ -442,7 +448,7 @@ const mainResources: ResourceConfig[] = [
       { key: 'sale_date', label: 'Tarih', date: true },
       { key: 'buyer_id', label: 'Alıcı', lookup: buyers },
       { key: 'sale_type_id', label: 'Tip', lookup: saleTypes },
-      { key: 'total_amount', label: 'Tutar' },
+      { key: 'total_amount', label: 'Tutar (TL)', format: formatCurrencyTRY },
     ],
     fields: [
       { name: 'animal_id', label: 'Hayvan', type: 'select', options: animals, required: true },
