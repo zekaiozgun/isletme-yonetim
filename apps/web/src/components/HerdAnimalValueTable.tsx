@@ -132,19 +132,19 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {rows.map((row) => {
+              {rows.map((row, index) => {
                 const id = String(row.animal_id);
                 const checked = selected.has(id);
                 const searchText = [row.tag_number, row.gender_name]
                   .map((v) => String(v ?? ''))
                   .join(' ')
                   .toLocaleLowerCase('tr-TR');
+                // Sahada takibi kolaylaştırmak için diğer raporlarla aynı
+                // zebra gölgelendirme (bkz. ReportTable.tsx) - seçili satır
+                // zebra deseninin önüne geçer.
+                const rowBg = checked ? 'bg-blue-50' : index % 2 === 1 ? 'bg-slate-50/70' : '';
                 return (
-                  <tr
-                    key={id}
-                    data-search={searchText}
-                    className={`divide-x divide-slate-100 ${checked ? 'bg-blue-50' : ''}`}
-                  >
+                  <tr key={id} data-search={searchText} className={`divide-x divide-slate-100 ${rowBg}`}>
                     <td className="whitespace-nowrap px-[0.5ch] py-1.5">
                       <input
                         type="checkbox"

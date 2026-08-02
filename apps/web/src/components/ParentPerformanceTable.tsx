@@ -125,8 +125,15 @@ export function ParentPerformanceTable({
           <tbody className="divide-y divide-slate-100">
             {sortedRows.map((row, index) => {
               const label = getParentLabel(row);
+              // Sahada takibi kolaylaştırmak için diğer raporlarla aynı
+              // zebra gölgelendirme (bkz. ReportTable.tsx).
+              const rowBg = index % 2 === 1 ? 'bg-slate-50/70' : '';
               return (
-                <tr key={index} data-search={label.toLocaleLowerCase('tr-TR')} className="divide-x divide-slate-100">
+                <tr
+                  key={index}
+                  data-search={label.toLocaleLowerCase('tr-TR')}
+                  className={`divide-x divide-slate-100 ${rowBg}`}
+                >
                   <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{label}</td>
                   <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{offspringCountLabel(row)}</td>
                   <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{formatGain(row.avg_daily_gain_kg)}</td>
