@@ -11,3 +11,23 @@ export function formatDateDMY(value: unknown): string {
   if (!year || !month || !day) return String(value);
   return `${day}/${month}/${year}`;
 }
+
+/**
+ * "Şimdi"yi DD/MM/YYYY HH:MM olarak, sunucunun kendi saat dilimi ne olursa
+ * olsun (Render'da genelde UTC) her zaman Türkiye yerel saatiyle gösterir -
+ * rapor sayfaları bu Server Component'te render edildiği anı damgalar,
+ * böylece daha sonra "bu rapor ne zaman alınmıştı" diye bakılabilir.
+ */
+export function formatNowIstanbulDMYHM(): string {
+  const parts = new Intl.DateTimeFormat('tr-TR', {
+    timeZone: 'Europe/Istanbul',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  return `${get('day')}/${get('month')}/${get('year')} ${get('hour')}:${get('minute')}`;
+}
