@@ -82,6 +82,12 @@ export function ReportTable({
   const highlightedRows = rows
     .map((row, index) => (report.rowHighlight?.(row) ? index : -1))
     .filter((index) => index !== -1);
+  // 'wide' (serbest metin/Not) sütunu yoksa tablo konteynerin tamamını
+  // doldurmaya ZORLANMAZ - aksi halde tarayıcı, sıkışık (w-[1%]) sütunları
+  // eşit oranda gereksiz yere geriyor ve değerler arasında çirkin boşluklar
+  // oluşuyor. Bir "Not" benzeri sütun varsa o fazla alanı doğal olarak
+  // yutar, tablo da w-full kalabilir.
+  const hasWideColumn = report.columns.some((c) => c.width === 'wide');
 
   return (
     <>
@@ -107,7 +113,9 @@ export function ReportTable({
           <p className="text-sm text-slate-500">Aramanızla eşleşen kayıt yok.</p>
         ) : (
           <div className="overflow-x-auto rounded border border-slate-200 print:overflow-visible print:rounded-none print:border-none">
-            <table className="w-full divide-y divide-slate-200 text-sm print:text-[10px]">
+            <table
+              className={`${hasWideColumn ? 'w-full' : 'w-auto'} divide-y divide-slate-200 text-sm print:text-[10px]`}
+            >
               <thead className="bg-slate-50 print:bg-transparent">
                 <tr className="divide-x divide-slate-200">
                   <th className="w-[1%] px-[0.5ch] py-1.5 text-left font-medium leading-tight text-slate-600">#</th>

@@ -11,7 +11,7 @@ export const outcomeReports: ReportConfig[] = [
     group: 'Satış ve Kayıp',
     dateRange: true,
     columns: [
-      { key: 'buyer_name', label: 'Alıcı' },
+      { key: 'buyer_name', label: 'Alıcı', width: 'narrow' },
       { key: 'sale_count', label: 'Satış Sayısı', width: 'narrow' },
       { key: 'total_weight_kg', label: 'Toplam Ağırlık', format: formatKg, width: 'narrow' },
       { key: 'total_revenue', label: 'Toplam Gelir', format: formatCurrency, width: 'narrow' },

@@ -90,16 +90,23 @@ export function ParentPerformanceTable({
         </>
       }
     >
+      {/* Serbest metin (Not benzeri) sütun yok - bkz. HerdAnimalValueTable/
+          ReportTable'daki hasWideColumn mantığı - tablo w-full ile
+          ZORLANMAZ, doğal genişliğinde kalır. */}
       <div className="overflow-x-auto rounded border border-slate-200">
-        <table className="w-full divide-y divide-slate-200 text-sm">
+        <table className="divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50">
             <tr className="divide-x divide-slate-200">
-              <th className="px-[0.5ch] py-1.5 text-left font-medium text-slate-600">{parentColumnLabel}</th>
-              <th className="px-[0.5ch] py-1.5 text-left font-medium text-slate-600">Yavru Sayısı</th>
+              <th className="whitespace-nowrap px-[0.5ch] py-1.5 text-left font-medium leading-tight text-slate-600">
+                {parentColumnLabel}
+              </th>
+              <th className="whitespace-nowrap px-[0.5ch] py-1.5 text-left font-medium leading-tight text-slate-600">
+                Yavru Sayısı
+              </th>
               {SORT_COLUMNS.map((col) => {
                 const active = sortKey === col.key;
                 return (
-                  <th key={col.key} className="px-[0.5ch] py-1.5 text-left">
+                  <th key={col.key} className="whitespace-nowrap px-[0.5ch] py-1.5 text-left">
                     <button
                       type="button"
                       onClick={() => setSortKey(col.key)}
@@ -120,10 +127,10 @@ export function ParentPerformanceTable({
               const label = getParentLabel(row);
               return (
                 <tr key={index} data-search={label.toLocaleLowerCase('tr-TR')} className="divide-x divide-slate-100">
-                  <td className="px-[0.5ch] py-1.5 text-slate-700">{label}</td>
-                  <td className="px-[0.5ch] py-1.5 text-slate-700">{offspringCountLabel(row)}</td>
-                  <td className="px-[0.5ch] py-1.5 text-slate-700">{formatGain(row.avg_daily_gain_kg)}</td>
-                  <td className="px-[0.5ch] py-1.5 text-slate-700">{formatLossRate(row.loss_rate)}</td>
+                  <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{label}</td>
+                  <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{offspringCountLabel(row)}</td>
+                  <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{formatGain(row.avg_daily_gain_kg)}</td>
+                  <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{formatLossRate(row.loss_rate)}</td>
                 </tr>
               );
             })}

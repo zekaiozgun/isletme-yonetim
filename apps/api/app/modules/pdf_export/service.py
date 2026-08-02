@@ -11,6 +11,12 @@ oluşturulma tarih/saatini (Europe/Istanbul) basar - sunucunun kendi saat
 dilimi (Render/Docker'da genelde UTC) ne olursa olsun kullanıcıya her
 zaman yerel saat gösterilir.
 
+Sütunlardan hiçbiri 'wide' (serbest metin/Not) değilse tablo sayfanın
+tamamını kaplamaya ZORLANMAZ (table.full-width class'ı eklenmez) - aksi
+halde tüm dar sütunlar eşit oranda gereksiz yere gerilip değerler
+arasında çirkin boşluklar oluşur. Bu, ekran içi ReportTable'daki
+`hasWideColumn` mantığıyla birebir aynıdır.
+
 weasyprint import'u BİLEREK fonksiyon içinde yapılıyor: bu paket metin
 şekillendirme için Pango/gobject'e (sistem kütüphanesi) ihtiyaç duyar -
 Linux/Docker üzerinde (bkz. Dockerfile) sorunsuz çalışır ama yerel Windows
@@ -35,7 +41,8 @@ div.header-row { display: flex; align-items: baseline; justify-content: space-be
 h1 { font-size: 14pt; margin: 0; color: #0f172a; }
 span.generated-at { font-size: 8pt; color: #94a3b8; white-space: nowrap; }
 p.description { font-size: 8pt; color: #64748b; margin: 4px 0 12px 0; }
-table { width: 100%; border-collapse: collapse; }
+table { border-collapse: collapse; }
+table.full-width { width: 100%; }
 thead th { background: #f8fafc; text-align: left; font-weight: 600; color: #475569;
   border-bottom: 1px solid #e2e8f0; padding: 4px 6px; }
 tbody td { border-bottom: 1px solid #f1f5f9; padding: 4px 6px; vertical-align: top; }
@@ -73,6 +80,7 @@ def render_table_pdf(data: PdfTableRequest) -> bytes:
 
     description_html = f'<p class="description">{_escape(data.description)}</p>' if data.description else ""
     generated_at = datetime.now(_ISTANBUL).strftime("%d/%m/%Y %H:%M")
+    table_class = "full-width" if any(col.width == "wide" for col in data.columns) else ""
 
     html_doc = (
         "<html><head><meta charset=\"utf-8\" />"
@@ -82,7 +90,7 @@ def render_table_pdf(data: PdfTableRequest) -> bytes:
         f'<span class="generated-at">Oluşturulma: {generated_at}</span>'
         "</div>"
         f"{description_html}"
-        f"<table><thead><tr>{header_cells}</tr></thead>"
+        f'<table class="{table_class}"><thead><tr>{header_cells}</tr></thead>'
         f"<tbody>{''.join(body_rows)}</tbody></table>"
         "</body></html>"
     )

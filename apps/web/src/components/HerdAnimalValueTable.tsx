@@ -108,10 +108,14 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
         }
       >
         <div className="overflow-x-auto rounded border border-slate-200">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
+          {/* Bu tabloda serbest metin (Not benzeri) sütun yok - hepsi kısa
+              sabit-format değerler, bu yüzden diğer raporlardaki gibi
+              (bkz. ReportTable.tsx hasWideColumn) w-full ile ZORLANMAZ;
+              tablo doğal (içeriğe göre) genişliğinde kalır. */}
+          <table className="divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50">
-              <tr>
-                <th className="px-3 py-2 text-left">
+              <tr className="divide-x divide-slate-200">
+                <th className="w-[1%] px-[0.5ch] py-1.5 text-left">
                   <input
                     type="checkbox"
                     checked={selected.size === rows.length}
@@ -119,12 +123,12 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
                     aria-label="Tümünü seç"
                   />
                 </th>
-                <th className="px-3 py-2 text-left font-medium text-slate-600">Küpe No</th>
-                <th className="px-3 py-2 text-left font-medium text-slate-600">Cinsiyet</th>
-                <th className="px-3 py-2 text-left font-medium text-slate-600">Yaş</th>
-                <th className="px-3 py-2 text-left font-medium text-slate-600">Tutar (TL)</th>
-                <th className="px-3 py-2 text-left font-medium text-slate-600">Tutar ($)</th>
-                <th className="px-3 py-2 text-left font-medium text-slate-600">Kaynak</th>
+                <th className="w-[1%] px-[0.5ch] py-1.5 text-left font-medium leading-tight text-slate-600">Küpe No</th>
+                <th className="w-[1%] px-[0.5ch] py-1.5 text-left font-medium leading-tight text-slate-600">Cinsiyet</th>
+                <th className="w-[1%] px-[0.5ch] py-1.5 text-left font-medium leading-tight text-slate-600">Yaş</th>
+                <th className="w-[1%] px-[0.5ch] py-1.5 text-left font-medium leading-tight text-slate-600">Tutar (TL)</th>
+                <th className="w-[1%] px-[0.5ch] py-1.5 text-left font-medium leading-tight text-slate-600">Tutar ($)</th>
+                <th className="w-[1%] px-[0.5ch] py-1.5 text-left font-medium leading-tight text-slate-600">Kaynak</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -136,8 +140,12 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
                   .join(' ')
                   .toLocaleLowerCase('tr-TR');
                 return (
-                  <tr key={id} data-search={searchText} className={checked ? 'bg-blue-50' : undefined}>
-                    <td className="whitespace-nowrap px-3 py-2">
+                  <tr
+                    key={id}
+                    data-search={searchText}
+                    className={`divide-x divide-slate-100 ${checked ? 'bg-blue-50' : ''}`}
+                  >
+                    <td className="whitespace-nowrap px-[0.5ch] py-1.5">
                       <input
                         type="checkbox"
                         checked={checked}
@@ -145,28 +153,30 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
                         aria-label={`${String(row.tag_number)} seç`}
                       />
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2 text-slate-700">{String(row.tag_number ?? '—')}</td>
-                    <td className="whitespace-nowrap px-3 py-2 text-slate-700">{String(row.gender_name ?? '—')}</td>
-                    <td className="whitespace-nowrap px-3 py-2 text-slate-700">{formatMonths(row.age_months)}</td>
-                    <td className="whitespace-nowrap px-3 py-2 text-slate-700">
+                    <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{String(row.tag_number ?? '—')}</td>
+                    <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{String(row.gender_name ?? '—')}</td>
+                    <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{formatMonths(row.age_months)}</td>
+                    <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">
                       {formatCurrency(Number(row.amount_try ?? 0))}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2 text-slate-700">{formatUsd(Number(row.amount_usd ?? 0))}</td>
-                    <td className="whitespace-nowrap px-3 py-2 text-slate-700">{formatSourceCode(row.source_code)}</td>
+                    <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">
+                      {formatUsd(Number(row.amount_usd ?? 0))}
+                    </td>
+                    <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{formatSourceCode(row.source_code)}</td>
                   </tr>
                 );
               })}
             </tbody>
             <tfoot>
-              <tr className="border-t border-slate-300 bg-slate-50 font-semibold text-slate-900">
-                <td className="px-3 py-2" />
-                <td className="px-3 py-2" colSpan={2}>
+              <tr className="divide-x divide-slate-100 border-t border-slate-300 bg-slate-50 font-semibold text-slate-900">
+                <td className="px-[0.5ch] py-1.5" />
+                <td className="whitespace-nowrap px-[0.5ch] py-1.5" colSpan={2}>
                   TOPLAM ({rows.length} hayvan)
                 </td>
-                <td className="px-3 py-2" />
-                <td className="whitespace-nowrap px-3 py-2">{formatCurrency(grandTotal.try_)}</td>
-                <td className="whitespace-nowrap px-3 py-2">{formatUsd(grandTotal.usd)}</td>
-                <td className="px-3 py-2" />
+                <td className="px-[0.5ch] py-1.5" />
+                <td className="whitespace-nowrap px-[0.5ch] py-1.5">{formatCurrency(grandTotal.try_)}</td>
+                <td className="whitespace-nowrap px-[0.5ch] py-1.5">{formatUsd(grandTotal.usd)}</td>
+                <td className="px-[0.5ch] py-1.5" />
               </tr>
             </tfoot>
           </table>
