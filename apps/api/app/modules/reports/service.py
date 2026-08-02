@@ -420,7 +420,12 @@ def list_bred_animals(db: Session, today: date | None = None) -> list[BredAnimal
                 returned_from_pregnancy=_returned_from_pregnancy(
                     db, animal.id, event.service_date, last_calving_by_dam.get(animal.id)
                 ),
-                note=classification.check_note,
+                # Tohumlama kaydi girilirken yazilan not (BreedingEvent.note) -
+                # gebelik kontrolu henuz yapilmamis ("Tohumlu") satirlarda
+                # classification.check_note HER ZAMAN None olur (kontrol yok
+                # ki notu olsun), bu yuzden PregnancyCheck.note DEGIL,
+                # dogrudan bu tohumlama kaydinin kendi notu gosterilir.
+                note=event.note,
             )
         )
 
