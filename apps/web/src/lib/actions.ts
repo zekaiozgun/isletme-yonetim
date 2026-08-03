@@ -186,6 +186,59 @@ export async function bulkCreatePregnancyChecks(
   return { success, failed };
 }
 
+export interface BulkHealthEventShared {
+  eventTypeId: number;
+  eventDate: string;
+  diseaseId: number | null;
+  medicationId: number | null;
+  dosageAmount: number | null;
+  dosageUnitId: number | null;
+  veterinarianNote: string | null;
+  cost: number | null;
+  note: string | null;
+}
+
+export interface BulkHealthEventResult {
+  success: number;
+  failed: { tagNumber: string; error: string }[];
+}
+
+/** Toplu sağlık olayı girişi: bulkCreateWeightRecords ile aynı desen ama
+ * ters - orada tarih/yöntem ortak, kilo hayvana özeldi; burada TÜM alanlar
+ * ortak (aynı aşı/ilaç turu), sadece HANGİ hayvanların dahil olduğu
+ * değişir (bkz. components/BulkHealthEventForm.tsx). Yeni backend
+ * endpoint'i yok, mevcut tekli POST /health-events tekrar kullanılır. */
+export async function bulkCreateHealthEvents(
+  shared: BulkHealthEventShared,
+  animals: { animalId: string; tagNumber: string }[]
+): Promise<BulkHealthEventResult> {
+  const failed: { tagNumber: string; error: string }[] = [];
+  let success = 0;
+
+  for (const animal of animals) {
+    const result = await apiPost('/health-events', {
+      animal_id: animal.animalId,
+      event_type_id: shared.eventTypeId,
+      event_date: shared.eventDate,
+      disease_id: shared.diseaseId,
+      medication_id: shared.medicationId,
+      dosage_amount: shared.dosageAmount,
+      dosage_unit_id: shared.dosageUnitId,
+      veterinarian_note: shared.veterinarianNote,
+      cost: shared.cost,
+      note: shared.note,
+    });
+    if (result.error !== undefined) {
+      failed.push({ tagNumber: animal.tagNumber, error: result.error });
+    } else {
+      success += 1;
+    }
+  }
+
+  revalidatePath('/health-events');
+  return { success, failed };
+}
+
 /** "Hatalı Giriş İptali": kilitli olsa dahi hem Çalışan hem Yönetici
  * kullanabilir - hayvanı silmek yerine statüsünü değiştirir (bkz.
  * app/modules/animal service.cancel_animal_entry, PUT/DELETE ile ilgisizdir). */

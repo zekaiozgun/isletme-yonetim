@@ -335,6 +335,7 @@ const mainResources: ResourceConfig[] = [
     group: 'Sağlık',
     listEndpoint: '/health-events',
     createEndpoint: '/health-events',
+    bulkEntryPath: '/health-events/bulk',
     columns: [
       { key: 'animal_id', label: 'Hayvan', lookup: animals },
       { key: 'event_type_id', label: 'Tip', lookup: healthEventTypes },
