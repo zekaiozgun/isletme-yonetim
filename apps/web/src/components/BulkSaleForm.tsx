@@ -20,8 +20,9 @@ function todayIso(): string {
 }
 
 /** BulkWeightForm ile aynı desen (alıcı/tarih/satış tipi bir kez seçilir)
- * ama satır başına İKİ değer var: ağırlık (opsiyonel) ve tutar (zorunlu) -
- * aynı gün aynı alıcıya birden fazla hayvan satıldığında kullanılır (bkz.
+ * ama satır başına ÜÇ değer var: canlı ağırlık, karkas ağırlığı (ikisi de
+ * opsiyonel - karkas sadece kesim satışlarında anlamlı) ve tutar (zorunlu)
+ * - aynı gün aynı alıcıya birden fazla hayvan satıldığında kullanılır (bkz.
  * lib/actions.ts bulkCreateSales). */
 export function BulkSaleForm({
   animals,
@@ -37,6 +38,7 @@ export function BulkSaleForm({
   const [buyerId, setBuyerId] = useState('');
   const [saleTypeId, setSaleTypeId] = useState('');
   const [weights, setWeights] = useState<Record<string, string>>({});
+  const [carcassWeights, setCarcassWeights] = useState<Record<string, string>>({});
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [query, setQuery] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -78,6 +80,7 @@ export function BulkSaleForm({
         animalId: a.id,
         tagNumber: a.tagNumber,
         saleWeightKg: weights[a.id]?.trim() ? Number(weights[a.id]) : null,
+        carcassWeightKg: carcassWeights[a.id]?.trim() ? Number(carcassWeights[a.id]) : null,
         totalAmount: Number(amounts[a.id]),
       }));
 
@@ -90,7 +93,13 @@ export function BulkSaleForm({
       return;
     }
     if (entries.some((e) => e.saleWeightKg !== null && (Number.isNaN(e.saleWeightKg) || e.saleWeightKg <= 0))) {
-      setError('Girilen ağırlık değerleri geçerli bir sayı olmalı.');
+      setError('Girilen canlı ağırlık değerleri geçerli bir sayı olmalı.');
+      return;
+    }
+    if (
+      entries.some((e) => e.carcassWeightKg !== null && (Number.isNaN(e.carcassWeightKg) || e.carcassWeightKg <= 0))
+    ) {
+      setError('Girilen karkas ağırlığı değerleri geçerli bir sayı olmalı.');
       return;
     }
 
@@ -199,7 +208,8 @@ export function BulkSaleForm({
             <tr>
               <th className="px-3 py-2 text-left font-medium text-slate-600">Küpe No</th>
               <th className="px-3 py-2 text-left font-medium text-slate-600">İsim</th>
-              <th className="px-3 py-2 text-left font-medium text-slate-600">Ağırlık (kg)</th>
+              <th className="px-3 py-2 text-left font-medium text-slate-600">Canlı Ağırlık (kg)</th>
+              <th className="px-3 py-2 text-left font-medium text-slate-600">Karkas Ağırlığı (kg)</th>
               <th className="px-3 py-2 text-left font-medium text-slate-600">Tutar (TL)</th>
             </tr>
           </thead>
@@ -223,6 +233,16 @@ export function BulkSaleForm({
                     type="number"
                     step="0.01"
                     min="0"
+                    value={carcassWeights[a.id] ?? ''}
+                    onChange={(e) => setCarcassWeights((prev) => ({ ...prev, [a.id]: e.target.value }))}
+                    className="w-28 rounded border border-slate-300 px-2 py-1 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
                     value={amounts[a.id] ?? ''}
                     onChange={(e) => setAmounts((prev) => ({ ...prev, [a.id]: e.target.value }))}
                     className="w-28 rounded border border-slate-300 px-2 py-1 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
@@ -232,7 +252,7 @@ export function BulkSaleForm({
             ))}
             {filteredAnimals.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-3 py-4 text-center text-slate-500">
+                <td colSpan={5} className="px-3 py-4 text-center text-slate-500">
                   Aramanızla eşleşen aktif hayvan yok.
                 </td>
               </tr>

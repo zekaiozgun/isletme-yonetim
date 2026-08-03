@@ -459,7 +459,12 @@ const mainResources: ResourceConfig[] = [
       { name: 'sale_date', label: 'Tarih', type: 'date', required: true },
       { name: 'buyer_id', label: 'Alıcı', type: 'select', options: buyers, required: true },
       { name: 'sale_type_id', label: 'Satış Tipi', type: 'select', options: saleTypes, required: true },
-      { name: 'sale_weight_kg', label: 'Satış Ağırlığı (kg)', type: 'decimal' },
+      { name: 'sale_weight_kg', label: 'Canlı Ağırlık (kg)', type: 'decimal' },
+      {
+        name: 'carcass_weight_kg',
+        label: 'Karkas Ağırlığı (kg) — sadece kesim satışlarında geçerli',
+        type: 'decimal',
+      },
       { name: 'total_amount', label: 'Toplam Tutar', type: 'decimal', required: true },
       { name: 'note', label: 'Not', type: 'textarea' },
     ],

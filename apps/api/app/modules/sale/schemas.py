@@ -27,6 +27,7 @@ class SaleCreate(BaseModel):
     buyer_id: int
     sale_type_id: int
     sale_weight_kg: Decimal | None = None
+    carcass_weight_kg: Decimal | None = None
     total_amount: Decimal
     note: str | None = None
 

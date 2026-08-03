@@ -39,7 +39,10 @@ class Sale(TimestampMixin, Base):
     sale_date: Mapped[date] = mapped_column(Date, nullable=False)
     buyer_id: Mapped[int] = mapped_column(ForeignKey("buyers.id"), nullable=False)
     sale_type_id: Mapped[int] = mapped_column(ForeignKey("sale_types.id"), nullable=False)
+    # Canli agirlik - satis aninda tartilan (bkz. schemas.py alan aciklamasi).
     sale_weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(6, 2), nullable=True)
+    # Kesim satislarinda karkas agirligi (canli agirliktan ayri, opsiyonel).
+    carcass_weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(6, 2), nullable=True)
     total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     note: Mapped[str | None] = mapped_column(String(500), nullable=True)
 

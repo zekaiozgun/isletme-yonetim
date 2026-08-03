@@ -3700,6 +3700,8 @@ export interface components {
             sale_type_id: number;
             /** Sale Weight Kg */
             sale_weight_kg?: number | string | null;
+            /** Carcass Weight Kg */
+            carcass_weight_kg?: number | string | null;
             /** Total Amount */
             total_amount: number | string;
             /** Note */
@@ -3723,6 +3725,8 @@ export interface components {
             sale_type_id: number;
             /** Sale Weight Kg */
             sale_weight_kg?: string | null;
+            /** Carcass Weight Kg */
+            carcass_weight_kg?: string | null;
             /** Total Amount */
             total_amount: string;
             /** Note */

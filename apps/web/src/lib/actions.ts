@@ -285,6 +285,7 @@ export interface BulkSaleEntry {
   animalId: string;
   tagNumber: string;
   saleWeightKg: number | null;
+  carcassWeightKg: number | null;
   totalAmount: number;
 }
 
@@ -314,6 +315,7 @@ export async function bulkCreateSales(
       buyer_id: buyerId,
       sale_type_id: saleTypeId,
       sale_weight_kg: entry.saleWeightKg,
+      carcass_weight_kg: entry.carcassWeightKg,
       total_amount: entry.totalAmount,
     });
     if (result.error !== undefined) {
