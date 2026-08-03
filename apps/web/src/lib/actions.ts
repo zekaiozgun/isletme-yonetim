@@ -239,6 +239,48 @@ export async function bulkCreateHealthEvents(
   return { success, failed };
 }
 
+export interface BulkPenAssignmentShared {
+  penId: number;
+  assignedDate: string;
+  reasonId: number;
+  note: string | null;
+}
+
+export interface BulkPenAssignmentResult {
+  success: number;
+  failed: { tagNumber: string; error: string }[];
+}
+
+/** Toplu padok ataması: bulkCreateHealthEvents ile aynı desen - hedef
+ * padok/tarih/neden ortak, sadece hangi hayvanların taşındığı değişir
+ * (bkz. components/BulkPenAssignmentForm.tsx). Yeni backend endpoint'i
+ * yok, mevcut tekli POST /pens/assignments tekrar kullanılır. */
+export async function bulkCreatePenAssignments(
+  shared: BulkPenAssignmentShared,
+  animals: { animalId: string; tagNumber: string }[]
+): Promise<BulkPenAssignmentResult> {
+  const failed: { tagNumber: string; error: string }[] = [];
+  let success = 0;
+
+  for (const animal of animals) {
+    const result = await apiPost('/pens/assignments', {
+      animal_id: animal.animalId,
+      pen_id: shared.penId,
+      assigned_date: shared.assignedDate,
+      reason_id: shared.reasonId,
+      note: shared.note,
+    });
+    if (result.error !== undefined) {
+      failed.push({ tagNumber: animal.tagNumber, error: result.error });
+    } else {
+      success += 1;
+    }
+  }
+
+  revalidatePath('/pen-assignments');
+  return { success, failed };
+}
+
 /** "Hatalı Giriş İptali": kilitli olsa dahi hem Çalışan hem Yönetici
  * kullanabilir - hayvanı silmek yerine statüsünü değiştirir (bkz.
  * app/modules/animal service.cancel_animal_entry, PUT/DELETE ile ilgisizdir). */

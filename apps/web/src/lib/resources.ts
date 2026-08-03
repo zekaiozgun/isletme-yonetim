@@ -198,6 +198,7 @@ const mainResources: ResourceConfig[] = [
     group: 'Padoklar',
     listEndpoint: '/pens/assignments',
     createEndpoint: '/pens/assignments',
+    bulkEntryPath: '/pen-assignments/bulk',
     columns: [
       { key: 'animal_id', label: 'Hayvan', lookup: animals },
       { key: 'pen_id', label: 'Padok', lookup: pens },
