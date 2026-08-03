@@ -6,17 +6,27 @@ export const outcomeReports: ReportConfig[] = [
   {
     slug: 'sales',
     title: 'Satış Raporu',
-    description: 'Aralıktaki satışlar; toplam gelir, ortalama satış ağırlığı/fiyatı, alıcı bazında kırılım.',
+    description:
+      'Aralıktaki satışlar; alıcı VE satış tipi bazında kırılım (Canlı/Kesim/Damızlık farklı fiyatlama mantığına sahip olduğu için karıştırılmaz). Kg başına fiyat, sadece o ağırlığın girildiği satışların gelirinden hesaplanır. Randıman (karkas/canlı oranı), sadece her iki ağırlığın da girildiği kesim satışlarından ortalanır.',
     endpoint: '/reports/sales',
     group: 'Satış ve Kayıp',
     dateRange: true,
     columns: [
       { key: 'buyer_name', label: 'Alıcı', width: 'narrow' },
+      { key: 'sale_type_name', label: 'Satış Tipi', width: 'narrow' },
       { key: 'sale_count', label: 'Satış Sayısı', width: 'narrow' },
-      { key: 'total_weight_kg', label: 'Toplam Ağırlık', format: formatKg, width: 'narrow' },
+      { key: 'total_live_weight_kg', label: 'Toplam Canlı Ağırlık', format: formatKg, width: 'narrow' },
+      { key: 'average_price_per_live_kg', label: 'Ort. Canlı Kg Fiyatı', format: formatCurrency, width: 'narrow' },
+      { key: 'total_carcass_weight_kg', label: 'Toplam Karkas Ağırlığı', format: formatKg, width: 'narrow' },
+      {
+        key: 'average_price_per_carcass_kg',
+        label: 'Ort. Karkas Kg Fiyatı',
+        format: formatCurrency,
+        width: 'narrow',
+      },
+      { key: 'average_dressing_percentage', label: 'Ort. Randıman', format: formatPercent, width: 'narrow' },
       { key: 'total_revenue', label: 'Toplam Gelir', format: formatCurrency, width: 'narrow' },
       { key: 'average_sale_amount', label: 'Ort. Satış Tutarı', format: formatCurrency, width: 'narrow' },
-      { key: 'average_price_per_kg', label: 'Ort. Kg Fiyatı', format: formatCurrency, width: 'narrow' },
     ],
   },
   {

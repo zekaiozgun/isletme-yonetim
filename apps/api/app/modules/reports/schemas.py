@@ -183,11 +183,21 @@ class HerdFlowReportRead(BaseModel):
 
 class SalesReportRead(BaseModel):
     buyer_name: str
+    # Kalem tipe gore de bolunuyor - "Canli Satis"/"Kesim Icin Satis"/
+    # "Damizlik Satis" birbirinden cok farkli fiyatlama mantigina sahip
+    # (bkz. list_sales_report dokumantasyonu), tek bir alici altinda
+    # karistirilirsa kg basina fiyat ortalamasi anlamsizlasir.
+    sale_type_name: str
     sale_count: int
-    total_weight_kg: Decimal
     total_revenue: Decimal
     average_sale_amount: float
-    average_price_per_kg: float | None = None
+    total_live_weight_kg: Decimal
+    average_price_per_live_kg: float | None = None
+    total_carcass_weight_kg: Decimal
+    average_price_per_carcass_kg: float | None = None
+    # Sadece HEM canli HEM karkas agirligi girilmis satislardan (kesim
+    # satislarinda ikisi de bilinebilir) - randiman: karkas/canli * 100.
+    average_dressing_percentage: float | None = None
 
 
 class WeightGainRead(BaseModel):

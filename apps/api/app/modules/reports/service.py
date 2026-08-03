@@ -980,42 +980,93 @@ def list_weight_gains(db: Session, start_date: date, end_date: date) -> list[Wei
 @dataclass
 class _SalesBucket:
     buyer_name: str
+    sale_type_name: str
     sale_count: int = 0
-    total_weight_kg: Decimal = field(default_factory=lambda: Decimal("0"))
     total_revenue: Decimal = field(default_factory=lambda: Decimal("0"))
+    total_live_weight_kg: Decimal = field(default_factory=lambda: Decimal("0"))
+    # Sadece canli agirligi GIRILMIS satislarin geliri - kg basina fiyati
+    # bulunurken paydadaki agirlikla PAYDAKI GELIR AYNI ALT KUMEDEN gelsin
+    # diye ayrica tutulur (bkz. fonksiyon dokumantasyonu).
+    live_weight_revenue: Decimal = field(default_factory=lambda: Decimal("0"))
+    total_carcass_weight_kg: Decimal = field(default_factory=lambda: Decimal("0"))
+    carcass_weight_revenue: Decimal = field(default_factory=lambda: Decimal("0"))
+    dressing_percentage_sum: float = 0.0
+    dressing_percentage_count: int = 0
 
 
 def list_sales_report(db: Session, start_date: date, end_date: date) -> list[SalesReportRead]:
-    """Belirtilen tarih araliginda (sale_date) yapilan satislar, alici bazinda
-    gruplanip toplam gelir, toplam agirlik ve ortalama fiyatlarla ozetlenir."""
+    """Belirtilen tarih araliginda (sale_date) yapilan satislar, ALICI+SATIS
+    TIPI ikilisine gore gruplanip ozetlenir.
+
+    Iki bilincli tasarim karari:
+
+    1. Sadece aliciya gore degil, satis tipine (Canli/Kesim/Damizlik) gore de
+       gruplanir - bunlar birbirinden tamamen farkli fiyatlama mantigina
+       sahiptir (Canli ve Kesim kg basina fiyatlanir, Damizlik genelde
+       soy/genetik degerine gore - agirlik onemsizdir). Ayni aliciyi tek
+       kovada toplamak bu farkli mantiklari karistirip anlamsiz bir "kg
+       basina ortalama fiyat" uretirdi.
+
+    2. "kg basina ortalama fiyat", SADECE o agirlik turu GIRILMIS satislarin
+       gelirinden hesaplanir (butun kovanin toplam gelirinden degil) - aksi
+       halde agirligi girilmemis bir satisin geliri paydaya (agirliga)
+       katkida bulunmadan payda (gelire) karisir, fiyat olması gerekenden
+       yuksek cikar. Ayni sebeple canli/karkas agirlik icin gelir ayri ayri
+       tutulur (bir kesim satisinda ikisi de girilmis olabilir ama SADECE
+       biri girilmis satislar da vardir).
+
+    Randiman (karkas/canli agirlik orani), sadece HER IKI agirligin da
+    girildigi satislardan (fiilen sadece kesim satislarinda olur) ortalanir -
+    surunun besi verimliligini gostermesi icin.
+    """
     stmt = (
         select(Sale)
-        .options(joinedload(Sale.buyer))
+        .options(joinedload(Sale.buyer), joinedload(Sale.sale_type))
         .where(Sale.sale_date >= start_date, Sale.sale_date <= end_date)
     )
-    buckets: dict[int, _SalesBucket] = {}
+    buckets: dict[tuple[int, int], _SalesBucket] = {}
     for sale in db.scalars(stmt).all():
-        bucket = buckets.get(sale.buyer_id)
+        key = (sale.buyer_id, sale.sale_type_id)
+        bucket = buckets.get(key)
         if bucket is None:
-            bucket = _SalesBucket(buyer_name=sale.buyer.name)
-            buckets[sale.buyer_id] = bucket
+            bucket = _SalesBucket(buyer_name=sale.buyer.name, sale_type_name=sale.sale_type.name)
+            buckets[key] = bucket
         bucket.sale_count += 1
         bucket.total_revenue += sale.total_amount
         if sale.sale_weight_kg:
-            bucket.total_weight_kg += sale.sale_weight_kg
+            bucket.total_live_weight_kg += sale.sale_weight_kg
+            bucket.live_weight_revenue += sale.total_amount
+        if sale.carcass_weight_kg:
+            bucket.total_carcass_weight_kg += sale.carcass_weight_kg
+            bucket.carcass_weight_revenue += sale.total_amount
+        if sale.sale_weight_kg and sale.carcass_weight_kg:
+            bucket.dressing_percentage_sum += float(sale.carcass_weight_kg) / float(sale.sale_weight_kg) * 100
+            bucket.dressing_percentage_count += 1
 
     rows: list[SalesReportRead] = []
     for bucket in buckets.values():
         rows.append(
             SalesReportRead(
                 buyer_name=bucket.buyer_name,
+                sale_type_name=bucket.sale_type_name,
                 sale_count=bucket.sale_count,
-                total_weight_kg=bucket.total_weight_kg,
                 total_revenue=bucket.total_revenue,
                 average_sale_amount=round(float(bucket.total_revenue) / bucket.sale_count, 2),
-                average_price_per_kg=(
-                    round(float(bucket.total_revenue) / float(bucket.total_weight_kg), 2)
-                    if bucket.total_weight_kg > 0
+                total_live_weight_kg=bucket.total_live_weight_kg,
+                average_price_per_live_kg=(
+                    round(float(bucket.live_weight_revenue) / float(bucket.total_live_weight_kg), 2)
+                    if bucket.total_live_weight_kg > 0
+                    else None
+                ),
+                total_carcass_weight_kg=bucket.total_carcass_weight_kg,
+                average_price_per_carcass_kg=(
+                    round(float(bucket.carcass_weight_revenue) / float(bucket.total_carcass_weight_kg), 2)
+                    if bucket.total_carcass_weight_kg > 0
+                    else None
+                ),
+                average_dressing_percentage=(
+                    round(bucket.dressing_percentage_sum / bucket.dressing_percentage_count, 1)
+                    if bucket.dressing_percentage_count > 0
                     else None
                 ),
             )

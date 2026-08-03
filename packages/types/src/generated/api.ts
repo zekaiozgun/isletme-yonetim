@@ -3748,16 +3748,24 @@ export interface components {
         SalesReportRead: {
             /** Buyer Name */
             buyer_name: string;
+            /** Sale Type Name */
+            sale_type_name: string;
             /** Sale Count */
             sale_count: number;
-            /** Total Weight Kg */
-            total_weight_kg: string;
             /** Total Revenue */
             total_revenue: string;
             /** Average Sale Amount */
             average_sale_amount: number;
-            /** Average Price Per Kg */
-            average_price_per_kg?: number | null;
+            /** Total Live Weight Kg */
+            total_live_weight_kg: string;
+            /** Average Price Per Live Kg */
+            average_price_per_live_kg?: number | null;
+            /** Total Carcass Weight Kg */
+            total_carcass_weight_kg: string;
+            /** Average Price Per Carcass Kg */
+            average_price_per_carcass_kg?: number | null;
+            /** Average Dressing Percentage */
+            average_dressing_percentage?: number | null;
         };
         /** SemenBatchCreate */
         SemenBatchCreate: {

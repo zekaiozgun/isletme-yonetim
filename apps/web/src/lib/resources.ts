@@ -7,6 +7,20 @@ function formatDecimalColumn(value: unknown): string {
   return formatNumberTR(value);
 }
 
+/** Randıman (karkas/canlı ağırlık oranı, %) - sadece HER İKİ ağırlık da
+ * girilmişse hesaplanır (fiilen sadece kesim satışlarında olur), diğer
+ * satış tiplerinde/eksik veride "—" gösterir. Satır bazında; toplu (Satış
+ * Raporu'ndaki) ortalaması için bkz. apps/api reports/service.py
+ * list_sales_report. */
+function formatDressingPercentage(_value: unknown, row: ApiRecord): string {
+  const live = Number(row.sale_weight_kg);
+  const carcass = Number(row.carcass_weight_kg);
+  if (!row.sale_weight_kg || !row.carcass_weight_kg || Number.isNaN(live) || Number.isNaN(carcass) || live <= 0) {
+    return '—';
+  }
+  return `%${((carcass / live) * 100).toFixed(1)}`;
+}
+
 export type FieldType = 'text' | 'number' | 'decimal' | 'date' | 'select' | 'checkbox' | 'textarea' | 'password';
 
 /** Bir <select> alanını doldurmak için API'den çekilecek liste (lookup ya da başka bir kaynağın kayıtları). */
@@ -453,6 +467,7 @@ const mainResources: ResourceConfig[] = [
       { key: 'buyer_id', label: 'Alıcı', lookup: buyers },
       { key: 'sale_type_id', label: 'Tip', lookup: saleTypes },
       { key: 'total_amount', label: 'Tutar (TL)', format: formatCurrencyTRY },
+      { key: 'carcass_weight_kg', label: 'Randıman', format: formatDressingPercentage },
     ],
     fields: [
       { name: 'animal_id', label: 'Hayvan', type: 'select', options: animals, required: true },
