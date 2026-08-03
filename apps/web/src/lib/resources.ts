@@ -446,6 +446,7 @@ const mainResources: ResourceConfig[] = [
     group: 'Satış',
     listEndpoint: '/sales',
     createEndpoint: '/sales',
+    bulkEntryPath: '/sales/bulk',
     columns: [
       { key: 'animal_id', label: 'Hayvan', lookup: animals },
       { key: 'sale_date', label: 'Tarih', date: true },

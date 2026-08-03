@@ -281,6 +281,52 @@ export async function bulkCreatePenAssignments(
   return { success, failed };
 }
 
+export interface BulkSaleEntry {
+  animalId: string;
+  tagNumber: string;
+  saleWeightKg: number | null;
+  totalAmount: number;
+}
+
+export interface BulkSaleResult {
+  success: number;
+  failed: { tagNumber: string; error: string }[];
+}
+
+/** Toplu satış girişi: bulkCreateWeightRecords'la aynı desen (alıcı/tarih/
+ * satış tipi ortak) ama satır başına İKİ değer var (ağırlık + tutar) -
+ * aynı gün aynı alıcıya birden fazla hayvan satıldığında kullanılır (bkz.
+ * components/BulkSaleForm.tsx). Yeni backend endpoint'i yok, mevcut tekli
+ * POST /sales tekrar kullanılır. */
+export async function bulkCreateSales(
+  saleDate: string,
+  buyerId: number,
+  saleTypeId: number,
+  entries: BulkSaleEntry[]
+): Promise<BulkSaleResult> {
+  const failed: { tagNumber: string; error: string }[] = [];
+  let success = 0;
+
+  for (const entry of entries) {
+    const result = await apiPost('/sales', {
+      animal_id: entry.animalId,
+      sale_date: saleDate,
+      buyer_id: buyerId,
+      sale_type_id: saleTypeId,
+      sale_weight_kg: entry.saleWeightKg,
+      total_amount: entry.totalAmount,
+    });
+    if (result.error !== undefined) {
+      failed.push({ tagNumber: entry.tagNumber, error: result.error });
+    } else {
+      success += 1;
+    }
+  }
+
+  revalidatePath('/sales');
+  return { success, failed };
+}
+
 /** "Hatalı Giriş İptali": kilitli olsa dahi hem Çalışan hem Yönetici
  * kullanabilir - hayvanı silmek yerine statüsünü değiştirir (bkz.
  * app/modules/animal service.cancel_animal_entry, PUT/DELETE ile ilgisizdir). */
