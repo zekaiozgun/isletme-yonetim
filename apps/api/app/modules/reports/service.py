@@ -981,6 +981,7 @@ def list_weight_gains(db: Session, start_date: date, end_date: date) -> list[Wei
 class _SalesBucket:
     buyer_name: str
     sale_type_name: str
+    sale_type_code: str
     sale_count: int = 0
     total_revenue: Decimal = field(default_factory=lambda: Decimal("0"))
     total_live_weight_kg: Decimal = field(default_factory=lambda: Decimal("0"))
@@ -1018,6 +1019,18 @@ def list_sales_report(db: Session, start_date: date, end_date: date) -> list[Sal
     Randiman (karkas/canli agirlik orani), sadece HER IKI agirligin da
     girildigi satislardan (fiilen sadece kesim satislarinda olur) ortalanir -
     surunun besi verimliligini gostermesi icin.
+
+    3. Kg-basina fiyat/randiman metrikleri, satis tipine gore ANLAMLI OLUP
+       OLMADIGINA bakilarak bastirilir (deger girilmis olsa bile None
+       donulur) - kullanicinin bilgi amacli girdigi bir agirlik, yanlis
+       bir "bu tip agirlik bazli fiyatlanir" izlenimi yaratmasin diye:
+       - CANLI: sadece canli kg fiyati anlamli (karkas/randiman bastirilir).
+       - KESIM: hepsi anlamli, bastirma yok.
+       - DAMIZLIK: hicbiri anlamli degil (soy/genetik degerine gore satilir,
+         kg fiyati kavrami yok) - hepsi bastirilir.
+       Ham agirlik TOPLAMLARI (total_live_weight_kg/total_carcass_weight_kg)
+       bu kuraldan ETKILENMEZ - onlar sadece bilgi amaclidir, fiyatlama
+       iddiasi tasimaz.
     """
     stmt = (
         select(Sale)
@@ -1029,7 +1042,11 @@ def list_sales_report(db: Session, start_date: date, end_date: date) -> list[Sal
         key = (sale.buyer_id, sale.sale_type_id)
         bucket = buckets.get(key)
         if bucket is None:
-            bucket = _SalesBucket(buyer_name=sale.buyer.name, sale_type_name=sale.sale_type.name)
+            bucket = _SalesBucket(
+                buyer_name=sale.buyer.name,
+                sale_type_name=sale.sale_type.name,
+                sale_type_code=sale.sale_type.code,
+            )
             buckets[key] = bucket
         bucket.sale_count += 1
         bucket.total_revenue += sale.total_amount
@@ -1045,6 +1062,12 @@ def list_sales_report(db: Session, start_date: date, end_date: date) -> list[Sal
 
     rows: list[SalesReportRead] = []
     for bucket in buckets.values():
+        # bkz. fonksiyon dokumantasyonundaki 3. madde - satis tipine gore
+        # hangi fiyat/randiman metriginin anlamli oldugu.
+        live_price_applicable = bucket.sale_type_code in ("CANLI", "KESIM")
+        carcass_price_applicable = bucket.sale_type_code == "KESIM"
+        dressing_applicable = bucket.sale_type_code == "KESIM"
+
         rows.append(
             SalesReportRead(
                 buyer_name=bucket.buyer_name,
@@ -1055,18 +1078,18 @@ def list_sales_report(db: Session, start_date: date, end_date: date) -> list[Sal
                 total_live_weight_kg=bucket.total_live_weight_kg,
                 average_price_per_live_kg=(
                     round(float(bucket.live_weight_revenue) / float(bucket.total_live_weight_kg), 2)
-                    if bucket.total_live_weight_kg > 0
+                    if live_price_applicable and bucket.total_live_weight_kg > 0
                     else None
                 ),
                 total_carcass_weight_kg=bucket.total_carcass_weight_kg,
                 average_price_per_carcass_kg=(
                     round(float(bucket.carcass_weight_revenue) / float(bucket.total_carcass_weight_kg), 2)
-                    if bucket.total_carcass_weight_kg > 0
+                    if carcass_price_applicable and bucket.total_carcass_weight_kg > 0
                     else None
                 ),
                 average_dressing_percentage=(
                     round(bucket.dressing_percentage_sum / bucket.dressing_percentage_count, 1)
-                    if bucket.dressing_percentage_count > 0
+                    if dressing_applicable and bucket.dressing_percentage_count > 0
                     else None
                 ),
             )
