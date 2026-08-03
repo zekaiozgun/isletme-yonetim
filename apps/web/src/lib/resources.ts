@@ -312,6 +312,7 @@ const mainResources: ResourceConfig[] = [
     group: 'Üreme',
     listEndpoint: '/breeding-events/pregnancy-checks',
     createEndpoint: '/breeding-events/pregnancy-checks',
+    bulkEntryPath: '/pregnancy-checks/bulk',
     columns: [
       { key: 'breeding_event_id', label: 'Aşım Kaydı', lookup: breedingEvents },
       { key: 'check_date', label: 'Kontrol Tarihi', date: true },

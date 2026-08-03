@@ -145,6 +145,47 @@ export async function bulkCreateWeightRecords(
   return { success, failed };
 }
 
+export interface BulkPregnancyCheckEntry {
+  breedingEventId: number;
+  tagNumber: string;
+  resultId: number;
+}
+
+export interface BulkPregnancyCheckResult {
+  success: number;
+  failed: { tagNumber: string; error: string }[];
+}
+
+/** Toplu gebelik kontrolu girisi: bulkCreateWeightRecords ile ayni desen -
+ * her satir mevcut tekli POST /breeding-events/pregnancy-checks
+ * endpoint'ine ayrı ayrı gonderilir, yeni bir backend endpoint'i yok (bkz.
+ * components/BulkPregnancyCheckForm.tsx). */
+export async function bulkCreatePregnancyChecks(
+  checkDate: string,
+  methodId: number,
+  entries: BulkPregnancyCheckEntry[]
+): Promise<BulkPregnancyCheckResult> {
+  const failed: { tagNumber: string; error: string }[] = [];
+  let success = 0;
+
+  for (const entry of entries) {
+    const result = await apiPost('/breeding-events/pregnancy-checks', {
+      breeding_event_id: entry.breedingEventId,
+      check_date: checkDate,
+      method_id: methodId,
+      result_id: entry.resultId,
+    });
+    if (result.error !== undefined) {
+      failed.push({ tagNumber: entry.tagNumber, error: result.error });
+    } else {
+      success += 1;
+    }
+  }
+
+  revalidatePath('/pregnancy-checks');
+  return { success, failed };
+}
+
 /** "Hatalı Giriş İptali": kilitli olsa dahi hem Çalışan hem Yönetici
  * kullanabilir - hayvanı silmek yerine statüsünü değiştirir (bkz.
  * app/modules/animal service.cancel_animal_entry, PUT/DELETE ile ilgisizdir). */
