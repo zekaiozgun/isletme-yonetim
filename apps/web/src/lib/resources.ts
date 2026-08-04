@@ -101,6 +101,8 @@ const feedTypes: OptionSource = { endpoint: '/feed/types', label: label('name') 
 const feedUnits: OptionSource = { endpoint: '/feed/units', label: label('name') };
 const saleTypes: OptionSource = { endpoint: '/sales/types', label: label('name') };
 const disposalMethods: OptionSource = { endpoint: '/deaths/disposal-methods', label: label('name') };
+const evaluationReasons: OptionSource = { endpoint: '/evaluations/reasons', label: label('name') };
+const evaluationPriorities: OptionSource = { endpoint: '/evaluations/priorities', label: label('name') };
 
 // --- Başka kaynaklara referans (kayıt seçici) ---
 const animals: OptionSource = {
@@ -506,6 +508,43 @@ const mainResources: ResourceConfig[] = [
       { name: 'note', label: 'Not', type: 'textarea' },
     ],
   },
+  {
+    slug: 'animal-evaluations',
+    title: 'Hayvan Değerlendirmeleri',
+    singularTitle: 'Değerlendirme Kaydı',
+    group: 'Değerlendirme',
+    listEndpoint: '/evaluations',
+    createEndpoint: '/evaluations',
+    columns: [
+      { key: 'animal_id', label: 'Hayvan', lookup: animals },
+      { key: 'evaluation_date', label: 'Tarih', date: true },
+      { key: 'reason_id', label: 'Neden', lookup: evaluationReasons },
+      { key: 'priority_id', label: 'Öncelik', lookup: evaluationPriorities },
+    ],
+    fields: [
+      { name: 'animal_id', label: 'Hayvan', type: 'select', options: animals, required: true },
+      { name: 'evaluation_date', label: 'Değerlendirme Tarihi', type: 'date', required: true },
+      {
+        name: 'reason_id',
+        label: 'Neden (Sürüden Çıkarma ya da Damızlık Önerisi nedenleri tek listede)',
+        type: 'select',
+        options: evaluationReasons,
+        required: true,
+      },
+      {
+        name: 'priority_id',
+        label: 'Öncelik — sadece Sürüden Çıkarma nedenlerinde geçerli',
+        type: 'select',
+        options: evaluationPriorities,
+      },
+      { name: 'note', label: 'Not', type: 'textarea' },
+    ],
+    relatedReports: [
+      { slug: 'animal-evaluations', title: 'Hayvan Değerlendirmeleri Raporu' },
+      { slug: 'herd-exits', title: 'Sürüden Çıkış Raporu' },
+      { slug: 'breeding-recommendations', title: 'Damızlık Önerileri' },
+    ],
+  },
 ];
 
 // --- Master Data (lookup) tablolarinin tam CRUD kaynaklari ---
@@ -599,6 +638,7 @@ const quickAccessDefs: QuickAccessDef[] = [
   { href: '/pen-assignments', label: 'Padok Atamaları', resourceSlug: 'pen-assignments' },
   { href: '/pen-rations', label: 'Padok Rasyonları' },
   { href: '/health-events', label: 'Sağlık Olayları', resourceSlug: 'health-events' },
+  { href: '/animal-evaluations', label: 'Hayvan Değerlendirmeleri', resourceSlug: 'animal-evaluations' },
   { href: '/reports', label: 'Raporlar' },
 ];
 

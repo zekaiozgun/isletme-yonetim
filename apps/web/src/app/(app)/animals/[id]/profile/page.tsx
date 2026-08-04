@@ -45,6 +45,9 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
     allSires,
     damBreedingEvents,
     serviceMethods,
+    evaluations,
+    evaluationReasons,
+    evaluationPriorities,
   ] = await Promise.all([
     apiGetSafe<ApiRecord[]>('/animals/genders', []),
     apiGetSafe<ApiRecord[]>('/animals/breeds', []),
@@ -62,6 +65,9 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
     apiGetSafe<ApiRecord[]>('/genetic-resource/sires', []),
     apiGetSafe<ApiRecord[]>(`/breeding-events?dam_id=${id}`, []),
     apiGetSafe<ApiRecord[]>('/breeding-events/service-methods', []),
+    apiGetSafe<ApiRecord[]>(`/evaluations/animals/${id}`, []),
+    apiGetSafe<ApiRecord[]>('/evaluations/reasons', []),
+    apiGetSafe<ApiRecord[]>('/evaluations/priorities', []),
   ]);
 
   // Anne/baba bilgisi - ayrı, koşullu fetch'ler (çoğu hayvanda ikisi de
@@ -264,6 +270,38 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
                           ? `${String(h.dosage_amount)} ${findName(dosageUnits, h.dosage_unit_id) ?? ''}`
                           : '—'}
                       </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Section>
+
+      <Section title="Değerlendirme Geçmişi">
+        {evaluations.length === 0 ? (
+          <p className="text-sm text-slate-500">Değerlendirme kaydı yok.</p>
+        ) : (
+          <div className="overflow-x-auto rounded border border-slate-200">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium text-slate-600">Tarih</th>
+                  <th className="px-3 py-2 text-left font-medium text-slate-600">Neden</th>
+                  <th className="px-3 py-2 text-left font-medium text-slate-600">Öncelik</th>
+                  <th className="px-3 py-2 text-left font-medium text-slate-600">Not</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {evaluations
+                  .slice()
+                  .sort((a, b) => String(b.evaluation_date).localeCompare(String(a.evaluation_date)))
+                  .map((e) => (
+                    <tr key={String(e.id)}>
+                      <td className="whitespace-nowrap px-3 py-2 text-slate-700">{formatDateDMY(e.evaluation_date)}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-slate-700">{findName(evaluationReasons, e.reason_id) ?? '—'}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-slate-700">{findName(evaluationPriorities, e.priority_id) ?? '—'}</td>
+                      <td className="px-3 py-2 text-slate-700">{e.note ? String(e.note) : '—'}</td>
                     </tr>
                   ))}
               </tbody>

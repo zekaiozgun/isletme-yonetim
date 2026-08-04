@@ -6,13 +6,14 @@ import { outcomeReports } from './outcomes';
 import { herdReports } from './herd';
 import { pensFeedReports } from './pens-feed';
 import { financialReports } from './financial';
+import { evaluationReports } from './evaluation';
 
 export type { ReportColumn, ReportConfig } from './types';
 export { formatMonths, formatSireIdentity, formatSourceCode } from './formatters';
 
 /** Tüm raporların tek listesi - mantıksal gruplara bölünmüş dosyalardan
- * (breeding/health/growth/outcomes/herd/pens-feed/financial) birleştirilir.
- * Sıra, orijinal (bölünmeden önceki) sırayla aynıdır. */
+ * (breeding/health/growth/outcomes/herd/pens-feed/financial/evaluation)
+ * birleştirilir. Sıra, orijinal (bölünmeden önceki) sırayla aynıdır. */
 export const reports: ReportConfig[] = [
   ...breedingReports,
   ...healthReports,
@@ -21,6 +22,7 @@ export const reports: ReportConfig[] = [
   ...herdReports,
   ...pensFeedReports,
   ...financialReports,
+  ...evaluationReports,
 ];
 
 export function getReport(slug: string): ReportConfig | undefined {

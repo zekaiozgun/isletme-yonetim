@@ -10,11 +10,13 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.modules.reports import service
 from app.modules.reports.schemas import (
+    AnimalEvaluationReportRead,
     AnimalMarketValueRead,
     AnimalProfitabilityRead,
     BredAnimalRead,
     BreedingCandidateRead,
     BreedingPerformanceRead,
+    BreedingRecommendationRead,
     CalvingIntervalRead,
     CalvingRead,
     DashboardSummaryRead,
@@ -23,6 +25,7 @@ from app.modules.reports.schemas import (
     FeedStockStatusRead,
     HealthEventReportRead,
     HerdCostSummaryRead,
+    HerdExitRead,
     HerdFlowReportRead,
     HerdInventoryRead,
     HerdStatusSummaryRead,
@@ -238,3 +241,26 @@ def herd_animal_market_values(
     db: Session = Depends(get_db),
 ) -> list[AnimalMarketValueRead]:
     return service.list_herd_animal_market_values(db, as_of_date)
+
+
+@router.get("/animal-evaluations", response_model=list[AnimalEvaluationReportRead])
+def animal_evaluations_report(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    db: Session = Depends(get_db),
+) -> list[AnimalEvaluationReportRead]:
+    return service.list_animal_evaluations_report(db, start_date, end_date)
+
+
+@router.get("/breeding-recommendations", response_model=list[BreedingRecommendationRead])
+def breeding_recommendations(db: Session = Depends(get_db)) -> list[BreedingRecommendationRead]:
+    return service.list_breeding_recommendations(db)
+
+
+@router.get("/herd-exits", response_model=list[HerdExitRead])
+def herd_exits(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    db: Session = Depends(get_db),
+) -> list[HerdExitRead]:
+    return service.list_herd_exits(db, start_date, end_date)

@@ -13,6 +13,46 @@ from decimal import Decimal
 from pydantic import BaseModel
 
 
+class AnimalEvaluationReportRead(BaseModel):
+    id: int
+    animal_id: uuid.UUID
+    tag_number: str
+    name: str | None = None
+    evaluation_date: date
+    direction_name: str
+    reason_name: str
+    priority_name: str | None = None
+    note: str | None = None
+
+
+class BreedingRecommendationRead(BaseModel):
+    id: int
+    animal_id: uuid.UUID
+    tag_number: str
+    name: str | None = None
+    evaluation_date: date
+    reason_name: str
+    note: str | None = None
+
+
+class HerdExitRead(BaseModel):
+    animal_id: uuid.UUID
+    tag_number: str
+    name: str | None = None
+    exit_type: str
+    exit_date: date
+    exit_age_months: int | None = None
+    herd_tenure_days: int | None = None
+    # Bu hayvana ait, cikistan ONCE girilmis TUM "Suruden Cikarma" yonlu
+    # degerlendirmeler - tarih sirasiyla tek metinde birlestirilir (bkz.
+    # list_death_losses'taki reason_breakdown deseni).
+    culling_evaluation_reasons: str | None = None
+    last_evaluation_date: date | None = None
+    # Son degerlendirme ile fiili cikis arasindaki gun farki - "karar-
+    # uygulama gecikmesi": bekleme surecinin ne kadar uzadigini gosterir.
+    decision_to_exit_days: int | None = None
+
+
 class BreedingCandidateRead(BaseModel):
     animal_id: uuid.UUID
     tag_number: str

@@ -10,6 +10,7 @@ from app.core.database import SessionLocal
 from app.modules.animal import seed as animal_seed
 from app.modules.breeding import seed as breeding_seed
 from app.modules.death import seed as death_seed
+from app.modules.evaluation import seed as evaluation_seed
 from app.modules.feed import seed as feed_seed
 from app.modules.health import seed as health_seed
 from app.modules.pen import seed as pen_seed
@@ -21,6 +22,7 @@ SEED_MODULES = [
     animal_seed,
     breeding_seed,
     death_seed,
+    evaluation_seed,
     feed_seed,
     health_seed,
     sale_seed,

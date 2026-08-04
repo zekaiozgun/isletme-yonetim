@@ -14,6 +14,7 @@ from app.modules.auth.router import router as auth_router
 from app.modules.auth.security import decode_access_token
 from app.modules.breeding.router import router as breeding_router
 from app.modules.death.router import router as death_router
+from app.modules.evaluation.router import router as evaluation_router
 from app.modules.feed.router import router as feed_router
 from app.modules.genetic_resource.router import router as genetic_resource_router
 from app.modules.health.router import router as health_router
@@ -80,6 +81,7 @@ for router in (
     feed_router,
     sale_router,
     death_router,
+    evaluation_router,
     reports_router,
     valuation_router,
     pdf_export_router,

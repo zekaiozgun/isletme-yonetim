@@ -33,6 +33,8 @@ from app.modules.breeding.lookups import PregnancyResult
 from app.modules.breeding.models import BreedingEvent, PregnancyCheck
 from app.modules.genetic_resource.models import SemenBatch, Sire
 from app.modules.death.models import Death
+from app.modules.evaluation.lookups import EvaluationDirection
+from app.modules.evaluation.models import AnimalEvaluation, EvaluationReason
 from app.modules.feed.models import FeedItem, FeedPurchase, PenRation, RationItem
 from app.modules.fx import service as fx_service
 from app.modules.health.models import HealthEvent
@@ -41,11 +43,13 @@ from app.modules.valuation.models import GrowthValuationCheckpoint
 from app.modules.weight.models import WeightRecord
 from app.modules.pen.models import Pen, PenAssignment
 from app.modules.reports.schemas import (
+    AnimalEvaluationReportRead,
     AnimalMarketValueRead,
     AnimalProfitabilityRead,
     BredAnimalRead,
     BreedingCandidateRead,
     BreedingPerformanceRead,
+    BreedingRecommendationRead,
     CalvingIntervalRead,
     CalvingRead,
     DashboardSummaryRead,
@@ -54,6 +58,7 @@ from app.modules.reports.schemas import (
     FeedStockStatusRead,
     HealthEventReportRead,
     HerdCostSummaryRead,
+    HerdExitRead,
     HerdFlowReportRead,
     HerdInventoryRead,
     HerdStatusSummaryRead,
@@ -77,6 +82,8 @@ DIFFICULT_BIRTH_TYPE_CODE = "GUC"
 ILLNESS_EVENT_TYPE_CODE = "HASTALIK_BILDIRIMI"
 FEED_TON_UNIT_CODE = "TON"
 FEED_GRAM_UNIT_CODE = "GR"
+CULLING_DIRECTION_CODE = "SURUDEN_CIKARMA"
+BREEDING_DIRECTION_CODE = "DAMIZLIK_ONERISI"
 
 
 def _to_kg(quantity: Decimal, unit_code: str) -> float:
@@ -2333,4 +2340,139 @@ def list_herd_animal_market_values(db: Session, as_of_date: date) -> list[Animal
             )
         )
     rows.sort(key=lambda r: (r.age_months is None, -(r.age_months or 0)))
+    return rows
+
+
+def list_animal_evaluations_report(db: Session, start_date: date, end_date: date) -> list[AnimalEvaluationReportRead]:
+    """Aralikta girilmis TUM hayvan degerlendirmelerini (Suruden Cikarma +
+    Damizlik Onerisi, tek sürü degerlendirmesi felsefesinin iki kutbu)
+    hayvan bazinda listeler."""
+    stmt = (
+        select(AnimalEvaluation)
+        .options(
+            joinedload(AnimalEvaluation.animal),
+            joinedload(AnimalEvaluation.reason).joinedload(EvaluationReason.direction),
+            joinedload(AnimalEvaluation.priority),
+        )
+        .where(AnimalEvaluation.evaluation_date >= start_date, AnimalEvaluation.evaluation_date <= end_date)
+        .order_by(AnimalEvaluation.evaluation_date.desc())
+    )
+    rows: list[AnimalEvaluationReportRead] = []
+    for ev in db.scalars(stmt).all():
+        rows.append(
+            AnimalEvaluationReportRead(
+                id=ev.id,
+                animal_id=ev.animal_id,
+                tag_number=ev.animal.tag_number,
+                name=ev.animal.name,
+                evaluation_date=ev.evaluation_date,
+                direction_name=ev.reason.direction.name,
+                reason_name=ev.reason.name,
+                priority_name=ev.priority.name if ev.priority else None,
+                note=ev.note,
+            )
+        )
+    return rows
+
+
+def list_breeding_recommendations(db: Session) -> list[BreedingRecommendationRead]:
+    """Halen AKTIF olan hayvanlardan 'Damizlik Onerisi' yonunde
+    isaretlenmis degerlendirmeleri listeler - Tohumlama Adaylari raporunun
+    aksine otomatik/kural bazli degil, insan degerlendirmesine dayali bir
+    izleme listesidir."""
+    active_id = get_lookup_by_code(db, AnimalStatus, ACTIVE_STATUS_CODE).id
+    breeding_direction_id = get_lookup_by_code(db, EvaluationDirection, BREEDING_DIRECTION_CODE).id
+    active_animal_ids = set(db.scalars(select(Animal.id).where(Animal.status_id == active_id)).all())
+    breeding_reason_ids = set(
+        db.scalars(select(EvaluationReason.id).where(EvaluationReason.direction_id == breeding_direction_id)).all()
+    )
+    stmt = (
+        select(AnimalEvaluation)
+        .options(joinedload(AnimalEvaluation.animal), joinedload(AnimalEvaluation.reason))
+        .where(
+            AnimalEvaluation.reason_id.in_(breeding_reason_ids),
+            AnimalEvaluation.animal_id.in_(active_animal_ids),
+        )
+        .order_by(AnimalEvaluation.evaluation_date.desc())
+    )
+    rows: list[BreedingRecommendationRead] = []
+    for ev in db.scalars(stmt).all():
+        rows.append(
+            BreedingRecommendationRead(
+                id=ev.id,
+                animal_id=ev.animal_id,
+                tag_number=ev.animal.tag_number,
+                name=ev.animal.name,
+                evaluation_date=ev.evaluation_date,
+                reason_name=ev.reason.name,
+                note=ev.note,
+            )
+        )
+    return rows
+
+
+def list_herd_exits(db: Session, start_date: date, end_date: date) -> list[HerdExitRead]:
+    """Aralikta gerceklesen SATIS ve OLUM cikislarini hayvan bazinda
+    birlestirir; her satirda surude kalma suresini (dogum/giris -> cikis)
+    ve varsa o hayvana ait, cikistan onceki TUM 'Suruden Cikarma' yonlu
+    degerlendirmeleri (tarih sirasiyla tek metinde) gosterir - subjektif
+    degerlendirme notunu fiili cikis olayiyla yan yana koyar."""
+    culling_direction_id = get_lookup_by_code(db, EvaluationDirection, CULLING_DIRECTION_CODE).id
+    culling_reason_ids = set(
+        db.scalars(select(EvaluationReason.id).where(EvaluationReason.direction_id == culling_direction_id)).all()
+    )
+
+    sales = db.scalars(
+        select(Sale)
+        .options(joinedload(Sale.animal))
+        .where(Sale.sale_date >= start_date, Sale.sale_date <= end_date)
+    ).all()
+    deaths = db.scalars(
+        select(Death)
+        .options(joinedload(Death.animal))
+        .where(Death.death_date >= start_date, Death.death_date <= end_date)
+    ).all()
+
+    exits: list[tuple[Animal, str, date]] = [(s.animal, "Satış", s.sale_date) for s in sales if s.animal is not None]
+    exits += [(d.animal, "Ölüm", d.death_date) for d in deaths if d.animal is not None]
+
+    rows: list[HerdExitRead] = []
+    for animal, exit_type, exit_date in exits:
+        tenure_start = animal.birth_date or animal.entry_date
+        tenure_days = (exit_date - tenure_start).days if tenure_start else None
+        exit_age_months = full_months_between(animal.birth_date, exit_date) if animal.birth_date else None
+
+        culling_evals = db.scalars(
+            select(AnimalEvaluation)
+            .options(joinedload(AnimalEvaluation.reason))
+            .where(
+                AnimalEvaluation.animal_id == animal.id,
+                AnimalEvaluation.reason_id.in_(culling_reason_ids),
+                AnimalEvaluation.evaluation_date <= exit_date,
+            )
+            .order_by(AnimalEvaluation.evaluation_date)
+        ).all()
+        reasons_text = (
+            ", ".join(f"{ev.reason.name} ({ev.evaluation_date.strftime('%d.%m.%Y')})" for ev in culling_evals)
+            if culling_evals
+            else None
+        )
+        last_eval_date = culling_evals[-1].evaluation_date if culling_evals else None
+        decision_lag = (exit_date - last_eval_date).days if last_eval_date else None
+
+        rows.append(
+            HerdExitRead(
+                animal_id=animal.id,
+                tag_number=animal.tag_number,
+                name=animal.name,
+                exit_type=exit_type,
+                exit_date=exit_date,
+                exit_age_months=exit_age_months,
+                herd_tenure_days=tenure_days,
+                culling_evaluation_reasons=reasons_text,
+                last_evaluation_date=last_eval_date,
+                decision_to_exit_days=decision_lag,
+            )
+        )
+    rows.sort(key=lambda r: r.exit_date, reverse=True)
     return rows
