@@ -581,9 +581,14 @@ def list_offspring_by_sire(db: Session, q: str | None = None) -> list[OffspringB
     olarak dondurulur - gosterim onceligi frontend'de belirlenir (bkz.
     OffspringBySireRead). Boga adina, sonra dogum tarihine gore siralanir.
 
-    q verilirse (boga adi / boga kupe no / boga kayit no / yavru kupe no
-    icinde, buyuk-kucuk harf duyarsiz) sunucu tarafinda filtrelenir - bkz.
-    list_offspring_by_mother docstring'i (Faz 5: sunucu tarafli arama)."""
+    q verilirse SADECE boga kimligi (boga adi / boga kupe no / boga kayit
+    no) icinde, buyuk-kucuk harf duyarsiz, sunucu tarafinda filtrelenir
+    (Faz 5: sunucu tarafli arama) - yavrunun kendi kupe no'su kasitli
+    olarak DAHIL DEGILDIR: bu rapor "Baba Bazinda" oldugu icin, yavru kupe
+    no'suna gore eslesme, babasi tamamen farkli olan ama kupe/adi arama
+    terimine denk gelen alakasiz bir yavruyu sonuclara karistirirdi (bkz.
+    list_offspring_by_mother docstring'i - o raporda "Anne Bazinda" oldugu
+    icin yavru kupe no'su/adi orada anlamli, burada degil)."""
     sire_animal_alias = aliased(Animal)
     stmt = (
         select(Animal)
@@ -604,7 +609,6 @@ def list_offspring_by_sire(db: Session, q: str | None = None) -> list[OffspringB
                 Sire.name.ilike(needle),
                 Sire.registry_no.ilike(needle),
                 sire_animal_alias.tag_number.ilike(needle),
-                Animal.tag_number.ilike(needle),
             )
         )
     stmt = stmt.order_by(Sire.name, Animal.birth_date)
