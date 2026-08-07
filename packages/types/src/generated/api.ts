@@ -1784,6 +1784,171 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/evaluations/reasons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Evaluation Reasons */
+        get: operations["list_evaluation_reasons_evaluations_reasons_get"];
+        put?: never;
+        /** Create Evaluation Reason */
+        post: operations["create_evaluation_reason_evaluations_reasons_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluations/reasons/{reason_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Evaluation Reason */
+        get: operations["get_evaluation_reason_evaluations_reasons__reason_id__get"];
+        /** Update Evaluation Reason */
+        put: operations["update_evaluation_reason_evaluations_reasons__reason_id__put"];
+        post?: never;
+        /** Delete Evaluation Reason */
+        delete: operations["delete_evaluation_reason_evaluations_reasons__reason_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluations/directions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Lookup */
+        get: operations["list_lookup_evaluations_directions_get"];
+        put?: never;
+        /** Create Lookup */
+        post: operations["create_lookup_evaluations_directions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluations/directions/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Lookup */
+        get: operations["get_lookup_evaluations_directions__item_id__get"];
+        /** Update Lookup */
+        put: operations["update_lookup_evaluations_directions__item_id__put"];
+        post?: never;
+        /** Delete Lookup */
+        delete: operations["delete_lookup_evaluations_directions__item_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluations/priorities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Lookup */
+        get: operations["list_lookup_evaluations_priorities_get"];
+        put?: never;
+        /** Create Lookup */
+        post: operations["create_lookup_evaluations_priorities_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluations/priorities/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Lookup */
+        get: operations["get_lookup_evaluations_priorities__item_id__get"];
+        /** Update Lookup */
+        put: operations["update_lookup_evaluations_priorities__item_id__put"];
+        post?: never;
+        /** Delete Lookup */
+        delete: operations["delete_lookup_evaluations_priorities__item_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List All Animal Evaluations */
+        get: operations["list_all_animal_evaluations_evaluations_get"];
+        put?: never;
+        /** Create Animal Evaluation */
+        post: operations["create_animal_evaluation_evaluations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluations/animals/{animal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Animal Evaluations */
+        get: operations["list_animal_evaluations_evaluations_animals__animal_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluations/{evaluation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Animal Evaluation */
+        get: operations["get_animal_evaluation_evaluations__evaluation_id__get"];
+        /** Update Animal Evaluation */
+        put: operations["update_animal_evaluation_evaluations__evaluation_id__put"];
+        post?: never;
+        /** Delete Animal Evaluation */
+        delete: operations["delete_animal_evaluation_evaluations__evaluation_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reports/breeding-candidates": {
         parameters: {
             query?: never;
@@ -2277,6 +2442,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports/animal-evaluations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Animal Evaluations Report */
+        get: operations["animal_evaluations_report_reports_animal_evaluations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/breeding-recommendations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Breeding Recommendations */
+        get: operations["breeding_recommendations_reports_breeding_recommendations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/herd-exits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Herd Exits */
+        get: operations["herd_exits_reports_herd_exits_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/growth-valuation-checkpoints": {
         parameters: {
             query?: never;
@@ -2381,6 +2597,83 @@ export interface components {
             entry_source_id: number;
             /** Entry Value */
             entry_value?: number | string | null;
+            /** Note */
+            note?: string | null;
+        };
+        /** AnimalEvaluationCreate */
+        AnimalEvaluationCreate: {
+            /**
+             * Animal Id
+             * Format: uuid
+             */
+            animal_id: string;
+            /**
+             * Evaluation Date
+             * Format: date
+             */
+            evaluation_date: string;
+            /** Reason Id */
+            reason_id: number;
+            /** Priority Id */
+            priority_id?: number | null;
+            /** Note */
+            note?: string | null;
+        };
+        /** AnimalEvaluationRead */
+        AnimalEvaluationRead: {
+            /**
+             * Animal Id
+             * Format: uuid
+             */
+            animal_id: string;
+            /**
+             * Evaluation Date
+             * Format: date
+             */
+            evaluation_date: string;
+            /** Reason Id */
+            reason_id: number;
+            /** Priority Id */
+            priority_id?: number | null;
+            /** Note */
+            note?: string | null;
+            /** Id */
+            id: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** AnimalEvaluationReportRead */
+        AnimalEvaluationReportRead: {
+            /** Id */
+            id: number;
+            /**
+             * Animal Id
+             * Format: uuid
+             */
+            animal_id: string;
+            /** Tag Number */
+            tag_number: string;
+            /** Name */
+            name?: string | null;
+            /**
+             * Evaluation Date
+             * Format: date
+             */
+            evaluation_date: string;
+            /** Direction Name */
+            direction_name: string;
+            /** Reason Name */
+            reason_name: string;
+            /** Priority Name */
+            priority_name?: string | null;
             /** Note */
             note?: string | null;
         };
@@ -2548,8 +2841,8 @@ export interface components {
              * Format: date
              */
             service_date: string;
-            /** Service Method Name */
-            service_method_name: string;
+            /** Sire Label */
+            sire_label: string;
             /** Days Since Service */
             days_since_service: number;
             /** Check Status */
@@ -2690,6 +2983,29 @@ export interface components {
             pending_count: number;
             /** Pregnancy Rate */
             pregnancy_rate?: number | null;
+        };
+        /** BreedingRecommendationRead */
+        BreedingRecommendationRead: {
+            /** Id */
+            id: number;
+            /**
+             * Animal Id
+             * Format: uuid
+             */
+            animal_id: string;
+            /** Tag Number */
+            tag_number: string;
+            /** Name */
+            name?: string | null;
+            /**
+             * Evaluation Date
+             * Format: date
+             */
+            evaluation_date: string;
+            /** Reason Name */
+            reason_name: string;
+            /** Note */
+            note?: string | null;
         };
         /** BuyerCreate */
         BuyerCreate: {
@@ -2898,6 +3214,36 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** EvaluationReasonCreate */
+        EvaluationReasonCreate: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Direction Id */
+            direction_id: number;
+            /**
+             * Is Active
+             * @default true
+             */
+            is_active: boolean;
+        };
+        /** EvaluationReasonRead */
+        EvaluationReasonRead: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Direction Id */
+            direction_id: number;
+            /**
+             * Is Active
+             * @default true
+             */
+            is_active: boolean;
+            /** Id */
+            id: number;
         };
         /** FeedConsumptionRead */
         FeedConsumptionRead: {
@@ -3166,6 +3512,35 @@ export interface components {
             amount_try: string;
             /** Amount Usd */
             amount_usd: string;
+        };
+        /** HerdExitRead */
+        HerdExitRead: {
+            /**
+             * Animal Id
+             * Format: uuid
+             */
+            animal_id: string;
+            /** Tag Number */
+            tag_number: string;
+            /** Name */
+            name?: string | null;
+            /** Exit Type */
+            exit_type: string;
+            /**
+             * Exit Date
+             * Format: date
+             */
+            exit_date: string;
+            /** Exit Age Months */
+            exit_age_months?: number | null;
+            /** Herd Tenure Days */
+            herd_tenure_days?: number | null;
+            /** Culling Evaluation Reasons */
+            culling_evaluation_reasons?: string | null;
+            /** Last Evaluation Date */
+            last_evaluation_date?: string | null;
+            /** Decision To Exit Days */
+            decision_to_exit_days?: number | null;
         };
         /** HerdFlowReportRead */
         HerdFlowReportRead: {
@@ -10833,6 +11208,673 @@ export interface operations {
             };
         };
     };
+    list_evaluation_reasons_evaluations_reasons_get: {
+        parameters: {
+            query?: {
+                direction_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationReasonRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_evaluation_reason_evaluations_reasons_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvaluationReasonCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationReasonRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_evaluation_reason_evaluations_reasons__reason_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reason_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationReasonRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_evaluation_reason_evaluations_reasons__reason_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reason_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvaluationReasonCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationReasonRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_evaluation_reason_evaluations_reasons__reason_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reason_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_lookup_evaluations_directions_get: {
+        parameters: {
+            query?: {
+                include_inactive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LookupRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_lookup_evaluations_directions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LookupCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LookupRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_lookup_evaluations_directions__item_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LookupRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_lookup_evaluations_directions__item_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LookupCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LookupRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_lookup_evaluations_directions__item_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_lookup_evaluations_priorities_get: {
+        parameters: {
+            query?: {
+                include_inactive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LookupRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_lookup_evaluations_priorities_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LookupCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LookupRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_lookup_evaluations_priorities__item_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LookupRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_lookup_evaluations_priorities__item_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LookupCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LookupRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_lookup_evaluations_priorities__item_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_all_animal_evaluations_evaluations_get: {
+        parameters: {
+            query?: {
+                animal_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnimalEvaluationRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_animal_evaluation_evaluations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnimalEvaluationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnimalEvaluationRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_animal_evaluations_evaluations_animals__animal_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                animal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnimalEvaluationRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_animal_evaluation_evaluations__evaluation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                evaluation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnimalEvaluationRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_animal_evaluation_evaluations__evaluation_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                evaluation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnimalEvaluationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnimalEvaluationRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_animal_evaluation_evaluations__evaluation_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                evaluation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     breeding_candidates_reports_breeding_candidates_get: {
         parameters: {
             query?: never;
@@ -11599,6 +12641,90 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnimalMarketValueRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    animal_evaluations_report_reports_animal_evaluations_get: {
+        parameters: {
+            query: {
+                start_date: string;
+                end_date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnimalEvaluationReportRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    breeding_recommendations_reports_breeding_recommendations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BreedingRecommendationRead"][];
+                };
+            };
+        };
+    };
+    herd_exits_reports_herd_exits_get: {
+        parameters: {
+            query: {
+                start_date: string;
+                end_date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HerdExitRead"][];
                 };
             };
             /** @description Validation Error */

@@ -298,7 +298,11 @@ class BredAnimalRead(BaseModel):
     tag_number: str
     name: str | None = None
     service_date: date
-    service_method_name: str
+    # Baba adayi TEK metinde ozetlenir (dogal asimda hayvan, suni
+    # tohumlamada sperma partisi+boga) - yontemi (Dogal Asim/Suni
+    # Tohumlama) zaten bu etiketten anlasilir, ayrica bir alan gerekmez
+    # (bkz. service.py _breeding_event_sire_label).
+    sire_label: str
     days_since_service: int
     check_status: str
     pregnancy_check_due: bool

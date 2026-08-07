@@ -161,11 +161,33 @@ GROWTH_CHECKPOINT_DAYS_PER_MONTH = 30
 
 
 def _latest_breeding_by_dam(db: Session) -> dict[uuid.UUID, BreedingEvent]:
-    stmt = select(BreedingEvent).options(joinedload(BreedingEvent.service_method)).order_by(BreedingEvent.service_date)
+    stmt = (
+        select(BreedingEvent)
+        .options(
+            joinedload(BreedingEvent.service_method),
+            joinedload(BreedingEvent.sire_animal),
+            joinedload(BreedingEvent.semen_batch).joinedload(SemenBatch.sire),
+        )
+        .order_by(BreedingEvent.service_date)
+    )
     latest: dict[uuid.UUID, BreedingEvent] = {}
     for event in db.scalars(stmt).all():
         latest[event.dam_id] = event  # siralamadan dolayi son atama en yeni olur
     return latest
+
+
+def _breeding_event_sire_label(event: BreedingEvent) -> str:
+    """Bir tohumlama kaydinin baba adayini TEK bir okunakli metinde
+    ozetler - dogal asimda dogrudan surudeki bir hayvan (kupe no + varsa
+    isim), suni tohumlamada sperma partisinin bagli oldugu boga (parti no
+    + boga adi). Yontem (Dogal Asim/Suni Tohumlama) boganin/partinin
+    kendisinden zaten anlasilir, ayrica bir sutuna gerek birakmaz."""
+    if event.sire_animal_id is not None:
+        sire_animal = event.sire_animal
+        return f"{sire_animal.tag_number}{' - ' + sire_animal.name if sire_animal.name else ''}"
+    assert event.semen_batch_id is not None
+    batch = event.semen_batch
+    return f"{batch.batch_no} ({batch.sire.name})"
 
 
 def _returned_from_pregnancy(
@@ -417,7 +439,7 @@ def list_bred_animals(db: Session, today: date | None = None) -> list[BredAnimal
                 tag_number=animal.tag_number,
                 name=animal.name,
                 service_date=event.service_date,
-                service_method_name=event.service_method.name,
+                sire_label=_breeding_event_sire_label(event),
                 days_since_service=days_since_service,
                 check_status=check_status,
                 pregnancy_check_due=check_due,
@@ -830,15 +852,8 @@ def list_breeding_performance(db: Session, start_date: date, end_date: date) -> 
 
     buckets: dict[str, _PerformanceBucket] = {}
     for event in events:
-        if event.sire_animal_id is not None:
-            key = f"sire:{event.sire_animal_id}"
-            sire_animal = event.sire_animal
-            label = f"{sire_animal.tag_number}{' - ' + sire_animal.name if sire_animal.name else ''}"
-        else:
-            assert event.semen_batch_id is not None
-            key = f"batch:{event.semen_batch_id}"
-            batch = event.semen_batch
-            label = f"{batch.batch_no} ({batch.sire.name})"
+        key = f"sire:{event.sire_animal_id}" if event.sire_animal_id is not None else f"batch:{event.semen_batch_id}"
+        label = _breeding_event_sire_label(event)
 
         bucket = buckets.get(key)
         if bucket is None:

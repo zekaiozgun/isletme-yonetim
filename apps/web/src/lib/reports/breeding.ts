@@ -10,7 +10,6 @@ import {
   formatReturnedFromPregnancy,
   formatSireIdentity,
   bredAnimalStatusClass,
-  formatServiceMethodShort,
   formatDaysUntilCalving,
 } from './formatters';
 
@@ -176,12 +175,12 @@ export const breedingReports: ReportConfig[] = [
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
       { key: 'service_date', label: 'Tohum Tar.', format: formatDate, width: 'narrow' },
-      { key: 'service_method_name', label: 'Yöntem', format: formatServiceMethodShort, width: 'narrow' },
+      { key: 'sire_label', label: 'Baba Adayı', format: formatPlain, width: 'narrow' },
       { key: 'days_since_service', label: 'G.Süre', format: formatDays, width: 'narrow' },
       { key: 'check_status', label: 'Durum', width: 'narrow', cellClassName: bredAnimalStatusClass },
       { key: 'expected_calving_date', label: 'Tah.Tarih', format: formatDate, width: 'narrow' },
       { key: 'days_until_calving', label: 'D.K.Gün', format: formatDaysUntilCalving, width: 'narrow' },
-      { key: 'service_attempt_count', label: 'Den.Sayı', width: 'narrow' },
+      { key: 'service_attempt_count', label: 'DS', width: 'narrow' },
       { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
     ],
     rowHighlight: (row) => Boolean(row.pregnancy_check_due) || row.returned_from_pregnancy === true,

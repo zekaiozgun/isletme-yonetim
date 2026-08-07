@@ -49,17 +49,6 @@ export function bredAnimalStatusClass(row: ApiRecord): string {
   return needsAttention ? 'font-bold text-red-600' : 'text-slate-700';
 }
 
-/** Tohumlu ve Gebe Hayvanlar raporunda sütun genişliğini sınırlı tutmak
- * için ServiceMethod adının kısaltılmış hali - altta yatan lookup ismini
- * (ör. Aşım/Tohumlama Kayıtları formundaki seçenek) değiştirmez, sadece
- * bu raporun görünümüne özeldir. */
-export function formatServiceMethodShort(value: unknown): string {
-  if (value === 'Doğal Aşım') return 'Aşım';
-  if (value === 'Suni Tohumlama') return 'Suni T.';
-  if (value === 'Embriyo Transferi') return 'Embriyo T.';
-  return typeof value === 'string' && value ? value : '—';
-}
-
 /** Anne (value) ve Baba (row.father_sire_name) küpe/isim bilgisini tek
  * sütunda "anne / baba" olarak gösterir - iki ayrı sütuna göre hem yer
  * kazandırır hem de eksik tarafı ("1234 / —") tek bakışta fark ettirir. */
