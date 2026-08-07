@@ -1,5 +1,13 @@
 import type { ReportConfig } from './types';
-import { formatDate, formatHerdStatusCategory, formatMonths, formatParentage, formatPlain, herdStatusRowClass } from './formatters';
+import {
+  formatDate,
+  formatGenderShort,
+  formatHerdStatusCategory,
+  formatMonths,
+  formatParentage,
+  formatPlain,
+  herdStatusRowClass,
+} from './formatters';
 
 /** Sürü kompozisyonu ve listeleme raporları: statü/yaş bazlı hayvan listeleri, sürü durum özeti. */
 export const herdReports: ReportConfig[] = [
@@ -13,10 +21,10 @@ export const herdReports: ReportConfig[] = [
     statusFilter: true,
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
-      { key: 'gender_name', label: 'Cinsiyet', width: 'narrow' },
+      { key: 'gender_name', label: 'D/E', format: formatGenderShort, width: 'narrow' },
       { key: 'breed_name', label: 'Irk', format: formatPlain, width: 'narrow' },
       { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate, width: 'narrow' },
-      { key: 'age_months', label: 'Yaş', format: formatMonths, width: 'narrow' },
+      { key: 'age_months', label: 'Yaş (ay)', format: formatMonths, width: 'narrow' },
       { key: 'mother_tag_number', label: 'Anne/Baba', format: formatParentage, width: 'narrow' },
       { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
     ],
@@ -29,10 +37,10 @@ export const herdReports: ReportConfig[] = [
     group: 'Sürü Listeleri',
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
-      { key: 'gender_name', label: 'Cinsiyet', width: 'narrow' },
+      { key: 'gender_name', label: 'D/E', format: formatGenderShort, width: 'narrow' },
       { key: 'breed_name', label: 'Irk', format: formatPlain, width: 'narrow' },
       { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate, width: 'narrow' },
-      { key: 'age_months', label: 'Yaş', format: formatMonths, width: 'narrow' },
+      { key: 'age_months', label: 'Yaş (ay)', format: formatMonths, width: 'narrow' },
       { key: 'mother_tag_number', label: 'Anne/Baba', format: formatParentage, width: 'narrow' },
       { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
     ],
@@ -45,10 +53,10 @@ export const herdReports: ReportConfig[] = [
     group: 'Sürü Listeleri',
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
-      { key: 'gender_name', label: 'Cinsiyet', width: 'narrow' },
+      { key: 'gender_name', label: 'D/E', format: formatGenderShort, width: 'narrow' },
       { key: 'breed_name', label: 'Irk', format: formatPlain, width: 'narrow' },
       { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate, width: 'narrow' },
-      { key: 'age_months', label: 'Yaş', format: formatMonths, width: 'narrow' },
+      { key: 'age_months', label: 'Yaş (ay)', format: formatMonths, width: 'narrow' },
       { key: 'mother_tag_number', label: 'Anne/Baba', format: formatParentage, width: 'narrow' },
       { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
     ],
