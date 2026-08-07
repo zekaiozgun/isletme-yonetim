@@ -2100,16 +2100,39 @@ def _build_asset_context(db: Session) -> _AssetContext:
     )
 
 
-def _asset_transition_date_ctx(ctx: _AssetContext, animal: Animal) -> date | None:
-    """Bir hayvanin 'malzeme'den 'demirbasa' gectigi an. Disi: TUM
-    gecmisindeki EN ERKEN onayli ('GEBE') gebelik kontrolu tarihi - bir kez
-    gebe kaldiysa (o dongu daha sonra bos/kaybedilmis olsa bile) bir daha
-    malzemeye donmez. Erkek: satin alindiysa giristen itibaren (Satin Alma
-    = zaten boga olarak alindigi varsayilir); suruden dogduysa, ilk kez bir
-    Tohumlama kaydinda dogal asim bogasi (sire_animal_id) olarak
-    kullanildigi tarih."""
+def _asset_transition_date_ctx(
+    ctx: _AssetContext,
+    animal: Animal,
+    growth_checkpoints_by_gender: dict[str, dict[int, Decimal]],
+) -> date | None:
+    """Bir hayvanin 'malzeme'den 'demirbasa' gectigi an. Disi: iki
+    tetikleyiciden HANGISI ONCE gerceklesirse: (a) TUM gecmisindeki EN
+    ERKEN onayli ('GEBE') gebelik kontrolu tarihi - bir kez gebe kaldiysa
+    (o dongu daha sonra bos/kaybedilmis olsa bile) bir daha malzemeye
+    donmez; (b) buyume cipalarinin (AGE_3/6/9/12) kapsadigi son yasi
+    (dogum tarihinden itibaren) doldurdugu tarih - hic gebe kalmamis olsa
+    bile, buyume egrisinin tanimli oldugu son noktadan sonra artik 'genc/
+    buyuyen' sayilamaz; olgun-disi Gebe/Bos cipasindan (guncel duruma
+    gore) degerlenir. Bu ikinci tetikleyici olmadan, satin alinan VE hic
+    gebe kalmamis olgun bir disi (orn. 30 aylik) sonsuza kadar 'Buyume'
+    kovasinda (giris degerinde sabit) kalirdi - gercek uretimde
+    gozlemlenen bir tutarsizlik. Erkek: satin alindiysa giristen itibaren
+    (Satin Alma = zaten boga olarak alindigi varsayilir); suruden
+    dogduysa, ilk kez bir Tohumlama kaydinda dogal asim bogasi
+    (sire_animal_id) olarak kullanildigi tarih - buyume cipasi bitince
+    otomatik olgunlasma YOK (olgun erkek icin piyasa cipasi zaten yok,
+    bkz. _market_value_estimate_try_ctx)."""
     if animal.gender.code == FEMALE_GENDER_CODE:
-        return ctx.first_confirmed_pregnancy_by_dam.get(animal.id)
+        confirmed_pregnancy_date = ctx.first_confirmed_pregnancy_by_dam.get(animal.id)
+        growth_curve_exhausted_date = None
+        checkpoints = growth_checkpoints_by_gender.get(FEMALE_GENDER_CODE)
+        if checkpoints and animal.birth_date is not None:
+            max_checkpoint_days = max(
+                age_months * GROWTH_CHECKPOINT_DAYS_PER_MONTH for age_months in checkpoints
+            )
+            growth_curve_exhausted_date = animal.birth_date + timedelta(days=max_checkpoint_days)
+        candidates = [d for d in (confirmed_pregnancy_date, growth_curve_exhausted_date) if d is not None]
+        return min(candidates) if candidates else None
     if animal.gender.code == MALE_GENDER_CODE:
         if animal.entry_source.code == PURCHASE_ENTRY_SOURCE_CODE:
             return animal.entry_date
@@ -2123,6 +2146,7 @@ def _asset_book_value_ctx(
     asset_ctx: _AssetContext,
     animal: Animal,
     as_of_date: date,
+    growth_checkpoints_by_gender: dict[str, dict[int, Decimal]],
     as_of_rate: Decimal | None = None,
 ) -> tuple[Decimal, Decimal, str]:
     """Bir hayvanin as_of_date'teki defter degerini (TL, USD) ve durumunu
@@ -2154,7 +2178,7 @@ def _asset_book_value_ctx(
     if as_of_rate is None:
         as_of_rate = fx_service.get_usd_try_rate(db, as_of_date)
 
-    transition_date = _asset_transition_date_ctx(asset_ctx, animal)
+    transition_date = _asset_transition_date_ctx(asset_ctx, animal, growth_checkpoints_by_gender)
     if transition_date is None or as_of_date < transition_date:
         total_try, _ = _accumulated_cost_try_usd_ctx(db, cost_ctx, animal, as_of_date, convert_usd=False)
         total_usd = total_try / as_of_rate if as_of_rate else Decimal("0")
@@ -2277,7 +2301,12 @@ def _is_currently_pregnant_ctx(asset_ctx: _AssetContext, animal_id: uuid.UUID) -
     return latest_check is not None and latest_check.result.code == CONFIRMED_PREGNANCY_RESULT_CODE
 
 
-def _valuation_status_code_ctx(asset_ctx: _AssetContext, animal: Animal, as_of_date: date) -> str:
+def _valuation_status_code_ctx(
+    asset_ctx: _AssetContext,
+    animal: Animal,
+    as_of_date: date,
+    growth_checkpoints_by_gender: dict[str, dict[int, Decimal]],
+) -> str:
     """Hayvanin Tahmini Piyasa Degeri tablosundaki degerleme kovasini
     (source_code'dan BAGIMSIZ - cipa girilmemis/cost_basis'e dusmus
     satirlarda da anlamli kalsin diye) aciklar: 'BUYUME' (henuz Demirbasa
@@ -2287,7 +2316,7 @@ def _valuation_status_code_ctx(asset_ctx: _AssetContext, animal: Animal, as_of_d
     kullanir (bkz. _market_value_estimate_try_ctx/_asset_book_value_ctx) -
     duplike sorgu atmaz, sadece asset_ctx'teki onceden yuklenmis sozlukleri
     okur."""
-    transition_date = _asset_transition_date_ctx(asset_ctx, animal)
+    transition_date = _asset_transition_date_ctx(asset_ctx, animal, growth_checkpoints_by_gender)
     if transition_date is None or as_of_date < transition_date:
         return "BUYUME"
     if animal.gender.code == FEMALE_GENDER_CODE:
@@ -2306,7 +2335,7 @@ def _market_value_estimate_try_ctx(
     cipasina) gore tahmini piyasa degeri (TL); cipa girilmemisse VEYA
     (erkek + Demirbas donemi gibi) uygulanamaz bir durumsa None doner
     (caller maliyet-bazli degere geri duser)."""
-    transition_date = _asset_transition_date_ctx(asset_ctx, animal)
+    transition_date = _asset_transition_date_ctx(asset_ctx, animal, growth_checkpoints_by_gender)
     if transition_date is not None and as_of_date >= transition_date:
         if animal.gender.code != FEMALE_GENDER_CODE:
             return None
@@ -2362,7 +2391,9 @@ def _estimated_market_value_usd_try_ctx(
         market_usd = market_try / as_of_rate if as_of_rate else Decimal("0")
         return _round_money(market_try), _round_money(market_usd), "market_estimate"
 
-    book_try, book_usd, _ = _asset_book_value_ctx(db, cost_ctx, asset_ctx, animal, as_of_date, as_of_rate)
+    book_try, book_usd, _ = _asset_book_value_ctx(
+        db, cost_ctx, asset_ctx, animal, as_of_date, growth_checkpoints_by_gender, as_of_rate
+    )
     return book_try, book_usd, "cost_basis"
 
 
@@ -2388,7 +2419,7 @@ def list_herd_animal_market_values(db: Session, as_of_date: date) -> list[Animal
         amount_try, amount_usd, source_code = _estimated_market_value_usd_try_ctx(
             db, cost_ctx, asset_ctx, animal, as_of_date, growth_checkpoints_by_gender, mature_checkpoints_by_gender, rate
         )
-        status_code = _valuation_status_code_ctx(asset_ctx, animal, as_of_date)
+        status_code = _valuation_status_code_ctx(asset_ctx, animal, as_of_date, growth_checkpoints_by_gender)
         age_months = full_months_between(animal.birth_date, as_of_date) if animal.birth_date else None
         rows.append(
             AnimalMarketValueRead(
