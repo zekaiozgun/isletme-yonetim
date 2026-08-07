@@ -2232,13 +2232,27 @@ def _checkpoint_maps(db: Session) -> tuple[dict[str, dict[int, Decimal]], dict[s
     return growth, mature
 
 
-def _interpolate_market_value_try(entry_value_try: Decimal, checkpoints: dict[int, Decimal], age_days: int) -> Decimal:
-    """(0 gun, entry_value_try) noktasini ve doldurulmus yas cipalarini
-    (kucukten buyuge) gezip age_days'e karsilik gelen TL degerini lineer
-    interpolasyonla dondurur. Son doldurulan cipadan sonra deger sabit
-    tutulur - ileriye tahmin yapilmaz (bkz. modul docstring'i)."""
-    points = sorted((age_months * GROWTH_CHECKPOINT_DAYS_PER_MONTH, value) for age_months, value in checkpoints.items())
-    prev_days, prev_value = 0, entry_value_try
+def _interpolate_market_value_try(
+    entry_value_try: Decimal, checkpoints: dict[int, Decimal], age_days: int, age_at_entry_days: int = 0
+) -> Decimal:
+    """(age_at_entry_days, entry_value_try) noktasini - hayvanin GERCEKTEN
+    gozlemlendigi tek nokta budur, satin alinan bir hayvan icin dogumdan
+    itibaren degil GIRISTEN itibaren bilinir - ve age_at_entry_days'ten
+    SONRAKI yas cipalarini (kucukten buyuge) gezip age_days'e (dogum
+    tarihinden itibaren) karsilik gelen TL degerini lineer interpolasyonla
+    dondurur. age_at_entry_days'ten ONCEKI cipalar (hayvan zaten o yasi
+    gecmisken satin alinmissa) yok sayilir - aksi halde kronolojik olarak
+    gecmiste kalan bir cipa 'sonraki nokta' sanilip egri carpitilir. Son
+    doldurulan cipadan (varsa) sonra deger sabit tutulur; hic uygun cipa
+    yoksa (orn. buyume donemini zaten tamamlamis satin alinmis bir hayvan)
+    entry_value_try'de sabit kalir - ileriye tahmin yapilmaz (bkz. modul
+    docstring'i)."""
+    points = sorted(
+        (age_months * GROWTH_CHECKPOINT_DAYS_PER_MONTH, value)
+        for age_months, value in checkpoints.items()
+        if age_months * GROWTH_CHECKPOINT_DAYS_PER_MONTH > age_at_entry_days
+    )
+    prev_days, prev_value = age_at_entry_days, entry_value_try
     for days, value in points:
         if age_days <= days:
             if days == prev_days:
@@ -2305,11 +2319,22 @@ def _market_value_estimate_try_ctx(
     checkpoints = growth_checkpoints_by_gender.get(animal.gender.code)
     if not checkpoints:
         return None
-    age_days = (as_of_date - animal.entry_date).days
+    # Buyume egrisi hayvanin YASINA (dogum tarihinden itibaren) dayanir -
+    # giris tarihinden itibaren DEGIL. Suru icinde dogan bir hayvan icin
+    # ikisi zaten ayni gundur, ama satin alinan (SATIN_ALMA) bir hayvan
+    # cogunlukla dogumdan cok sonra girer - giris tarihini kullanmak,
+    # zaten olgun satin alinmis bir hayvani sanki yeni dogmus gibi
+    # buyume saatini sifirlardi (gercek uretimde gozlemlenen hata).
+    if animal.birth_date is not None:
+        age_days = (as_of_date - animal.birth_date).days
+        age_at_entry_days = (animal.entry_date - animal.birth_date).days
+    else:
+        age_days = (as_of_date - animal.entry_date).days
+        age_at_entry_days = 0
     if age_days < 0:
         return None
     entry_value_try = animal.entry_value or Decimal("0")
-    return _interpolate_market_value_try(entry_value_try, checkpoints, age_days)
+    return _interpolate_market_value_try(entry_value_try, checkpoints, age_days, age_at_entry_days)
 
 
 def _estimated_market_value_usd_try_ctx(
