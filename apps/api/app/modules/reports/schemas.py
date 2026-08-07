@@ -428,6 +428,11 @@ class AnimalMarketValueRead(BaseModel):
     # (maliyet-bazlı defter değeri) - hangi rakamın gerçek piyasa gözlemine
     # mi yoksa harcama kaydına mı dayandığını gizlemeden gösterir.
     source_code: str
+    # "BUYUME" (henüz Demirbaşa geçmemiş) | "GEBE" | "BOS" (olgun dişi,
+    # güncel tohumlama döngüsü durumu) | "OLGUN" (olgun erkek/boğa) -
+    # hangi değerleme kovasının kullanıldığını source_code'dan bağımsız
+    # olarak açıklar (bkz. reports/service.py _valuation_status_code_ctx).
+    status_code: str
 
 
 class DashboardSummaryRead(BaseModel):

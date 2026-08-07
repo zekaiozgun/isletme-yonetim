@@ -2263,6 +2263,24 @@ def _is_currently_pregnant_ctx(asset_ctx: _AssetContext, animal_id: uuid.UUID) -
     return latest_check is not None and latest_check.result.code == CONFIRMED_PREGNANCY_RESULT_CODE
 
 
+def _valuation_status_code_ctx(asset_ctx: _AssetContext, animal: Animal, as_of_date: date) -> str:
+    """Hayvanin Tahmini Piyasa Degeri tablosundaki degerleme kovasini
+    (source_code'dan BAGIMSIZ - cipa girilmemis/cost_basis'e dusmus
+    satirlarda da anlamli kalsin diye) aciklar: 'BUYUME' (henuz Demirbasa
+    gecmemis - buyume egrisinden degerleniyor), 'GEBE'/'BOS' (olgun disi -
+    guncel tohumlama dongusu durumu), 'OLGUN' (olgun erkek/boga - gebelik
+    kavrami yok). Ayni transition_date/_is_currently_pregnant_ctx mantigini
+    kullanir (bkz. _market_value_estimate_try_ctx/_asset_book_value_ctx) -
+    duplike sorgu atmaz, sadece asset_ctx'teki onceden yuklenmis sozlukleri
+    okur."""
+    transition_date = _asset_transition_date_ctx(asset_ctx, animal)
+    if transition_date is None or as_of_date < transition_date:
+        return "BUYUME"
+    if animal.gender.code == FEMALE_GENDER_CODE:
+        return "GEBE" if _is_currently_pregnant_ctx(asset_ctx, animal.id) else "BOS"
+    return "OLGUN"
+
+
 def _market_value_estimate_try_ctx(
     asset_ctx: _AssetContext,
     animal: Animal,
@@ -2345,6 +2363,7 @@ def list_herd_animal_market_values(db: Session, as_of_date: date) -> list[Animal
         amount_try, amount_usd, source_code = _estimated_market_value_usd_try_ctx(
             db, cost_ctx, asset_ctx, animal, as_of_date, growth_checkpoints_by_gender, mature_checkpoints_by_gender, rate
         )
+        status_code = _valuation_status_code_ctx(asset_ctx, animal, as_of_date)
         age_months = full_months_between(animal.birth_date, as_of_date) if animal.birth_date else None
         rows.append(
             AnimalMarketValueRead(
@@ -2356,6 +2375,7 @@ def list_herd_animal_market_values(db: Session, as_of_date: date) -> list[Animal
                 amount_try=amount_try,
                 amount_usd=amount_usd,
                 source_code=source_code,
+                status_code=status_code,
             )
         )
     rows.sort(key=lambda r: (r.age_months is None, -(r.age_months or 0)))

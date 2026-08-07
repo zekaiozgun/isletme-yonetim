@@ -2698,6 +2698,8 @@ export interface components {
             amount_usd: string;
             /** Source Code */
             source_code: string;
+            /** Status Code */
+            status_code: string;
         };
         /** AnimalProfitabilityRead */
         AnimalProfitabilityRead: {

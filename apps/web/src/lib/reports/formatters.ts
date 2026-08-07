@@ -119,3 +119,11 @@ export function formatSourceCode(value: unknown): string {
   if (value === 'mixed') return 'Karışık';
   return '—';
 }
+
+export function formatValuationStatus(value: unknown): string {
+  if (value === 'GEBE') return 'Gebe';
+  if (value === 'BOS') return 'Boş';
+  if (value === 'BUYUME') return 'Büyüme';
+  if (value === 'OLGUN') return 'Olgun';
+  return '—';
+}

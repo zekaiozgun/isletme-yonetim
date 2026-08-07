@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type { ApiRecord } from '@/lib/api';
-import { formatGenderShort, formatMonths, formatSourceCode } from '@/lib/reports';
+import { formatGenderShort, formatMonths, formatSourceCode, formatValuationStatus } from '@/lib/reports';
 import { formatCurrencyTRY as formatCurrency, formatUsdValue as formatUsd } from '@/lib/format';
 import { TableSearch } from '@/components/TableSearch';
 import { CsvExportButton } from '@/components/CsvExportButton';
@@ -54,13 +54,14 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
     setSelected((prev) => (prev.size === rows.length ? new Set() : new Set(rows.map((r) => String(r.animal_id)))));
   }
 
-  const csvHeaders = ['Küpe No', 'D/E', 'Yaş (ay)', 'Tutar (TL)', 'Tutar ($)', 'Kaynak'];
+  const csvHeaders = ['Küpe No', 'D/E', 'Yaş (ay)', 'Tutar (TL)', 'Tutar ($)', 'Durum', 'Kaynak'];
   const csvRows = rows.map((row) => [
     String(row.tag_number ?? ''),
     formatGenderShort(row.gender_name),
     formatMonths(row.age_months),
     formatCurrency(Number(row.amount_try ?? 0)),
     formatUsd(Number(row.amount_usd ?? 0)),
+    formatValuationStatus(row.status_code),
     formatSourceCode(row.source_code),
   ]);
   const pdfColumns = [
@@ -69,6 +70,7 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
     { label: 'Yaş (ay)', width: 'narrow' as const },
     { label: 'Tutar (TL)', width: 'narrow' as const },
     { label: 'Tutar ($)', width: 'narrow' as const },
+    { label: 'Durum', width: 'narrow' as const },
     { label: 'Kaynak', width: 'narrow' as const },
   ];
 
@@ -121,6 +123,7 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
                 <th className="w-[1%] px-[0.5ch] py-1.5 text-left font-medium leading-tight text-slate-600">Yaş (ay)</th>
                 <th className="w-[1%] px-[0.5ch] py-1.5 text-left font-medium leading-tight text-slate-600">Tutar (TL)</th>
                 <th className="w-[1%] px-[0.5ch] py-1.5 text-left font-medium leading-tight text-slate-600">Tutar ($)</th>
+                <th className="w-[1%] px-[0.5ch] py-1.5 text-left font-medium leading-tight text-slate-600">Durum</th>
                 <th className="w-[1%] px-[0.5ch] py-1.5 text-left font-medium leading-tight text-slate-600">Kaynak</th>
               </tr>
             </thead>
@@ -155,6 +158,7 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
                     <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">
                       {formatUsd(Number(row.amount_usd ?? 0))}
                     </td>
+                    <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{formatValuationStatus(row.status_code)}</td>
                     <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{formatSourceCode(row.source_code)}</td>
                   </tr>
                 );
@@ -169,6 +173,7 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
                 <td className="px-[0.5ch] py-1.5" />
                 <td className="whitespace-nowrap px-[0.5ch] py-1.5">{formatCurrency(grandTotal.try_)}</td>
                 <td className="whitespace-nowrap px-[0.5ch] py-1.5">{formatUsd(grandTotal.usd)}</td>
+                <td className="px-[0.5ch] py-1.5" />
                 <td className="px-[0.5ch] py-1.5" />
               </tr>
             </tfoot>
