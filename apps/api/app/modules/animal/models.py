@@ -92,7 +92,14 @@ class Animal(TimestampMixin, Base):
 
     @property
     def age_months(self) -> int | None:
-        """Anayasa m.4/m.5: yas hicbir yerde saklanmaz, birth_date'ten turetilir."""
+        """Anayasa m.4/m.5: yas hicbir yerde saklanmaz, birth_date'ten turetilir.
+        Hayvan aktif degilse (satildi/oldu - bu durumda status_date, Sale/
+        Death service'lerinde ilgili islem tarihine senkronize edilir, bkz.
+        sale/service.py ve death/service.py) yas o SABIT tarihte hesaplanir
+        - aksi halde olu/satilmis bir hayvan sistemde "yaslanmaya" devam
+        ederdi (gercek uretimde gozlemlendi: 3 aylikken olen bir buzagi,
+        ay ilerledikce buyumeye devam ediyordu)."""
         if self.birth_date is None:
             return None
-        return full_months_between(self.birth_date, date.today())
+        reference_date = self.status_date or date.today()
+        return full_months_between(self.birth_date, reference_date)
