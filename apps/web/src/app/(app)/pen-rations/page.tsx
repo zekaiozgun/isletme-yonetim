@@ -4,7 +4,11 @@ import { formatDateDMY } from '@/lib/format';
 import { deletePenRationAction } from '@/lib/actions';
 import { DeleteButton } from '@/components/DeleteButton';
 
-export default async function PenRationsPage() {
+export default async function PenRationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ pen_id?: string }>;
+}) {
   const [rations, pens, feedItems, units] = await Promise.all([
     apiGetSafe<ApiRecord[]>('/feed/rations', []),
     apiGetSafe<ApiRecord[]>('/pens', []),
@@ -16,9 +20,12 @@ export default async function PenRationsPage() {
   const feedItemName = new Map(feedItems.map((f) => [Number(f.id), String(f.name)]));
   const unitName = new Map(units.map((u) => [Number(u.id), String(u.name)]));
 
-  const sorted = [...rations].sort(
-    (a, b) => new Date(String(b.start_date)).getTime() - new Date(String(a.start_date)).getTime()
-  );
+  const sp = await searchParams;
+  const selectedPenId = sp.pen_id && sp.pen_id !== '' ? Number(sp.pen_id) : undefined;
+
+  const sorted = [...rations]
+    .filter((r) => selectedPenId === undefined || Number(r.pen_id) === selectedPenId)
+    .sort((a, b) => new Date(String(b.start_date)).getTime() - new Date(String(a.start_date)).getTime());
 
   return (
     <div>
@@ -37,38 +44,53 @@ export default async function PenRationsPage() {
         (bkz. Yem Tüketim Raporu, Yem Stok Durumu).
       </p>
 
+      <form
+        method="get"
+        className="mb-4 flex flex-wrap items-end gap-3 rounded border border-slate-200 bg-slate-50 p-3"
+      >
+        <div>
+          <label htmlFor="pen_id" className="mb-1 block text-xs font-medium text-slate-600">
+            Padok
+          </label>
+          <select
+            id="pen_id"
+            name="pen_id"
+            defaultValue={selectedPenId ?? ''}
+            className="rounded border border-slate-300 px-2 py-1.5 text-sm text-slate-900"
+          >
+            <option value="">Tüm Padoklar</option>
+            {pens.map((p) => (
+              <option key={String(p.id)} value={String(p.id)}>
+                {penLabel.get(Number(p.id))}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button
+          type="submit"
+          className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700"
+        >
+          Filtrele
+        </button>
+      </form>
+
       {sorted.length === 0 ? (
-        <p className="text-sm text-slate-500">Henüz rasyon kaydı yok.</p>
+        <p className="text-sm text-slate-500">
+          {selectedPenId === undefined ? 'Henüz rasyon kaydı yok.' : 'Bu padok için rasyon kaydı yok.'}
+        </p>
       ) : (
-        <div className="overflow-x-auto rounded border border-slate-200">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-3 py-2 text-left font-medium text-slate-600">Padok</th>
-                <th className="px-3 py-2 text-left font-medium text-slate-600">Başlangıç</th>
-                <th className="px-3 py-2 text-left font-medium text-slate-600">Bitiş</th>
-                <th className="px-3 py-2 text-left font-medium text-slate-600">İçerik (hayvan başına/gün)</th>
-                <th className="px-3 py-2 text-left font-medium text-slate-600">Not</th>
-                <th className="px-3 py-2 text-left font-medium text-slate-600">İşlemler</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {sorted.map((ration) => {
-                const items = Array.isArray(ration.items) ? (ration.items as ApiRecord[]) : [];
-                const content = items
-                  .map(
-                    (item) =>
-                      `${feedItemName.get(Number(item.feed_item_id)) ?? '—'}: ${String(item.daily_quantity_per_animal)} ${unitName.get(Number(item.unit_id)) ?? ''}`
-                  )
-                  .join(', ');
-                const isActive = ration.end_date === null || ration.end_date === undefined;
-                return (
-                  <tr key={String(ration.id)}>
-                    <td className="whitespace-nowrap px-3 py-2 text-slate-700">
-                      {penLabel.get(Number(ration.pen_id)) ?? '—'}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2 text-slate-700">{formatDateDMY(ration.start_date)}</td>
-                    <td className="whitespace-nowrap px-3 py-2 text-slate-700">
+        <div className="space-y-4">
+          {sorted.map((ration) => {
+            const items = Array.isArray(ration.items) ? (ration.items as ApiRecord[]) : [];
+            const isActive = ration.end_date === null || ration.end_date === undefined;
+            return (
+              <div key={String(ration.id)} className="rounded border border-slate-200">
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-slate-200 bg-slate-50 px-3 py-2">
+                  <span className="font-medium text-slate-900">{penLabel.get(Number(ration.pen_id)) ?? '—'}</span>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600">
+                    <span>Başlangıç: {formatDateDMY(ration.start_date)}</span>
+                    <span>
+                      Bitiş:{' '}
                       {isActive ? (
                         <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
                           Devam Ediyor
@@ -76,21 +98,48 @@ export default async function PenRationsPage() {
                       ) : (
                         formatDateDMY(ration.end_date)
                       )}
-                    </td>
-                    <td className="px-3 py-2 text-slate-700">{content || '—'}</td>
-                    <td className="px-3 py-2 text-slate-500">{ration.note ? String(ration.note) : '—'}</td>
-                    <td className="whitespace-nowrap px-3 py-2">
-                      <DeleteButton
-                        action={deletePenRationAction.bind(null, Number(ration.id))}
-                        confirmMessage="Bu rasyon kaydını kalıcı olarak silmek istediğinize emin misiniz?"
-                        redirectTo="/pen-rations"
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </span>
+                  </div>
+                </div>
+
+                {items.length === 0 ? (
+                  <p className="px-3 py-2 text-sm text-slate-500">Rasyon unsuru girilmemiş.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-slate-200 text-sm">
+                      <thead className="bg-white">
+                        <tr>
+                          <th className="px-3 py-1.5 text-left font-medium text-slate-600">Yem Kalemi</th>
+                          <th className="px-3 py-1.5 text-left font-medium text-slate-600">Miktar (hayvan başı/gün)</th>
+                          <th className="px-3 py-1.5 text-left font-medium text-slate-600">Birim</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {items.map((item, index) => (
+                          <tr key={index}>
+                            <td className="px-3 py-1.5 text-slate-700">
+                              {feedItemName.get(Number(item.feed_item_id)) ?? '—'}
+                            </td>
+                            <td className="px-3 py-1.5 text-slate-700">{String(item.daily_quantity_per_animal)}</td>
+                            <td className="px-3 py-1.5 text-slate-700">{unitName.get(Number(item.unit_id)) ?? '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-3 py-2">
+                  <p className="text-sm text-slate-500">{ration.note ? String(ration.note) : 'Not yok'}</p>
+                  <DeleteButton
+                    action={deletePenRationAction.bind(null, Number(ration.id))}
+                    confirmMessage="Bu rasyon kaydını kalıcı olarak silmek istediğinize emin misiniz?"
+                    redirectTo="/pen-rations"
+                  />
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
