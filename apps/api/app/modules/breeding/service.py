@@ -12,15 +12,39 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
-from app.core.exceptions import ConflictError, NotFoundError
+from app.core.date_utils import add_months
+from app.core.exceptions import ConflictError, DomainError, NotFoundError
+from app.core.validators import require_date_order
+from app.modules.animal.models import Animal
 from app.modules.breeding.models import BreedingEvent, PregnancyCheck
 from app.modules.breeding.schemas import BreedingEventCreate, PregnancyCheckCreate
 
 AVERAGE_GESTATION_DAYS = 283
+# Boğanın cinsel olgunluğa erişip damızlıkta fiilen kullanılabildiği asgari
+# yaş - sadece "doğmuş olması" yeterli degil (bkz. _validate_breeding_event_dates).
+MIN_SIRE_BREEDING_AGE_MONTHS = 11
+
+
+def _validate_breeding_event_dates(db: Session, event: BreedingEvent) -> None:
+    dam = db.get(Animal, event.dam_id)
+    if dam is not None:
+        require_date_order(dam.birth_date, "İneğin doğum tarihi", event.service_date, "Tohumlama tarihi")
+    if event.sire_animal_id is not None:
+        sire = db.get(Animal, event.sire_animal_id)
+        if sire is not None and sire.birth_date is not None:
+            min_breeding_date = add_months(sire.birth_date, MIN_SIRE_BREEDING_AGE_MONTHS)
+            if event.service_date < min_breeding_date:
+                raise DomainError(
+                    f"Boğa, tohumlama tarihinde ({event.service_date.isoformat()}) henüz "
+                    f"{MIN_SIRE_BREEDING_AGE_MONTHS} aylık damızlık yaşına ulaşmamış "
+                    f"(doğum: {sire.birth_date.isoformat()}, en erken tohumlama tarihi: "
+                    f"{min_breeding_date.isoformat()})."
+                )
 
 
 def create_breeding_event(db: Session, data: BreedingEventCreate) -> BreedingEvent:
     event = BreedingEvent(**data.model_dump())
+    _validate_breeding_event_dates(db, event)
     db.add(event)
     db.commit()
     db.refresh(event)
@@ -38,6 +62,7 @@ def update_breeding_event(db: Session, event_id: int, data: BreedingEventCreate)
     event = get_breeding_event(db, event_id)
     for key, value in data.model_dump().items():
         setattr(event, key, value)
+    _validate_breeding_event_dates(db, event)
     db.commit()
     db.refresh(event)
     return event
@@ -76,8 +101,15 @@ def calculate_expected_calving_date(service_date: date) -> date:
     return service_date + timedelta(days=AVERAGE_GESTATION_DAYS)
 
 
+def _validate_pregnancy_check_date(db: Session, check: PregnancyCheck) -> None:
+    event = db.get(BreedingEvent, check.breeding_event_id)
+    if event is not None:
+        require_date_order(event.service_date, "Tohumlama tarihi", check.check_date, "Gebelik kontrol tarihi")
+
+
 def create_pregnancy_check(db: Session, data: PregnancyCheckCreate) -> PregnancyCheck:
     check = PregnancyCheck(**data.model_dump())
+    _validate_pregnancy_check_date(db, check)
     db.add(check)
     db.commit()
     db.refresh(check)
@@ -95,6 +127,7 @@ def update_pregnancy_check(db: Session, check_id: int, data: PregnancyCheckCreat
     check = get_pregnancy_check(db, check_id)
     for key, value in data.model_dump().items():
         setattr(check, key, value)
+    _validate_pregnancy_check_date(db, check)
     db.commit()
     db.refresh(check)
     return check

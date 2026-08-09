@@ -10,13 +10,36 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError, NotFoundError
 from app.core.lookup_helpers import get_lookup_by_code
+from app.core.validators import require_date_order
 from app.modules.animal.lookups import AnimalStatus
 from app.modules.animal.models import Animal
 from app.modules.animal.schemas import AnimalCreate
 from app.modules.auth.schemas import Role
+from app.modules.death.models import Death
+from app.modules.sale.models import Sale
 
 ACTIVE_STATUS_CODE = "AKTIF"
 CANCELLED_ENTRY_STATUS_CODE = "HATALI_GIRIS"
+
+
+def get_animal_exit_date(db: Session, animal_id: uuid.UUID) -> date | None:
+    """Hayvanin SATILDI/OLDU oldugu tarih (yoksa None - hala aktif).
+    Sale.animal_id ve Death.animal_id ayri ayri unique oldugundan (bkz.
+    _reject_if_already_exited) en fazla biri doludur. Weight/Health/Pen
+    modulleri, o hayvana ait yeni bir kaydin cikis tarihinden SONRA
+    girilmedigini dogrulamak icin bunu kullanir."""
+    sale_date = db.scalars(select(Sale.sale_date).where(Sale.animal_id == animal_id)).first()
+    if sale_date is not None:
+        return sale_date
+    return db.scalars(select(Death.death_date).where(Death.animal_id == animal_id)).first()
+
+
+def _validate_animal_dates(db: Session, animal: Animal) -> None:
+    require_date_order(animal.birth_date, "Doğum tarihi", animal.entry_date, "Giriş tarihi")
+    if animal.mother_id is not None:
+        mother = db.get(Animal, animal.mother_id)
+        if mother is not None:
+            require_date_order(mother.birth_date, "Annenin doğum tarihi", animal.birth_date, "Yavrunun doğum tarihi")
 
 
 def create_animal(db: Session, data: AnimalCreate, created_by_role: Role) -> Animal:
@@ -30,6 +53,7 @@ def create_animal(db: Session, data: AnimalCreate, created_by_role: Role) -> Ani
         death_reason_id=None,
         is_locked=(created_by_role == "CALISAN"),
     )
+    _validate_animal_dates(db, animal)
     db.add(animal)
     db.commit()
     db.refresh(animal)
@@ -58,6 +82,7 @@ def update_animal(db: Session, animal_id: uuid.UUID, data: AnimalCreate, request
         )
     for key, value in data.model_dump().items():
         setattr(animal, key, value)
+    _validate_animal_dates(db, animal)
     db.commit()
     db.refresh(animal)
     return animal

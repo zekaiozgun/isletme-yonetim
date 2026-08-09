@@ -14,8 +14,19 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError, NotFoundError
+from app.core.validators import require_date_order
+from app.modules.animal.models import Animal
+from app.modules.animal.service import get_animal_exit_date
 from app.modules.health.models import HealthEvent, Medication
 from app.modules.health.schemas import HealthEventCreate, MedicationCreate
+
+
+def _validate_health_event_date(db: Session, event: HealthEvent) -> None:
+    animal = db.get(Animal, event.animal_id)
+    if animal is not None:
+        require_date_order(animal.birth_date, "Doğum tarihi", event.event_date, "Sağlık olayı tarihi")
+    exit_date = get_animal_exit_date(db, event.animal_id)
+    require_date_order(event.event_date, "Sağlık olayı tarihi", exit_date, "Sürüden çıkış tarihi")
 
 
 def create_medication(db: Session, data: MedicationCreate) -> Medication:
@@ -58,6 +69,7 @@ def list_medications(db: Session) -> list[Medication]:
 
 def create_health_event(db: Session, data: HealthEventCreate) -> HealthEvent:
     event = HealthEvent(**data.model_dump())
+    _validate_health_event_date(db, event)
     db.add(event)
     db.commit()
     db.refresh(event)
@@ -75,6 +87,7 @@ def update_health_event(db: Session, event_id: int, data: HealthEventCreate) -> 
     event = get_health_event(db, event_id)
     for key, value in data.model_dump().items():
         setattr(event, key, value)
+    _validate_health_event_date(db, event)
     db.commit()
     db.refresh(event)
     return event

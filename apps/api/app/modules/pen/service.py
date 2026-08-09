@@ -13,8 +13,19 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError, DomainError, NotFoundError
+from app.core.validators import require_date_order
+from app.modules.animal.models import Animal
+from app.modules.animal.service import get_animal_exit_date
 from app.modules.pen.models import Pen, PenAssignment
 from app.modules.pen.schemas import PenAssignmentCreate, PenCreate
+
+
+def _validate_assignment_date(db: Session, assignment: PenAssignment) -> None:
+    animal = db.get(Animal, assignment.animal_id)
+    if animal is not None:
+        require_date_order(animal.entry_date, "Giriş tarihi", assignment.assigned_date, "Padok atama tarihi")
+    exit_date = get_animal_exit_date(db, assignment.animal_id)
+    require_date_order(assignment.assigned_date, "Padok atama tarihi", exit_date, "Sürüden çıkış tarihi")
 
 
 def create_pen(db: Session, data: PenCreate) -> Pen:
@@ -70,6 +81,7 @@ def assign_animal_to_pen(db: Session, data: PenAssignmentCreate) -> PenAssignmen
         open_assignment.removed_date = data.assigned_date
 
     assignment = PenAssignment(**data.model_dump())
+    _validate_assignment_date(db, assignment)
     db.add(assignment)
     db.commit()
     db.refresh(assignment)
@@ -87,6 +99,7 @@ def update_assignment(db: Session, assignment_id: int, data: PenAssignmentCreate
     assignment = get_assignment(db, assignment_id)
     for key, value in data.model_dump().items():
         setattr(assignment, key, value)
+    _validate_assignment_date(db, assignment)
     db.commit()
     db.refresh(assignment)
     return assignment

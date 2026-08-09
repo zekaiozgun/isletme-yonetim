@@ -10,23 +10,35 @@ Animal.status'u 'Aktif'e dondurur.
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import DomainError, NotFoundError
 from app.core.lookup_helpers import get_lookup_by_code
+from app.core.validators import require_date_order
 from app.modules.animal.lookups import AnimalStatus
 from app.modules.animal.models import Animal
 from app.modules.animal.service import ACTIVE_STATUS_CODE
 from app.modules.death.models import Death
 from app.modules.death.schemas import DeathCreate
+from app.modules.sale.models import Sale
 
 DEAD_STATUS_CODE = "OLDU"
 
 
+def _validate_death(db: Session, death: Death, animal: Animal | None) -> None:
+    if animal is not None:
+        require_date_order(animal.birth_date, "Doğum tarihi", death.death_date, "Ölüm tarihi")
+        require_date_order(animal.entry_date, "Giriş tarihi", death.death_date, "Ölüm tarihi")
+    already_sold = db.scalars(select(Sale.id).where(Sale.animal_id == death.animal_id)).first()
+    if already_sold is not None:
+        raise DomainError("Bu hayvan için zaten bir Satış kaydı var; aynı hayvan hem ölmüş hem satılmış olamaz.")
+
+
 def create_death(db: Session, data: DeathCreate) -> Death:
     death = Death(**data.model_dump())
+    animal = db.get(Animal, data.animal_id)
+    _validate_death(db, death, animal)
     db.add(death)
 
     dead_status = get_lookup_by_code(db, AnimalStatus, DEAD_STATUS_CODE)
-    animal = db.get(Animal, data.animal_id)
     if animal is not None:
         animal.status_id = dead_status.id
         animal.status_date = data.death_date
@@ -49,8 +61,10 @@ def update_death(db: Session, death_id: int, data: DeathCreate) -> Death:
     for key, value in data.model_dump().items():
         setattr(death, key, value)
 
-    dead_status = get_lookup_by_code(db, AnimalStatus, DEAD_STATUS_CODE)
     animal = db.get(Animal, death.animal_id)
+    _validate_death(db, death, animal)
+
+    dead_status = get_lookup_by_code(db, AnimalStatus, DEAD_STATUS_CODE)
     if animal is not None:
         animal.status_id = dead_status.id
         animal.status_date = death.death_date

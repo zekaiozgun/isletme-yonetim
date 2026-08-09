@@ -12,15 +12,26 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import ConflictError, NotFoundError
+from app.core.exceptions import ConflictError, DomainError, NotFoundError
 from app.core.lookup_helpers import get_lookup_by_code
+from app.core.validators import require_date_order
 from app.modules.animal.lookups import AnimalStatus
 from app.modules.animal.models import Animal
 from app.modules.animal.service import ACTIVE_STATUS_CODE
+from app.modules.death.models import Death
 from app.modules.sale.models import Buyer, Sale
 from app.modules.sale.schemas import BuyerCreate, SaleCreate
 
 SOLD_STATUS_CODE = "SATILDI"
+
+
+def _validate_sale(db: Session, sale: Sale, animal: Animal | None) -> None:
+    if animal is not None:
+        require_date_order(animal.birth_date, "Doğum tarihi", sale.sale_date, "Satış tarihi")
+        require_date_order(animal.entry_date, "Giriş tarihi", sale.sale_date, "Satış tarihi")
+    already_dead = db.scalars(select(Death.id).where(Death.animal_id == sale.animal_id)).first()
+    if already_dead is not None:
+        raise DomainError("Bu hayvan için zaten bir Ölüm kaydı var; aynı hayvan hem satılmış hem ölmüş olamaz.")
 
 
 def create_buyer(db: Session, data: BuyerCreate) -> Buyer:
@@ -63,10 +74,11 @@ def list_buyers(db: Session) -> list[Buyer]:
 
 def create_sale(db: Session, data: SaleCreate) -> Sale:
     sale = Sale(**data.model_dump())
+    animal = db.get(Animal, data.animal_id)
+    _validate_sale(db, sale, animal)
     db.add(sale)
 
     sold_status = get_lookup_by_code(db, AnimalStatus, SOLD_STATUS_CODE)
-    animal = db.get(Animal, data.animal_id)
     if animal is not None:
         animal.status_id = sold_status.id
         animal.status_date = data.sale_date
@@ -88,8 +100,10 @@ def update_sale(db: Session, sale_id: int, data: SaleCreate) -> Sale:
     for key, value in data.model_dump().items():
         setattr(sale, key, value)
 
-    sold_status = get_lookup_by_code(db, AnimalStatus, SOLD_STATUS_CODE)
     animal = db.get(Animal, sale.animal_id)
+    _validate_sale(db, sale, animal)
+
+    sold_status = get_lookup_by_code(db, AnimalStatus, SOLD_STATUS_CODE)
     if animal is not None:
         animal.status_id = sold_status.id
         animal.status_date = sale.sale_date

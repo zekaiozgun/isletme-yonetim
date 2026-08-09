@@ -12,8 +12,16 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError, NotFoundError
+from app.core.validators import require_date_order
+from app.modules.animal.models import Animal
 from app.modules.evaluation.models import AnimalEvaluation, EvaluationReason
 from app.modules.evaluation.schemas import AnimalEvaluationCreate, EvaluationReasonCreate
+
+
+def _validate_evaluation_date(db: Session, evaluation: AnimalEvaluation) -> None:
+    animal = db.get(Animal, evaluation.animal_id)
+    if animal is not None:
+        require_date_order(animal.birth_date, "Doğum tarihi", evaluation.evaluation_date, "Değerlendirme tarihi")
 
 
 def create_evaluation_reason(db: Session, data: EvaluationReasonCreate) -> EvaluationReason:
@@ -59,6 +67,7 @@ def list_evaluation_reasons(db: Session, direction_id: int | None = None) -> lis
 
 def create_animal_evaluation(db: Session, data: AnimalEvaluationCreate) -> AnimalEvaluation:
     evaluation = AnimalEvaluation(**data.model_dump())
+    _validate_evaluation_date(db, evaluation)
     db.add(evaluation)
     db.commit()
     db.refresh(evaluation)
@@ -76,6 +85,7 @@ def update_animal_evaluation(db: Session, evaluation_id: int, data: AnimalEvalua
     evaluation = get_animal_evaluation(db, evaluation_id)
     for key, value in data.model_dump().items():
         setattr(evaluation, key, value)
+    _validate_evaluation_date(db, evaluation)
     db.commit()
     db.refresh(evaluation)
     return evaluation
