@@ -351,6 +351,7 @@ export interface RationItemInput {
   feedItemId: number;
   dailyQuantityPerAnimal: number;
   unitId: number;
+  scopeId: number;
 }
 
 /** Yeni bir padok rasyonu (donemi) baslatir - backend, ayni padogun hala
@@ -371,6 +372,7 @@ export async function createPenRationAction(
       feed_item_id: item.feedItemId,
       daily_quantity_per_animal: item.dailyQuantityPerAnimal,
       unit_id: item.unitId,
+      scope_id: item.scopeId,
     })),
   });
 

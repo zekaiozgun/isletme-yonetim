@@ -1,5 +1,5 @@
 import type { ReportConfig } from './types';
-import { formatCurrency, formatKg, formatPercent, formatPlain, formatUsd } from './formatters';
+import { formatCurrency, formatDate, formatDays, formatKg, formatPercent, formatPlain, formatUsd } from './formatters';
 
 /** Padok ve yem raporları: tüketim, stok durumu, doluluk, maliyet-verimlilik. */
 export const pensFeedReports: ReportConfig[] = [
@@ -38,6 +38,23 @@ export const pensFeedReports: ReportConfig[] = [
       { key: 'stock_value_try', label: 'Stok Değeri (TL)', format: formatCurrency, width: 'narrow' },
     ],
     rowHighlight: (row) => typeof row.stock_kg === 'number' && row.stock_kg < 0,
+  },
+  {
+    slug: 'feed-daily-cost',
+    title: 'Günlük Rasyon Maliyeti ve Stok Tükenme Tahmini',
+    description:
+      'Bugünkü (veya seçilen tarihteki) aktif rasyonlara göre padok başına günlük yem maliyeti, ve yem kalemi başına mevcut stoğun bu tüketim hızıyla kaç güne yeteceği. Geçmiş ortalama değil, "şu anki rasyon ve hayvan sayısıyla devam edilirse" tahminidir. Anne-yavru padoklarında buzağı/yetişkin sayıları, rasyon kaleminin Uygulanacak Grup ayarına göre doğru şekilde ayrıştırılır (bkz. Padok Rasyonları).',
+    endpoint: '/reports/daily-ration-cost',
+    group: 'Padok ve Yem',
+    singleDate: true,
+    columns: [
+      { key: 'pen_code', label: 'Padok Kodu', width: 'narrow' },
+      { key: 'pen_name', label: 'Padok Adı', width: 'narrow' },
+      { key: 'adult_count', label: 'Yetişkin Sayısı', width: 'narrow' },
+      { key: 'calf_count', label: 'Buzağı Sayısı', width: 'narrow' },
+      { key: 'daily_cost_try', label: 'Günlük Toplam Maliyet (TL)', format: formatCurrency, width: 'narrow' },
+    ],
+    rowHighlight: (row) => row.is_summary === true,
   },
   {
     slug: 'pen-occupancy',

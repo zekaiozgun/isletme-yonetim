@@ -5,7 +5,7 @@ from app.core.database import get_db
 from app.core.exceptions import ConflictError, NotFoundError
 from app.core.lookup_router import build_lookup_router
 from app.modules.feed import service
-from app.modules.feed.lookups import FeedType, FeedUnit
+from app.modules.feed.lookups import FeedType, FeedUnit, RationItemScope
 from app.modules.feed.schemas import (
     FeedItemCreate,
     FeedItemRead,
@@ -128,6 +128,7 @@ def delete_pen_ration(ration_id: int, db: Session = Depends(get_db)) -> None:
 lookup_routers = [
     build_lookup_router(FeedType, "/types", "feed-lookups", "yem tipi"),
     build_lookup_router(FeedUnit, "/units", "feed-lookups", "yem birimi"),
+    build_lookup_router(RationItemScope, "/ration-item-scopes", "feed-lookups", "rasyon kapsamı"),
 ]
 for lookup_router in lookup_routers:
     router.include_router(lookup_router)

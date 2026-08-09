@@ -1599,6 +1599,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/feed/ration-item-scopes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Lookup */
+        get: operations["list_lookup_feed_ration_item_scopes_get"];
+        put?: never;
+        /** Create Lookup */
+        post: operations["create_lookup_feed_ration_item_scopes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/feed/ration-item-scopes/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Lookup */
+        get: operations["get_lookup_feed_ration_item_scopes__item_id__get"];
+        /** Update Lookup */
+        put: operations["update_lookup_feed_ration_item_scopes__item_id__put"];
+        post?: never;
+        /** Delete Lookup */
+        delete: operations["delete_lookup_feed_ration_item_scopes__item_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/sales/buyers": {
         parameters: {
             query?: never;
@@ -2230,6 +2267,40 @@ export interface paths {
         };
         /** Feed Stock Status */
         get: operations["feed_stock_status_reports_feed_stock_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/daily-ration-cost": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Daily Ration Cost */
+        get: operations["daily_ration_cost_reports_daily_ration_cost_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/feed-stock-runway": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Feed Stock Runway */
+        get: operations["feed_stock_runway_reports_feed_stock_runway_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3116,6 +3187,24 @@ export interface components {
             /** New Password */
             new_password: string;
         };
+        /** DailyRationCostRead */
+        DailyRationCostRead: {
+            /**
+             * Is Summary
+             * @default false
+             */
+            is_summary: boolean;
+            /** Pen Code */
+            pen_code: string;
+            /** Pen Name */
+            pen_name: string;
+            /** Adult Count */
+            adult_count: number;
+            /** Calf Count */
+            calf_count: number;
+            /** Daily Cost Try */
+            daily_cost_try: string;
+        };
         /** DashboardSummaryRead */
         DashboardSummaryRead: {
             /** Active Animal Count */
@@ -3339,6 +3428,26 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** FeedStockRunwayRead */
+        FeedStockRunwayRead: {
+            /**
+             * Is Summary
+             * @default false
+             */
+            is_summary: boolean;
+            /** Feed Item Name */
+            feed_item_name: string;
+            /** Feed Type Name */
+            feed_type_name: string;
+            /** Stock Kg */
+            stock_kg: number;
+            /** Daily Consumption Kg */
+            daily_consumption_kg: number;
+            /** Days Remaining */
+            days_remaining?: number | null;
+            /** Estimated Depletion Date */
+            estimated_depletion_date?: string | null;
         };
         /** FeedStockStatusRead */
         FeedStockStatusRead: {
@@ -4038,6 +4147,8 @@ export interface components {
             daily_quantity_per_animal: number | string;
             /** Unit Id */
             unit_id: number;
+            /** Scope Id */
+            scope_id: number;
         };
         /** RationItemRead */
         RationItemRead: {
@@ -4047,6 +4158,8 @@ export interface components {
             daily_quantity_per_animal: string;
             /** Unit Id */
             unit_id: number;
+            /** Scope Id */
+            scope_id: number;
             /** Id */
             id: number;
         };
@@ -10448,6 +10561,165 @@ export interface operations {
             };
         };
     };
+    list_lookup_feed_ration_item_scopes_get: {
+        parameters: {
+            query?: {
+                include_inactive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LookupRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_lookup_feed_ration_item_scopes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LookupCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LookupRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_lookup_feed_ration_item_scopes__item_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LookupRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_lookup_feed_ration_item_scopes__item_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LookupCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LookupRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_lookup_feed_ration_item_scopes__item_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_buyers_sales_buyers_get: {
         parameters: {
             query?: never;
@@ -12345,6 +12617,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FeedStockStatusRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    daily_ration_cost_reports_daily_ration_cost_get: {
+        parameters: {
+            query?: {
+                as_of_date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyRationCostRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    feed_stock_runway_reports_feed_stock_runway_get: {
+        parameters: {
+            query?: {
+                as_of_date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedStockRunwayRead"][];
                 };
             };
             /** @description Validation Error */

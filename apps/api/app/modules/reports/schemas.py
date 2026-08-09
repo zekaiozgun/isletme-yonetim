@@ -201,6 +201,31 @@ class FeedConsumptionRead(BaseModel):
     active_days: int
 
 
+class DailyRationCostRead(BaseModel):
+    is_summary: bool = False
+    pen_code: str
+    pen_name: str
+    # Guncel (as_of_date itibariyla) padoktaki yetiskin/buzagi sayisi -
+    # RationItem.scope'a gore hangi kalemin kime uygulandigini gostermek
+    # icin baglam saglar (bkz. reports/service.py list_daily_ration_cost).
+    adult_count: int
+    calf_count: int
+    daily_cost_try: Decimal
+
+
+class FeedStockRunwayRead(BaseModel):
+    is_summary: bool = False
+    feed_item_name: str
+    feed_type_name: str
+    stock_kg: float
+    # Guncel (aktif rasyonlardan turetilen, as_of_date itibariyla) toplam
+    # gunluk tuketim hizi - gecmis ortalama DEGIL, "su an bu hizda gidilirse"
+    # varsayimidir (bkz. list_feed_stock_runway docstring'i).
+    daily_consumption_kg: float
+    days_remaining: int | None = None
+    estimated_depletion_date: date | None = None
+
+
 class FeedStockStatusRead(BaseModel):
     feed_item_name: str
     feed_type_name: str

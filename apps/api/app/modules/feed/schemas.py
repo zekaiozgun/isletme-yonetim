@@ -39,6 +39,7 @@ class RationItemCreate(BaseModel):
     feed_item_id: int
     daily_quantity_per_animal: Decimal
     unit_id: int
+    scope_id: int
 
 
 class RationItemRead(RationItemCreate):

@@ -52,9 +52,11 @@ from app.modules.reports.schemas import (
     BreedingRecommendationRead,
     CalvingIntervalRead,
     CalvingRead,
+    DailyRationCostRead,
     DashboardSummaryRead,
     DeathLossReportRead,
     FeedConsumptionRead,
+    FeedStockRunwayRead,
     FeedStockStatusRead,
     HealthEventReportRead,
     HerdCostSummaryRead,
@@ -132,6 +134,50 @@ def _daily_headcounts(assignments: list[PenAssignment], start: date, end: date) 
         )
         day += timedelta(days=1)
     return counts
+
+
+def _daily_headcounts_scoped(assignments: list[PenAssignment], start: date, end: date, scope_code: str) -> dict[date, int]:
+    """_daily_headcounts ile ayni, ama scope_code 'TUMU' degilse her gun
+    icin hayvanin O GUNKU yasina (birth_date'ten turetilir, hicbir yerde
+    saklanmaz) gore filtreler: 'BUZAGI' -> sadece CALF_MAX_MONTHS'tan kucuk,
+    'YETISKIN' -> sadece CALF_MAX_MONTHS ve uzeri. Bir rasyon kalemi
+    (RationItem.scope) anne-yavru padoklarinda buzagilarin yetiskin
+    rasyonuna dahil edilmemesi (veya tam tersi, sadece buzagiya uygulanan
+    bir kalem) icin buna ihtiyac duyar - dogum tarihi olmayan (cok nadir)
+    hayvanlar guvenli tarafta YETISKIN sayilir."""
+    if scope_code == "TUMU":
+        return _daily_headcounts(assignments, start, end)
+    counts: dict[date, int] = {}
+    day = start
+    while day <= end:
+        active = [a for a in assignments if a.assigned_date <= day and (a.removed_date is None or a.removed_date >= day)]
+        n = 0
+        for a in active:
+            animal = a.animal
+            is_calf = (
+                animal is not None
+                and animal.birth_date is not None
+                and full_months_between(animal.birth_date, day) < CALF_MAX_MONTHS
+            )
+            if (scope_code == "BUZAGI") == is_calf:
+                n += 1
+        counts[day] = n
+        day += timedelta(days=1)
+    return counts
+
+
+def _assignments_by_pen(db: Session, pen_ids: set[int]) -> dict[int, list[PenAssignment]]:
+    """Verilen padoklarin TUM PenAssignment kayitlarini (Animal
+    joinedload'lu - _daily_headcounts_scoped'un hayvanin dogum tarihine
+    bakabilmesi icin) tek seferde ceker."""
+    assignments_by_pen: dict[int, list[PenAssignment]] = {}
+    for pen_id in pen_ids:
+        assignments_by_pen[pen_id] = list(
+            db.scalars(
+                select(PenAssignment).options(joinedload(PenAssignment.animal)).where(PenAssignment.pen_id == pen_id)
+            ).all()
+        )
+    return assignments_by_pen
 
 
 def _overlap_days_count(start_a: date, end_a: date, start_b: date, end_b: date) -> int:
@@ -1141,6 +1187,7 @@ def _rations_overlapping(db: Session, start_date: date, end_date: date) -> list[
             joinedload(PenRation.pen),
             joinedload(PenRation.items).joinedload(RationItem.feed_item).joinedload(FeedItem.feed_type),
             joinedload(PenRation.items).joinedload(RationItem.unit),
+            joinedload(PenRation.items).joinedload(RationItem.scope),
         )
         .where(PenRation.start_date <= end_date, (PenRation.end_date.is_(None)) | (PenRation.end_date >= start_date))
     )
@@ -1157,11 +1204,7 @@ def list_feed_consumption(db: Session, start_date: date, end_date: date) -> list
     if not rations:
         return []
 
-    assignments_by_pen: dict[int, list[PenAssignment]] = {}
-    for pen_id in {r.pen_id for r in rations}:
-        assignments_by_pen[pen_id] = list(
-            db.scalars(select(PenAssignment).where(PenAssignment.pen_id == pen_id)).all()
-        )
+    assignments_by_pen = _assignments_by_pen(db, {r.pen_id for r in rations})
 
     buckets: dict[tuple[int, int], _FeedBucket] = {}
     for ration in rations:
@@ -1169,9 +1212,11 @@ def list_feed_consumption(db: Session, start_date: date, end_date: date) -> list
         overlap_end = min(ration.end_date or end_date, end_date)
         if overlap_start > overlap_end:
             continue
-        headcounts = _daily_headcounts(assignments_by_pen[ration.pen_id], overlap_start, overlap_end)
-        active_days = sum(1 for count in headcounts.values() if count > 0)
         for item in ration.items:
+            headcounts = _daily_headcounts_scoped(
+                assignments_by_pen[ration.pen_id], overlap_start, overlap_end, item.scope.code
+            )
+            active_days = sum(1 for count in headcounts.values() if count > 0)
             key = (ration.pen_id, item.feed_item_id)
             bucket = buckets.get(key)
             if bucket is None:
@@ -1224,6 +1269,7 @@ def list_feed_stock_status(db: Session, as_of_date: date | None = None) -> list[
             .join(PenRation)
             .options(
                 joinedload(RationItem.unit),
+                joinedload(RationItem.scope),
                 joinedload(RationItem.ration),
             )
             .where(RationItem.feed_item_id == feed_item.id, PenRation.start_date <= as_of_date)
@@ -1237,10 +1283,8 @@ def list_feed_stock_status(db: Session, as_of_date: date | None = None) -> list[
             if ration.start_date > overlap_end:
                 continue
             if ration.pen_id not in pens_seen:
-                pens_seen[ration.pen_id] = list(
-                    db.scalars(select(PenAssignment).where(PenAssignment.pen_id == ration.pen_id)).all()
-                )
-            headcounts = _daily_headcounts(pens_seen[ration.pen_id], ration.start_date, overlap_end)
+                pens_seen.update(_assignments_by_pen(db, {ration.pen_id}))
+            headcounts = _daily_headcounts_scoped(pens_seen[ration.pen_id], ration.start_date, overlap_end, item.scope.code)
             per_animal_kg = _to_kg(item.daily_quantity_per_animal, item.unit.code)
             total_consumed_kg += sum(per_animal_kg * count for count in headcounts.values())
 
@@ -1263,6 +1307,107 @@ def list_feed_stock_status(db: Session, as_of_date: date | None = None) -> list[
             )
         )
     rows.sort(key=lambda r: r.feed_item_name)
+    return rows
+
+
+def list_daily_ration_cost(db: Session, as_of_date: date | None = None) -> list[DailyRationCostRead]:
+    """as_of_date itibariyla HER padoktaki AKTIF rasyonun gunluk maliyetini
+    (TL) padok bazinda listeler - hayvan basina DEGIL PADOK TOPLAMI olarak,
+    cunku bir kalem sadece buzagiya/yetiskine uygulanabildiginden (bkz.
+    RationItemScope) tek bir 'hayvan basi' ortalamasi yaniltici olurdu.
+    Yetiskin/buzagi sayilari sadece baglam icin gosterilir. Anayasa m.4/m.5:
+    hicbir yerde saklanmaz, o anki rasyon + pen_assignments + agirlikli
+    ortalama yem alim fiyatindan turetilir."""
+    as_of_date = as_of_date or date.today()
+    rations = _rations_overlapping(db, as_of_date, as_of_date)
+    if not rations:
+        return []
+    assignments_by_pen = _assignments_by_pen(db, {r.pen_id for r in rations})
+
+    rows: list[DailyRationCostRead] = []
+    total_cost = Decimal("0")
+    for ration in rations:
+        headcounts_by_scope = {
+            code: _daily_headcounts_scoped(assignments_by_pen[ration.pen_id], as_of_date, as_of_date, code)[as_of_date]
+            for code in ("TUMU", "BUZAGI", "YETISKIN")
+        }
+        pen_cost = Decimal("0")
+        for item in ration.items:
+            headcount = headcounts_by_scope[item.scope.code]
+            per_animal_kg = _to_kg(item.daily_quantity_per_animal, item.unit.code)
+            avg_cost = _feed_avg_cost_per_kg(db, item.feed_item_id, as_of_date)
+            if avg_cost is None:
+                continue
+            pen_cost += Decimal(str(per_animal_kg * headcount)) * avg_cost
+        rows.append(
+            DailyRationCostRead(
+                pen_code=ration.pen.code,
+                pen_name=ration.pen.name,
+                adult_count=headcounts_by_scope["YETISKIN"],
+                calf_count=headcounts_by_scope["BUZAGI"],
+                daily_cost_try=_round_money(pen_cost),
+            )
+        )
+        total_cost += pen_cost
+    rows.sort(key=lambda r: -r.daily_cost_try)
+    rows.append(
+        DailyRationCostRead(
+            is_summary=True,
+            pen_code="",
+            pen_name="Sürü Toplamı",
+            adult_count=sum(r.adult_count for r in rows),
+            calf_count=sum(r.calf_count for r in rows),
+            daily_cost_try=_round_money(total_cost),
+        )
+    )
+    return rows
+
+
+def list_feed_stock_runway(db: Session, as_of_date: date | None = None) -> list[FeedStockRunwayRead]:
+    """Her yem urunu icin, mevcut stogun (bkz. list_feed_stock_status)
+    GUNCEL (as_of_date itibariyla AKTIF tum rasyonlardan turetilen) toplam
+    gunluk tuketim HIZIYLA kac gune yetecegini tahmin eder - GECMIS
+    ortalama tuketim DEGIL, 'su anki rasyonlar/hayvan sayisiyla devam
+    edilirse' varsayimidir; rasyonlar veya hayvan sayisi degisirse tahmin
+    de degisir, hicbir yerde saklanmaz (Anayasa m.4/m.5)."""
+    as_of_date = as_of_date or date.today()
+    stock_by_item = {row.feed_item_name: row for row in list_feed_stock_status(db, as_of_date)}
+    if not stock_by_item:
+        return []
+
+    rations = _rations_overlapping(db, as_of_date, as_of_date)
+    assignments_by_pen = _assignments_by_pen(db, {r.pen_id for r in rations})
+
+    daily_consumption_by_item: dict[str, float] = {}
+    for ration in rations:
+        for item in ration.items:
+            headcount = _daily_headcounts_scoped(
+                assignments_by_pen[ration.pen_id], as_of_date, as_of_date, item.scope.code
+            )[as_of_date]
+            per_animal_kg = _to_kg(item.daily_quantity_per_animal, item.unit.code)
+            daily_consumption_by_item[item.feed_item.name] = (
+                daily_consumption_by_item.get(item.feed_item.name, 0.0) + per_animal_kg * headcount
+            )
+
+    rows: list[FeedStockRunwayRead] = []
+    for feed_item_name, stock_row in stock_by_item.items():
+        daily_kg = daily_consumption_by_item.get(feed_item_name, 0.0)
+        days_remaining: int | None = None
+        depletion_date: date | None = None
+        if daily_kg > 0:
+            days_remaining = int(stock_row.stock_kg // daily_kg) if stock_row.stock_kg > 0 else 0
+            depletion_date = as_of_date + timedelta(days=days_remaining)
+        rows.append(
+            FeedStockRunwayRead(
+                feed_item_name=feed_item_name,
+                feed_type_name=stock_row.feed_type_name,
+                stock_kg=stock_row.stock_kg,
+                daily_consumption_kg=round(daily_kg, 2),
+                days_remaining=days_remaining,
+                estimated_depletion_date=depletion_date,
+            )
+        )
+    rows.sort(key=lambda r: (r.days_remaining is None, r.days_remaining))
     return rows
 
 
@@ -1685,23 +1830,21 @@ def list_pen_efficiency(db: Session, start_date: date, end_date: date) -> list[P
     buckets: dict[int, _PenEfficiencyBucket] = {}
 
     rations = _rations_overlapping(db, start_date, end_date)
-    assignments_by_pen: dict[int, list[PenAssignment]] = {}
-    for pen_id in {r.pen_id for r in rations}:
-        assignments_by_pen[pen_id] = list(
-            db.scalars(select(PenAssignment).where(PenAssignment.pen_id == pen_id)).all()
-        )
+    assignments_by_pen = _assignments_by_pen(db, {r.pen_id for r in rations})
 
     for ration in rations:
         overlap_start = max(ration.start_date, start_date)
         overlap_end = min(ration.end_date or end_date, end_date)
         if overlap_start > overlap_end:
             continue
-        headcounts = _daily_headcounts(assignments_by_pen[ration.pen_id], overlap_start, overlap_end)
         bucket = buckets.get(ration.pen_id)
         if bucket is None:
             bucket = _PenEfficiencyBucket(code=ration.pen.code, name=ration.pen.name)
             buckets[ration.pen_id] = bucket
         for item in ration.items:
+            headcounts = _daily_headcounts_scoped(
+                assignments_by_pen[ration.pen_id], overlap_start, overlap_end, item.scope.code
+            )
             per_animal_kg = _to_kg(item.daily_quantity_per_animal, item.unit.code)
             total_kg = sum(per_animal_kg * count for count in headcounts.values())
             bucket.total_feed_quantity_kg += total_kg
@@ -1792,7 +1935,12 @@ def _build_cost_context(db: Session) -> _CostContext:
 
     rations_by_pen: dict[int, list[PenRation]] = {}
     rations = (
-        db.scalars(select(PenRation).options(joinedload(PenRation.items).joinedload(RationItem.unit)))
+        db.scalars(
+            select(PenRation).options(
+                joinedload(PenRation.items).joinedload(RationItem.unit),
+                joinedload(PenRation.items).joinedload(RationItem.scope),
+            )
+        )
         .unique()
         .all()
     )
@@ -1835,22 +1983,43 @@ def _health_cost_try_usd_ctx(
     return total_try, total_usd
 
 
+def _scoped_days(overlap_start: date, overlap_end: date, scope_code: str, birth_date: date | None) -> int:
+    """[overlap_start, overlap_end] araligindan, rasyon kaleminin scope'una
+    (bkz. RationItemScope) gore hayvanin O GUNLERDE uygun yas grubunda
+    oldugu gun sayisini dondurur. 'TUMU' icin tum aralik sayilir. Dogum
+    tarihi bilinmiyorsa (nadir) YETISKIN sayilir - _daily_headcounts_scoped
+    ile ayni guvenli varsayim."""
+    total_days = (overlap_end - overlap_start).days + 1
+    if scope_code == "TUMU":
+        return total_days
+    if birth_date is None:
+        return total_days if scope_code == "YETISKIN" else 0
+    transition_date = add_months(birth_date, CALF_MAX_MONTHS)
+    if scope_code == "BUZAGI":
+        effective_end = min(overlap_end, transition_date - timedelta(days=1))
+        return (effective_end - overlap_start).days + 1 if effective_end >= overlap_start else 0
+    effective_start = max(overlap_start, transition_date)
+    return (overlap_end - effective_start).days + 1 if overlap_end >= effective_start else 0
+
+
 def _feed_cost_share_for_animal_ctx(
-    db: Session, ctx: _CostContext, animal_id: uuid.UUID, outcome_date: date, convert_usd: bool = True
+    db: Session, ctx: _CostContext, animal: Animal, outcome_date: date, convert_usd: bool = True
 ) -> tuple[Decimal, Decimal]:
     total_try = Decimal("0")
     total_usd = Decimal("0")
-    for assignment in ctx.assignments_by_animal.get(animal_id, []):
+    for assignment in ctx.assignments_by_animal.get(animal.id, []):
         window_end = min(assignment.removed_date or outcome_date, outcome_date)
         if assignment.assigned_date > window_end:
             continue
         for ration in ctx.rations_by_pen.get(assignment.pen_id, []):
-            days = _overlap_days_count(
-                assignment.assigned_date, window_end, ration.start_date, ration.end_date or window_end
-            )
-            if days <= 0:
+            overlap_start = max(assignment.assigned_date, ration.start_date)
+            overlap_end = min(window_end, ration.end_date or window_end)
+            if overlap_end < overlap_start:
                 continue
             for item in ration.items:
+                days = _scoped_days(overlap_start, overlap_end, item.scope.code, animal.birth_date)
+                if days <= 0:
+                    continue
                 kg = Decimal(str(_to_kg(item.daily_quantity_per_animal, item.unit.code) * days))
                 avg_cost = _feed_avg_cost_per_kg_ctx(ctx, item.feed_item_id, outcome_date)
                 if avg_cost is None:
@@ -1878,7 +2047,7 @@ def _accumulated_cost_try_usd_ctx(
     USD'yi TEK bir as_of_date kuruyla toplu hesaplar (performans/timeout
     riskini onlemek icin)."""
     health_cost_try, health_cost_usd = _health_cost_try_usd_ctx(db, ctx, animal.id, as_of_date, convert_usd)
-    feed_cost_try, feed_cost_usd = _feed_cost_share_for_animal_ctx(db, ctx, animal.id, as_of_date, convert_usd)
+    feed_cost_try, feed_cost_usd = _feed_cost_share_for_animal_ctx(db, ctx, animal, as_of_date, convert_usd)
     entry_value_try = animal.entry_value or Decimal("0")
     entry_value_usd = (_try_to_usd(db, entry_value_try, animal.entry_date)) if convert_usd else Decimal("0")
     total_try = entry_value_try + health_cost_try + feed_cost_try
@@ -1895,7 +2064,7 @@ def _build_profitability_row(
     revenue_try: Decimal | None,
 ) -> AnimalProfitabilityRead:
     health_cost_try, health_cost_usd = _health_cost_try_usd_ctx(db, ctx, animal.id, outcome_date)
-    feed_cost_try, feed_cost_usd = _feed_cost_share_for_animal_ctx(db, ctx, animal.id, outcome_date)
+    feed_cost_try, feed_cost_usd = _feed_cost_share_for_animal_ctx(db, ctx, animal, outcome_date)
 
     entry_value_try = animal.entry_value or Decimal("0")
     entry_value_usd = _try_to_usd(db, entry_value_try, animal.entry_date)
@@ -1971,18 +2140,16 @@ def list_herd_cost_summary(db: Session, start_date: date, end_date: date) -> lis
     tutarlar toplanir)."""
     feed_try = feed_usd = Decimal("0")
     rations = _rations_overlapping(db, start_date, end_date)
-    assignments_by_pen_for_cost: dict[int, list[PenAssignment]] = {}
-    for pen_id in {r.pen_id for r in rations}:
-        assignments_by_pen_for_cost[pen_id] = list(
-            db.scalars(select(PenAssignment).where(PenAssignment.pen_id == pen_id)).all()
-        )
+    assignments_by_pen_for_cost = _assignments_by_pen(db, {r.pen_id for r in rations})
     for ration in rations:
         overlap_start = max(ration.start_date, start_date)
         overlap_end = min(ration.end_date or end_date, end_date)
         if overlap_start > overlap_end:
             continue
-        headcounts = _daily_headcounts(assignments_by_pen_for_cost[ration.pen_id], overlap_start, overlap_end)
         for item in ration.items:
+            headcounts = _daily_headcounts_scoped(
+                assignments_by_pen_for_cost[ration.pen_id], overlap_start, overlap_end, item.scope.code
+            )
             per_animal_kg = _to_kg(item.daily_quantity_per_animal, item.unit.code)
             total_kg = sum(per_animal_kg * count for count in headcounts.values())
             avg_cost = _feed_avg_cost_per_kg(db, item.feed_item_id, end_date)

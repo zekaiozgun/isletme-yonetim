@@ -5,6 +5,7 @@ import { getReport } from '@/lib/reports';
 import { ReportTable } from '@/components/ReportTable';
 import { HerdAnimalValueTable } from '@/components/HerdAnimalValueTable';
 import { ParentPerformanceSection } from '@/components/ParentPerformanceSection';
+import { DailyFeedCostSection } from '@/components/DailyFeedCostSection';
 import { DateRangeFilter } from '@/components/DateRangeFilter';
 import { MarketValueSeriesFilter } from '@/components/MarketValueSeriesFilter';
 import { formatNowIstanbulDMYHM } from '@/lib/format';
@@ -79,6 +80,10 @@ export default async function ReportPage({
   const rows = await apiGetSafe<ApiRecord[]>(`${report.endpoint}${separator}${query.toString()}`, []);
   const sireRows =
     report.slug === 'parent-performance' ? await apiGetSafe<ApiRecord[]>('/reports/sire-performance', []) : [];
+  const feedStockRunwayRows =
+    report.slug === 'feed-daily-cost'
+      ? await apiGetSafe<ApiRecord[]>(`/reports/feed-stock-runway${separator}${query.toString()}`, [])
+      : [];
 
   const showCustomFilter = report.singleDate || report.statusFilter;
 
@@ -123,6 +128,8 @@ export default async function ReportPage({
         <HerdAnimalValueTable rows={rows} />
       ) : report.slug === 'parent-performance' ? (
         <ParentPerformanceSection motherRows={rows} sireRows={sireRows} />
+      ) : report.slug === 'feed-daily-cost' ? (
+        <DailyFeedCostSection costReport={report} costRows={rows} runwayRows={feedStockRunwayRows} />
       ) : (
         <ReportTable report={report} rows={rows} serverQuery={searchQuery} />
       )}

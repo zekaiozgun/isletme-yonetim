@@ -19,28 +19,45 @@ interface UnitOption {
   name: string;
 }
 
+interface ScopeOption {
+  id: number;
+  name: string;
+}
+
 interface ItemRow {
   key: number;
   feedItemId: string;
   dailyQuantityPerAnimal: string;
   unitId: string;
+  scopeId: string;
 }
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function emptyRow(key: number, defaultUnitId: string): ItemRow {
-  return { key, feedItemId: '', dailyQuantityPerAnimal: '', unitId: defaultUnitId };
+function emptyRow(key: number, defaultUnitId: string, defaultScopeId: string): ItemRow {
+  return { key, feedItemId: '', dailyQuantityPerAnimal: '', unitId: defaultUnitId, scopeId: defaultScopeId };
 }
 
-export function RationForm({ pens, feedItems, units }: { pens: PenOption[]; feedItems: FeedItemOption[]; units: UnitOption[] }) {
+export function RationForm({
+  pens,
+  feedItems,
+  units,
+  scopes,
+}: {
+  pens: PenOption[];
+  feedItems: FeedItemOption[];
+  units: UnitOption[];
+  scopes: ScopeOption[];
+}) {
   const router = useRouter();
   const defaultUnitId = units[0] ? String(units[0].id) : '';
+  const defaultScopeId = scopes[0] ? String(scopes[0].id) : '';
   const [penId, setPenId] = useState('');
   const [startDate, setStartDate] = useState(todayIso());
   const [note, setNote] = useState('');
-  const [rows, setRows] = useState<ItemRow[]>([emptyRow(0, defaultUnitId)]);
+  const [rows, setRows] = useState<ItemRow[]>([emptyRow(0, defaultUnitId, defaultScopeId)]);
   const [nextKey, setNextKey] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -50,7 +67,7 @@ export function RationForm({ pens, feedItems, units }: { pens: PenOption[]; feed
   }
 
   function addRow() {
-    setRows((prev) => [...prev, emptyRow(nextKey, defaultUnitId)]);
+    setRows((prev) => [...prev, emptyRow(nextKey, defaultUnitId, defaultScopeId)]);
     setNextKey((k) => k + 1);
   }
 
@@ -73,8 +90,8 @@ export function RationForm({ pens, feedItems, units }: { pens: PenOption[]; feed
     const items: RationItemInput[] = [];
     for (const row of rows) {
       if (!row.feedItemId && !row.dailyQuantityPerAnimal) continue; // bos satir - atla
-      if (!row.feedItemId || !row.dailyQuantityPerAnimal || !row.unitId) {
-        setError('Her rasyon kalemi için yem ürünü, miktar ve birim seçilmeli.');
+      if (!row.feedItemId || !row.dailyQuantityPerAnimal || !row.unitId || !row.scopeId) {
+        setError('Her rasyon kalemi için yem ürünü, miktar, birim ve uygulanacak grup seçilmeli.');
         return;
       }
       const quantity = Number(row.dailyQuantityPerAnimal);
@@ -82,7 +99,12 @@ export function RationForm({ pens, feedItems, units }: { pens: PenOption[]; feed
         setError('Miktarlar geçerli bir pozitif sayı olmalı.');
         return;
       }
-      items.push({ feedItemId: Number(row.feedItemId), dailyQuantityPerAnimal: quantity, unitId: Number(row.unitId) });
+      items.push({
+        feedItemId: Number(row.feedItemId),
+        dailyQuantityPerAnimal: quantity,
+        unitId: Number(row.unitId),
+        scopeId: Number(row.scopeId),
+      });
     }
 
     if (items.length === 0) {
@@ -154,7 +176,7 @@ export function RationForm({ pens, feedItems, units }: { pens: PenOption[]; feed
         </div>
         <div className="space-y-2">
           {rows.map((row) => (
-            <div key={row.key} className="flex items-center gap-2 rounded border border-slate-200 p-2">
+            <div key={row.key} className="flex flex-wrap items-center gap-2 rounded border border-slate-200 p-2">
               <select
                 value={row.feedItemId}
                 onChange={(e) => updateRow(row.key, { feedItemId: e.target.value })}
@@ -184,6 +206,18 @@ export function RationForm({ pens, feedItems, units }: { pens: PenOption[]; feed
                 {units.map((unit) => (
                   <option key={unit.id} value={unit.id}>
                     {unit.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={row.scopeId}
+                onChange={(e) => updateRow(row.key, { scopeId: e.target.value })}
+                className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm text-slate-900 focus:border-slate-500 focus:outline-none sm:w-48"
+                title="Bu kalem padoktaki hangi hayvanlara uygulanır"
+              >
+                {scopes.map((scope) => (
+                  <option key={scope.id} value={scope.id}>
+                    {scope.name}
                   </option>
                 ))}
               </select>

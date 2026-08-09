@@ -9,16 +9,18 @@ export default async function PenRationsPage({
 }: {
   searchParams: Promise<{ pen_id?: string }>;
 }) {
-  const [rations, pens, feedItems, units] = await Promise.all([
+  const [rations, pens, feedItems, units, scopes] = await Promise.all([
     apiGetSafe<ApiRecord[]>('/feed/rations', []),
     apiGetSafe<ApiRecord[]>('/pens', []),
     apiGetSafe<ApiRecord[]>('/feed/items', []),
     apiGetSafe<ApiRecord[]>('/feed/units', []),
+    apiGetSafe<ApiRecord[]>('/feed/ration-item-scopes', []),
   ]);
 
   const penLabel = new Map(pens.map((p) => [Number(p.id), `${String(p.code)} - ${String(p.name)}`]));
   const feedItemName = new Map(feedItems.map((f) => [Number(f.id), String(f.name)]));
   const unitName = new Map(units.map((u) => [Number(u.id), String(u.name)]));
+  const scopeName = new Map(scopes.map((s) => [Number(s.id), String(s.name)]));
 
   const sp = await searchParams;
   const selectedPenId = sp.pen_id && sp.pen_id !== '' ? Number(sp.pen_id) : undefined;
@@ -112,6 +114,7 @@ export default async function PenRationsPage({
                           <th className="px-3 py-1.5 text-left font-medium text-slate-600">Yem Kalemi</th>
                           <th className="px-3 py-1.5 text-left font-medium text-slate-600">Miktar (hayvan başı/gün)</th>
                           <th className="px-3 py-1.5 text-left font-medium text-slate-600">Birim</th>
+                          <th className="px-3 py-1.5 text-left font-medium text-slate-600">Uygulanacak Grup</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -122,6 +125,7 @@ export default async function PenRationsPage({
                             </td>
                             <td className="px-3 py-1.5 text-slate-700">{String(item.daily_quantity_per_animal)}</td>
                             <td className="px-3 py-1.5 text-slate-700">{unitName.get(Number(item.unit_id)) ?? '—'}</td>
+                            <td className="px-3 py-1.5 text-slate-700">{scopeName.get(Number(item.scope_id)) ?? '—'}</td>
                           </tr>
                         ))}
                       </tbody>

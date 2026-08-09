@@ -14,3 +14,12 @@ class FeedUnit(LookupMixin, Base):
     """Yem Birimi (kg, ton)."""
 
     __tablename__ = "feed_units"
+
+
+class RationItemScope(LookupMixin, Base):
+    """Bir rasyon kaleminin padoktaki hangi yaş grubuna uygulandığı (Tüm
+    Hayvanlar / Sadece Buzağı / Sadece Yetişkin) - anne-yavru padoklarında
+    buzağıların yetişkinlerle homojen sayılmasını (tam porsiyon yiyormuş
+    gibi) önlemek için (bkz. reports/service.py)."""
+
+    __tablename__ = "ration_item_scopes"

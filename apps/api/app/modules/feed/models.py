@@ -78,7 +78,15 @@ class RationItem(TimestampMixin, Base):
     """Bir rasyon doneminin icerigi: hangi yem kaleminden HAYVAN BASINA
     gunde ne kadar verilir. Padoktaki toplam miktar, o gunku fiili hayvan
     sayisiyla ÇARPILARAK istek aninda turetilir - elle toplam girilmez,
-    hayvan sayisi degistikce (satis/olum/giris) otomatik dogru kalir."""
+    hayvan sayisi degistikce (satis/olum/giris) otomatik dogru kalir.
+
+    scope_id (bkz. RationItemScope): bu kalem padoktaki HANGI yas grubuna
+    uygulanir - varsayilan TUMU (mevcut/eski davranis). Anne-yavru
+    padoklarinda buzagilarin yetiskinlerle homojen sayilmamasi
+    (yetiskin rasyonuna dahil edilmemesi) veya ayri bir buzagi buyutme
+    yeminin sadece buzagi sayisina bolunmesi icin kullanilir - yasa gore
+    filtreleme istek aninda turetilir (Anayasa m.4/m.5), hicbir hayvan
+    burada isimlendirilmez."""
 
     __tablename__ = "ration_items"
 
@@ -87,7 +95,9 @@ class RationItem(TimestampMixin, Base):
     feed_item_id: Mapped[int] = mapped_column(ForeignKey("feed_items.id"), nullable=False)
     daily_quantity_per_animal: Mapped[Decimal] = mapped_column(Numeric(8, 3), nullable=False)
     unit_id: Mapped[int] = mapped_column(ForeignKey("feed_units.id"), nullable=False)
+    scope_id: Mapped[int] = mapped_column(ForeignKey("ration_item_scopes.id"), nullable=False)
 
     ration = relationship("PenRation", back_populates="items")
     feed_item = relationship("FeedItem")
     unit = relationship("FeedUnit")
+    scope = relationship("RationItemScope")
