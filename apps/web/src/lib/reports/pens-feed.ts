@@ -1,5 +1,14 @@
 import type { ReportConfig } from './types';
-import { formatCurrency, formatDate, formatDays, formatKg, formatPercent, formatPlain, formatUsd } from './formatters';
+import {
+  formatCurrency,
+  formatDate,
+  formatDays,
+  formatKg,
+  formatPercent,
+  formatPlain,
+  formatQuantityWithUnit,
+  formatUsd,
+} from './formatters';
 
 /** Padok ve yem raporları: tüketim, stok durumu, doluluk, maliyet-verimlilik. */
 export const pensFeedReports: ReportConfig[] = [
@@ -55,6 +64,24 @@ export const pensFeedReports: ReportConfig[] = [
       { key: 'daily_cost_try', label: 'Günlük Toplam Maliyet (TL)', format: formatCurrency, width: 'narrow' },
     ],
     rowHighlight: (row) => row.is_summary === true,
+  },
+  {
+    slug: 'mixer-batch',
+    title: 'Karma Yem Reçetesi',
+    description:
+      'Bugün (veya seçilen tarihte) her padoğun aktif rasyonundaki her yem kaleminden, o padoktaki GÜNCEL hayvan sayısına göre mikserde hazırlanması gereken toplam miktar (kg). Hayvan Sayısı ve Uygulanacak Grup sütunları, o miktarın nereden geldiğini gösterir. Hayvan sayısı değiştikçe (satış/ölüm/doğum/padok değişimi) sayfa yeniden açıldığında otomatik güncellenir.',
+    endpoint: '/reports/mixer-batch',
+    group: 'Padok ve Yem',
+    singleDate: true,
+    columns: [
+      { key: 'pen_code', label: 'Padok Kodu', width: 'narrow' },
+      { key: 'pen_name', label: 'Padok Adı', width: 'narrow' },
+      { key: 'feed_item_name', label: 'Yem Kalemi', width: 'narrow' },
+      { key: 'scope_name', label: 'Uygulanacak Grup', width: 'narrow' },
+      { key: 'animal_count', label: 'Hayvan Sayısı', width: 'narrow' },
+      { key: 'daily_quantity_per_animal', label: 'Hayvan Başı Miktar', format: formatQuantityWithUnit, width: 'narrow' },
+      { key: 'total_quantity_kg', label: 'Bugün Miksere Konulacak (kg)', format: formatKg, width: 'narrow' },
+    ],
   },
   {
     slug: 'pen-occupancy',

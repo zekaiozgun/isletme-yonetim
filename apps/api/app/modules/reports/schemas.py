@@ -213,6 +213,23 @@ class DailyRationCostRead(BaseModel):
     daily_cost_try: Decimal
 
 
+class MixerBatchRead(BaseModel):
+    pen_code: str
+    pen_name: str
+    feed_item_name: str
+    # Bu kalemin padoktaki HANGI yas grubuna uygulandigi (bkz.
+    # RationItemScope) - animal_count'un neden o sayi ciktigini seffaf
+    # gosterir.
+    scope_name: str
+    animal_count: int
+    daily_quantity_per_animal: Decimal
+    unit_name: str
+    # Mikser icin hazirlanmasi gereken TOPLAM miktar (kg) - hayvan basina
+    # miktar x guncel (scope'a gore filtrelenmis) hayvan sayisi (bkz.
+    # reports/service.py list_mixer_batch).
+    total_quantity_kg: float
+
+
 class FeedStockRunwayRead(BaseModel):
     is_summary: bool = False
     feed_item_name: str

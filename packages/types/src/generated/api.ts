@@ -2309,6 +2309,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports/mixer-batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mixer Batch */
+        get: operations["mixer_batch_reports_mixer_batch_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reports/calving-intervals": {
         parameters: {
             query?: never;
@@ -3788,6 +3805,25 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** MixerBatchRead */
+        MixerBatchRead: {
+            /** Pen Code */
+            pen_code: string;
+            /** Pen Name */
+            pen_name: string;
+            /** Feed Item Name */
+            feed_item_name: string;
+            /** Scope Name */
+            scope_name: string;
+            /** Animal Count */
+            animal_count: number;
+            /** Daily Quantity Per Animal */
+            daily_quantity_per_animal: string;
+            /** Unit Name */
+            unit_name: string;
+            /** Total Quantity Kg */
+            total_quantity_kg: number;
         };
         /** MotherPerformanceRead */
         MotherPerformanceRead: {
@@ -12679,6 +12715,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FeedStockRunwayRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mixer_batch_reports_mixer_batch_get: {
+        parameters: {
+            query?: {
+                as_of_date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MixerBatchRead"][];
                 };
             };
             /** @description Validation Error */

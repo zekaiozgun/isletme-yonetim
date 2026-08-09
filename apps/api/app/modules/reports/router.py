@@ -31,6 +31,7 @@ from app.modules.reports.schemas import (
     HerdFlowReportRead,
     HerdInventoryRead,
     HerdStatusSummaryRead,
+    MixerBatchRead,
     MotherPerformanceRead,
     OffspringByMotherRead,
     OffspringBySireRead,
@@ -176,6 +177,11 @@ def daily_ration_cost(as_of_date: date | None = None, db: Session = Depends(get_
 @router.get("/feed-stock-runway", response_model=list[FeedStockRunwayRead])
 def feed_stock_runway(as_of_date: date | None = None, db: Session = Depends(get_db)) -> list[FeedStockRunwayRead]:
     return service.list_feed_stock_runway(db, as_of_date)
+
+
+@router.get("/mixer-batch", response_model=list[MixerBatchRead])
+def mixer_batch(as_of_date: date | None = None, db: Session = Depends(get_db)) -> list[MixerBatchRead]:
+    return service.list_mixer_batch(db, as_of_date)
 
 
 @router.get("/calving-intervals", response_model=list[CalvingIntervalRead])

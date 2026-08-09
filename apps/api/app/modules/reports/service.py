@@ -64,6 +64,7 @@ from app.modules.reports.schemas import (
     HerdFlowReportRead,
     HerdInventoryRead,
     HerdStatusSummaryRead,
+    MixerBatchRead,
     MotherPerformanceRead,
     OffspringByMotherRead,
     OffspringBySireRead,
@@ -1408,6 +1409,45 @@ def list_feed_stock_runway(db: Session, as_of_date: date | None = None) -> list[
             )
         )
     rows.sort(key=lambda r: (r.days_remaining is None, r.days_remaining))
+    return rows
+
+
+def list_mixer_batch(db: Session, as_of_date: date | None = None) -> list[MixerBatchRead]:
+    """as_of_date itibariyla HER padoktaki AKTIF rasyonun HER kaleminden,
+    padoktaki GUNCEL (RationItem.scope'a gore filtrelenmis) hayvan sayisina
+    gore mikser icin hazirlanmasi gereken toplam miktari (kg) hesaplar -
+    'karma yem receteesi'. Uygulanacak Grup ve Hayvan Sayisi sutunlari
+    sonucun NEDEN o sayi ciktigini seffaf gosterir (bkz.
+    list_daily_ration_cost ile ayni turetme mantigi). Hayvan sayisi
+    degistikce (satis/olum/dogum/padok degisimi) bir sonraki
+    goruntulemede otomatik guncellenir - hicbir yerde saklanmaz (Anayasa
+    m.4/m.5)."""
+    as_of_date = as_of_date or date.today()
+    rations = _rations_overlapping(db, as_of_date, as_of_date)
+    if not rations:
+        return []
+    assignments_by_pen = _assignments_by_pen(db, {r.pen_id for r in rations})
+
+    rows: list[MixerBatchRead] = []
+    for ration in rations:
+        for item in ration.items:
+            headcount = _daily_headcounts_scoped(
+                assignments_by_pen[ration.pen_id], as_of_date, as_of_date, item.scope.code
+            )[as_of_date]
+            per_animal_kg = _to_kg(item.daily_quantity_per_animal, item.unit.code)
+            rows.append(
+                MixerBatchRead(
+                    pen_code=ration.pen.code,
+                    pen_name=ration.pen.name,
+                    feed_item_name=item.feed_item.name,
+                    scope_name=item.scope.name,
+                    animal_count=headcount,
+                    daily_quantity_per_animal=item.daily_quantity_per_animal,
+                    unit_name=item.unit.name,
+                    total_quantity_kg=round(per_animal_kg * headcount, 2),
+                )
+            )
+    rows.sort(key=lambda r: (r.pen_code, r.feed_item_name))
     return rows
 
 
