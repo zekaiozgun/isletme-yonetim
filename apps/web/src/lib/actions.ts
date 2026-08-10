@@ -384,6 +384,33 @@ export async function createPenRationAction(
   return {};
 }
 
+export async function updatePenRationAction(
+  rationId: number,
+  penId: number,
+  startDate: string,
+  note: string,
+  items: RationItemInput[]
+): Promise<{ error?: string }> {
+  const result = await apiPut(`/feed/rations/${rationId}`, {
+    pen_id: penId,
+    start_date: startDate,
+    note: note.trim() || null,
+    items: items.map((item) => ({
+      feed_item_id: item.feedItemId,
+      daily_quantity_per_animal: item.dailyQuantityPerAnimal,
+      unit_id: item.unitId,
+      scope_id: item.scopeId,
+    })),
+  });
+
+  if (result.error !== undefined) {
+    return { error: result.error };
+  }
+
+  revalidatePath('/pen-rations');
+  return {};
+}
+
 export async function deletePenRationAction(
   rationId: number,
   _prevState: FormState,

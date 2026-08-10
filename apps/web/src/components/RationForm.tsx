@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { createPenRationAction, type RationItemInput } from '@/lib/actions';
+import { createPenRationAction, updatePenRationAction, type RationItemInput } from '@/lib/actions';
 
 interface PenOption {
   id: number;
@@ -40,25 +40,42 @@ function emptyRow(key: number, defaultUnitId: string, defaultScopeId: string): I
   return { key, feedItemId: '', dailyQuantityPerAnimal: '', unitId: defaultUnitId, scopeId: defaultScopeId };
 }
 
+export interface RationFormInitial {
+  penId: string;
+  startDate: string;
+  note: string;
+  items: { feedItemId: string; dailyQuantityPerAnimal: string; unitId: string; scopeId: string }[];
+}
+
 export function RationForm({
   pens,
   feedItems,
   units,
   scopes,
+  rationId,
+  initial,
 }: {
   pens: PenOption[];
   feedItems: FeedItemOption[];
   units: UnitOption[];
   scopes: ScopeOption[];
+  /** Belirtilirse form DÜZENLEME modunda çalışır (createPenRationAction yerine
+   * updatePenRationAction çağrılır) - bkz. app/(app)/pen-rations/[id]/edit. */
+  rationId?: number;
+  initial?: RationFormInitial;
 }) {
   const router = useRouter();
   const defaultUnitId = units[0] ? String(units[0].id) : '';
   const defaultScopeId = scopes[0] ? String(scopes[0].id) : '';
-  const [penId, setPenId] = useState('');
-  const [startDate, setStartDate] = useState(todayIso());
-  const [note, setNote] = useState('');
-  const [rows, setRows] = useState<ItemRow[]>([emptyRow(0, defaultUnitId, defaultScopeId)]);
-  const [nextKey, setNextKey] = useState(1);
+  const [penId, setPenId] = useState(initial?.penId ?? '');
+  const [startDate, setStartDate] = useState(initial?.startDate ?? todayIso());
+  const [note, setNote] = useState(initial?.note ?? '');
+  const [rows, setRows] = useState<ItemRow[]>(
+    initial && initial.items.length > 0
+      ? initial.items.map((item, index) => ({ key: index, ...item }))
+      : [emptyRow(0, defaultUnitId, defaultScopeId)]
+  );
+  const [nextKey, setNextKey] = useState(rows.length);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -113,7 +130,9 @@ export function RationForm({
     }
 
     startTransition(async () => {
-      const result = await createPenRationAction(Number(penId), startDate, note, items);
+      const result = rationId
+        ? await updatePenRationAction(rationId, Number(penId), startDate, note, items)
+        : await createPenRationAction(Number(penId), startDate, note, items);
       if (result.error !== undefined) {
         setError(result.error);
         return;
@@ -250,7 +269,7 @@ export function RationForm({
         disabled={isPending}
         className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
       >
-        {isPending ? 'Kaydediliyor...' : 'Rasyonu Kaydet'}
+        {isPending ? 'Kaydediliyor...' : rationId ? 'Değişiklikleri Kaydet' : 'Rasyonu Kaydet'}
       </button>
     </div>
   );

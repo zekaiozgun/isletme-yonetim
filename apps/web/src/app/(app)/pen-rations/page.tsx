@@ -135,11 +135,19 @@ export default async function PenRationsPage({
 
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-3 py-2">
                   <p className="text-sm text-slate-500">{ration.note ? String(ration.note) : 'Not yok'}</p>
-                  <DeleteButton
-                    action={deletePenRationAction.bind(null, Number(ration.id))}
-                    confirmMessage="Bu rasyon kaydını kalıcı olarak silmek istediğinize emin misiniz?"
-                    redirectTo="/pen-rations"
-                  />
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href={`/pen-rations/${String(ration.id)}/edit`}
+                      className="text-sm font-medium text-slate-600 hover:text-slate-900 hover:underline"
+                    >
+                      Düzenle
+                    </Link>
+                    <DeleteButton
+                      action={deletePenRationAction.bind(null, Number(ration.id))}
+                      confirmMessage="Bu rasyon kaydını kalıcı olarak silmek istediğinize emin misiniz?"
+                      redirectTo="/pen-rations"
+                    />
+                  </div>
                 </div>
               </div>
             );
