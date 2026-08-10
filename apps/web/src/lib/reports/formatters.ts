@@ -94,7 +94,7 @@ export function formatDosage(value: unknown, row: ApiRecord): string {
 export function formatQuantityWithUnit(value: unknown, row: ApiRecord): string {
   if (value === null || value === undefined || value === '') return '—';
   const unit = row.unit_name;
-  return unit ? `${String(value)} ${String(unit)}` : String(value);
+  return unit ? `${formatNumberTR(value)} ${String(unit)}` : formatNumberTR(value);
 }
 
 export function formatKgPerDay(value: unknown): string {

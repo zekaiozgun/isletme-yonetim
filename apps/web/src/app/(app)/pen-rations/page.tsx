@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { apiGetSafe, type ApiRecord } from '@/lib/api';
-import { formatDateDMY } from '@/lib/format';
+import { formatDateDMY, formatNumberTR } from '@/lib/format';
 import { deletePenRationAction } from '@/lib/actions';
 import { DeleteButton } from '@/components/DeleteButton';
 
@@ -123,7 +123,7 @@ export default async function PenRationsPage({
                             <td className="px-3 py-1.5 text-slate-700">
                               {feedItemName.get(Number(item.feed_item_id)) ?? '—'}
                             </td>
-                            <td className="px-3 py-1.5 text-slate-700">{String(item.daily_quantity_per_animal)}</td>
+                            <td className="px-3 py-1.5 text-slate-700">{formatNumberTR(item.daily_quantity_per_animal)}</td>
                             <td className="px-3 py-1.5 text-slate-700">{unitName.get(Number(item.unit_id)) ?? '—'}</td>
                             <td className="px-3 py-1.5 text-slate-700">{scopeName.get(Number(item.scope_id)) ?? '—'}</td>
                           </tr>
