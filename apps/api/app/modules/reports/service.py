@@ -2267,6 +2267,7 @@ class _AssetContext:
     earliest_sire_service_by_animal: dict[uuid.UUID, date]
     latest_breeding_event_by_dam: dict[uuid.UUID, BreedingEvent]
     latest_pregnancy_check_by_event: dict[int, PregnancyCheck]
+    last_calving_by_dam: dict[uuid.UUID, date]
 
 
 def _build_asset_context(db: Session) -> _AssetContext:
@@ -2304,6 +2305,7 @@ def _build_asset_context(db: Session) -> _AssetContext:
         earliest_sire_service_by_animal,
         latest_breeding_event_by_dam,
         latest_pregnancy_check_by_event,
+        _latest_calving_by_dam(db),
     )
 
 
@@ -2497,12 +2499,22 @@ def _interpolate_market_value_try(
 def _is_currently_pregnant_ctx(asset_ctx: _AssetContext, animal_id: uuid.UUID) -> bool:
     """Hayvanin en son tohumlama dongusunde onaylanmis (GEBE) bir gebelik
     kontrolu var mi - bkz. _classify_female'deki ayni kontrolun sadelestirilmis
-    hali. NOT: zaman serisi raporlarinda GECMIS tarihler icin de bu GUNCEL
-    durum kullanilir (kasitli basitlestirme) - o tarihte gercekten gebe/acik
-    olup olmadigini yeniden insa etmek ayri bir tarihsel siniflandirma
-    gerektirir; bkz. _market_value_estimate_try_ctx caller'i."""
+    hali. ONEMLI: dogum, onayli bir GEBE kontrolunu GECERSIZ KILAR - bir
+    inek dogurduktan sonra (yeniden tohumlanip yeni bir onay gelene kadar)
+    artik gebe SAYILMAZ, en son kontrolu hala 'GEBE' gorunse bile (bkz.
+    _classify_female'deki ayni override, satir ~323) - bu kontrol
+    olmadan, doguran ama henuz yeniden tohumlanmamis bir inek Tahmini
+    Piyasa Degeri tablosunda SONSUZA KADAR 'Gebe' gorunurdu (gercek
+    uretimde gozlemlenen hata). NOT: zaman serisi raporlarinda GECMIS
+    tarihler icin de bu GUNCEL durum kullanilir (kasitli basitlestirme) -
+    o tarihte gercekten gebe/acik olup olmadigini yeniden insa etmek ayri
+    bir tarihsel siniflandirma gerektirir; bkz. _market_value_estimate_try_ctx
+    caller'i."""
     latest_event = asset_ctx.latest_breeding_event_by_dam.get(animal_id)
     if latest_event is None:
+        return False
+    last_calving = asset_ctx.last_calving_by_dam.get(animal_id)
+    if last_calving is not None and last_calving > latest_event.service_date:
         return False
     latest_check = asset_ctx.latest_pregnancy_check_by_event.get(latest_event.id)
     return latest_check is not None and latest_check.result.code == CONFIRMED_PREGNANCY_RESULT_CODE
