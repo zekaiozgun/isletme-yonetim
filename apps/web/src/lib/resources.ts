@@ -609,9 +609,9 @@ export function getResource(slug: string): ResourceConfig | undefined {
   return resources.find((r) => r.slug === slug);
 }
 
-export function groupedResources(): { group: string; items: ResourceConfig[] }[] {
+function groupBy(list: ResourceConfig[]): { group: string; items: ResourceConfig[] }[] {
   const groups: { group: string; items: ResourceConfig[] }[] = [];
-  for (const resource of resources) {
+  for (const resource of list) {
     let bucket = groups.find((g) => g.group === resource.group);
     if (!bucket) {
       bucket = { group: resource.group, items: [] };
@@ -620,6 +620,22 @@ export function groupedResources(): { group: string; items: ResourceConfig[] }[]
     bucket.items.push(resource);
   }
   return groups;
+}
+
+export function groupedResources(): { group: string; items: ResourceConfig[] }[] {
+  return groupBy(resources);
+}
+
+/** Sidebar'ın "Ana Kayıtlar" bölümü için - sadece asıl veri kayıt ekranları
+ * (Hayvanlar, Aşım Kayıtları vb.), tanım/lookup tabloları HARİÇ. */
+export function groupedMainResources(): { group: string; items: ResourceConfig[] }[] {
+  return groupBy(mainResources);
+}
+
+/** Sidebar'ın kapalı başlayan "Tanımlar" akordeonu için - sadece kod/ad/aktif
+ * şeklindeki lookup tabloları (Irklar, Doz Birimleri vb.), grup başına. */
+export function groupedLookupResources(): { group: string; items: ResourceConfig[] }[] {
+  return groupBy(lookupResources);
 }
 
 /** Sahada en sık kullanılan veri giriş ekranlarına (+ raporlar hub'ına) menüde üstte, tek listede hızlı erişim. */

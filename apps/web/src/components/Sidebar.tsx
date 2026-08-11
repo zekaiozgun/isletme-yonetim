@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { groupedResources, quickAccessResources } from '@/lib/resources';
+import { useEffect, useMemo, useState } from 'react';
+import { groupedMainResources, groupedLookupResources, quickAccessResources } from '@/lib/resources';
 import { logoutAction } from '@/lib/auth';
 
 export interface SidebarUser {
@@ -37,79 +37,162 @@ function UserBadge({ user, onNavigate }: { user: SidebarUser; onNavigate?: () =>
   );
 }
 
+function normalize(value: string): string {
+  return value.toLocaleLowerCase('tr-TR');
+}
+
+function NavLink({ href, label, isActive, onNavigate, indent }: { href: string; label: string; isActive: boolean; onNavigate?: () => void; indent?: boolean }) {
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      className={`flex items-center gap-2 rounded px-2 py-1.5 text-sm ${indent ? 'pl-4 text-[13px]' : ''} ${
+        isActive ? 'bg-slate-200 font-semibold text-slate-900' : 'font-medium text-slate-700 hover:bg-slate-200'
+      }`}
+    >
+      {isActive && <span className="h-3.5 w-0.5 shrink-0 rounded-full bg-slate-900" />}
+      <span className="truncate">{label}</span>
+    </Link>
+  );
+}
+
+function isPathActive(pathname: string, href: string): boolean {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 function NavLinks({ onNavigate, role }: { onNavigate?: () => void; role: SidebarUser['role'] }) {
+  const pathname = usePathname();
+  const [query, setQuery] = useState('');
+  const [lookupsOpen, setLookupsOpen] = useState(false);
+
   const quickAccess = quickAccessResources();
-  const groups = groupedResources();
+  const mainGroups = groupedMainResources();
+  const lookupGroups = groupedLookupResources();
+
+  const q = normalize(query.trim());
+  const matches = (label: string) => q === '' || normalize(label).includes(q);
+
+  const filteredQuickAccess = quickAccess.filter((item) => matches(item.label));
+  const filteredMainGroups = mainGroups
+    .map((g) => ({ group: g.group, items: g.items.filter((item) => matches(item.title)) }))
+    .filter((g) => g.items.length > 0);
+  const filteredLookupGroups = lookupGroups
+    .map((g) => ({ group: g.group, items: g.items.filter((item) => matches(item.title)) }))
+    .filter((g) => g.items.length > 0);
+
+  // Arama bir tanım tablosuyla eşleşiyorsa, akordeon kapalıyken sonucun
+  // görünmez kalmaması için otomatik açılır.
+  const shouldShowLookups = lookupsOpen || (q !== '' && filteredLookupGroups.length > 0);
 
   return (
     <div className="space-y-5">
-      <div className="border-b border-slate-200 pb-5">
-        <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
-          Hızlı Erişim
-        </div>
-        <ul className="space-y-0.5">
-          {quickAccess.map((item) => (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                onClick={onNavigate}
-                className="block rounded px-2 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-200"
-              >
-                {item.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Menüde ara..."
+        className="w-full rounded border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
+      />
 
-      {role === 'YONETICI' && (
+      {filteredQuickAccess.length > 0 && (
         <div className="border-b border-slate-200 pb-5">
-          <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">Yönetim</div>
+          <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">Hızlı Erişim</div>
           <ul className="space-y-0.5">
-            <li>
-              <Link
-                href="/users"
-                onClick={onNavigate}
-                className="block rounded px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-200"
-              >
-                Kullanıcılar
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/growth-valuation-checkpoints"
-                onClick={onNavigate}
-                className="block rounded px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-200"
-              >
-                Büyüme Değerleme Çıpaları
-              </Link>
-            </li>
+            {filteredQuickAccess.map((item) => (
+              <li key={item.href}>
+                <NavLink href={item.href} label={item.label} isActive={isPathActive(pathname, item.href)} onNavigate={onNavigate} />
+              </li>
+            ))}
           </ul>
         </div>
       )}
 
-      <ul className="space-y-5">
-        {groups.map((group) => (
-          <li key={group.group}>
-            <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
-              {group.group}
-            </div>
-            <ul className="space-y-0.5">
-              {group.items.map((resource) => (
-                <li key={resource.slug}>
-                  <Link
-                    href={`/${resource.slug}`}
-                    onClick={onNavigate}
-                    className="block rounded px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-200"
-                  >
-                    {resource.title}
-                  </Link>
+      {role === 'YONETICI' && matches('Kullanıcılar Büyüme Değerleme Çıpaları Yönetim') && (
+        <div className="border-b border-slate-200 pb-5">
+          <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">Yönetim</div>
+          <ul className="space-y-0.5">
+            {matches('Kullanıcılar') && (
+              <li>
+                <NavLink href="/users" label="Kullanıcılar" isActive={isPathActive(pathname, '/users')} onNavigate={onNavigate} />
+              </li>
+            )}
+            {matches('Büyüme Değerleme Çıpaları') && (
+              <li>
+                <NavLink
+                  href="/growth-valuation-checkpoints"
+                  label="Büyüme Değerleme Çıpaları"
+                  isActive={isPathActive(pathname, '/growth-valuation-checkpoints')}
+                  onNavigate={onNavigate}
+                />
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
+
+      {filteredMainGroups.length > 0 && (
+        <div className="border-b border-slate-200 pb-5">
+          <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">Ana Kayıtlar</div>
+          <ul className="space-y-3">
+            {filteredMainGroups.map((group) => (
+              <li key={group.group}>
+                <div className="mb-1 text-[11px] font-medium text-slate-400">{group.group}</div>
+                <ul className="space-y-0.5">
+                  {group.items.map((resource) => (
+                    <li key={resource.slug}>
+                      <NavLink
+                        href={`/${resource.slug}`}
+                        label={resource.title}
+                        isActive={isPathActive(pathname, `/${resource.slug}`)}
+                        onNavigate={onNavigate}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {filteredLookupGroups.length > 0 && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setLookupsOpen((v) => !v)}
+            className="mb-1.5 flex w-full items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-600"
+          >
+            <span>Tanımlar</span>
+            <span className={`transition-transform ${shouldShowLookups ? 'rotate-180' : ''}`}>▾</span>
+          </button>
+          {shouldShowLookups && (
+            <ul className="space-y-3">
+              {filteredLookupGroups.map((group) => (
+                <li key={group.group}>
+                  <div className="mb-1 text-[11px] font-medium text-slate-400">{group.group}</div>
+                  <ul className="space-y-0.5">
+                    {group.items.map((resource) => (
+                      <li key={resource.slug}>
+                        <NavLink
+                          href={`/${resource.slug}`}
+                          label={resource.title}
+                          isActive={isPathActive(pathname, `/${resource.slug}`)}
+                          onNavigate={onNavigate}
+                          indent
+                        />
+                      </li>
+                    ))}
+                  </ul>
                 </li>
               ))}
             </ul>
-          </li>
-        ))}
-      </ul>
+          )}
+        </div>
+      )}
+
+      {q !== '' && filteredQuickAccess.length === 0 && filteredMainGroups.length === 0 && filteredLookupGroups.length === 0 && (
+        <p className="px-2 text-sm text-slate-400">Sonuç bulunamadı.</p>
+      )}
     </div>
   );
 }
