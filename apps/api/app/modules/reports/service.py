@@ -2634,8 +2634,21 @@ def list_herd_animal_market_values(db: Session, as_of_date: date) -> list[Animal
     rate = fx_service.get_usd_try_rate(db, as_of_date)
     cost_ctx = _build_cost_context(db)
     asset_ctx = _build_asset_context(db)
+    # _animals_alive_at hicbir siraya gore donmez (bkz. tanimi) - "Yas (ay)"
+    # (age_months) TAM AY'a yuvarlandigindan tek basina siralama anahtari
+    # olarak kullanilirsa, ayni ay kovasina dusen (orn. ayni gun dogan
+    # ikizler + o ay icinde baska bir anneden dogan bir buzagi) hayvanlar
+    # arasinda kararsiz/rastgele bir sira ortaya cikar - ikizler yan yana
+    # gorunmez (gercek kullanicidan gelen rapor). Gercek dogum tarihine
+    # (gun hassasiyetinde) ve esitlik durumunda kupe numarasina gore
+    # ONCEDEN siralanmis bir girdi listesi kullanarak bunu onluyoruz -
+    # ayni gun doganlar HER ZAMAN yan yana, kararli bir sirada durur.
+    animals = sorted(
+        _animals_alive_at(db, as_of_date),
+        key=lambda a: (a.birth_date is None, a.birth_date or date.max, a.tag_number),
+    )
     rows: list[AnimalMarketValueRead] = []
-    for animal in _animals_alive_at(db, as_of_date):
+    for animal in animals:
         amount_try, amount_usd, source_code = _estimated_market_value_usd_try_ctx(
             db, cost_ctx, asset_ctx, animal, as_of_date, growth_checkpoints_by_gender, mature_checkpoints_by_gender, rate
         )
@@ -2654,7 +2667,6 @@ def list_herd_animal_market_values(db: Session, as_of_date: date) -> list[Animal
                 status_code=status_code,
             )
         )
-    rows.sort(key=lambda r: (r.age_months is None, -(r.age_months or 0)))
     return rows
 
 
