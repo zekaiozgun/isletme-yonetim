@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { apiGetSafe, type ApiRecord } from '@/lib/api';
-import { formatDateDMY } from '@/lib/format';
+import { formatDateDMY, formatCurrencyTRY, formatUsdValue } from '@/lib/format';
+import { formatValuationStatus, formatSourceCode } from '@/lib/reports';
 import { TrendLineChart, type TrendPoint } from '@/components/TrendLineChart';
 
 function findName(list: ApiRecord[], id: unknown): string | null {
@@ -48,6 +49,7 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
     evaluations,
     evaluationReasons,
     evaluationPriorities,
+    valuation,
   ] = await Promise.all([
     apiGetSafe<ApiRecord[]>('/animals/genders', []),
     apiGetSafe<ApiRecord[]>('/animals/breeds', []),
@@ -68,6 +70,7 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
     apiGetSafe<ApiRecord[]>(`/evaluations/animals/${id}`, []),
     apiGetSafe<ApiRecord[]>('/evaluations/reasons', []),
     apiGetSafe<ApiRecord[]>('/evaluations/priorities', []),
+    apiGetSafe<ApiRecord | null>(`/reports/animal-valuation/${id}`, null),
   ]);
 
   // Anne/baba bilgisi - ayrı, koşullu fetch'ler (çoğu hayvanda ikisi de
@@ -131,8 +134,22 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
         <ProfileStat label="Giriş Tarihi" value={formatDateDMY(animal.entry_date)} />
         <ProfileStat label="Giriş Kaynağı" value={entrySourceName} />
         <ProfileStat
-          label="Giriş Değeri"
-          value={animal.entry_value !== null && animal.entry_value !== undefined ? `${String(animal.entry_value)} TL` : '—'}
+          label="Edinme Değeri"
+          value={
+            valuation && valuation.entry_value_try !== null && valuation.entry_value_try !== undefined
+              ? `${formatCurrencyTRY(valuation.entry_value_try)} (≈ ${formatUsdValue(valuation.entry_value_usd)})`
+              : '—'
+          }
+          hint={animal.entry_date ? `${formatDateDMY(animal.entry_date)} tarihindeki kur` : undefined}
+        />
+        <ProfileStat
+          label="Güncel Tahmini Değer"
+          value={valuation ? `${formatCurrencyTRY(valuation.current_value_try)} (≈ ${formatUsdValue(valuation.current_value_usd)})` : '—'}
+          hint={
+            valuation
+              ? `${formatValuationStatus(valuation.current_value_status_code)} · ${formatSourceCode(valuation.current_value_source_code)}`
+              : undefined
+          }
         />
       </div>
 
@@ -343,11 +360,12 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
   );
 }
 
-function ProfileStat({ label, value }: { label: string; value: string }) {
+function ProfileStat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="rounded border border-slate-200 p-3">
       <p className="mb-0.5 text-xs font-medium text-slate-500">{label}</p>
       <p className="text-sm font-semibold text-slate-900">{value}</p>
+      {hint && <p className="mt-0.5 text-xs text-slate-400">{hint}</p>}
     </div>
   );
 }

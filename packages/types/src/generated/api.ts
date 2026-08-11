@@ -2326,6 +2326,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports/animal-valuation/{animal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Animal Valuation */
+        get: operations["animal_valuation_reports_animal_valuation__animal_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reports/calving-intervals": {
         parameters: {
             query?: never;
@@ -2892,6 +2909,34 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /**
+         * AnimalValuationRead
+         * @description Hayvan Profili sayfasindaki 'ne kadara aldik, bugun ne degerde'
+         *     karsilastirmasi icin - Anayasa m.5: entry_value_usd, giris tarihindeki
+         *     (GUNCEL degil) TCMB kuruyla sabit bir referans noktasi olarak
+         *     turetilir; current_value_* ise list_herd_animal_market_values ile
+         *     AYNI mantikla (bkz. _estimated_market_value_usd_try_ctx) o anki
+         *     tahmini piyasa degeridir.
+         */
+        AnimalValuationRead: {
+            /** Entry Value Try */
+            entry_value_try?: string | null;
+            /** Entry Value Usd */
+            entry_value_usd?: string | null;
+            /** Current Value Try */
+            current_value_try: string;
+            /** Current Value Usd */
+            current_value_usd: string;
+            /** Current Value Source Code */
+            current_value_source_code: string;
+            /** Current Value Status Code */
+            current_value_status_code: string;
+            /**
+             * As Of Date
+             * Format: date
+             */
+            as_of_date: string;
         };
         /** AuditLogRead */
         AuditLogRead: {
@@ -12746,6 +12791,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MixerBatchRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    animal_valuation_reports_animal_valuation__animal_id__get: {
+        parameters: {
+            query?: {
+                as_of_date?: string | null;
+            };
+            header?: never;
+            path: {
+                animal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnimalValuationRead"];
                 };
             };
             /** @description Validation Error */

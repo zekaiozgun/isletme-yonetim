@@ -477,6 +477,25 @@ class AnimalMarketValueRead(BaseModel):
     status_code: str
 
 
+class AnimalValuationRead(BaseModel):
+    """Hayvan Profili sayfasindaki 'ne kadara aldik, bugun ne degerde'
+    karsilastirmasi icin - Anayasa m.5: entry_value_usd, giris tarihindeki
+    (GUNCEL degil) TCMB kuruyla sabit bir referans noktasi olarak
+    turetilir; current_value_* ise list_herd_animal_market_values ile
+    AYNI mantikla (bkz. _estimated_market_value_usd_try_ctx) o anki
+    tahmini piyasa degeridir."""
+
+    entry_value_try: Decimal | None = None
+    # Giris tarihindeki TCMB kuruyla - GUNCEL kur DEGIL, sabit bir
+    # karsilastirma noktasi (bkz. sinif docstring'i).
+    entry_value_usd: Decimal | None = None
+    current_value_try: Decimal
+    current_value_usd: Decimal
+    current_value_source_code: str
+    current_value_status_code: str
+    as_of_date: date
+
+
 class DashboardSummaryRead(BaseModel):
     active_animal_count: int
     breeding_candidate_count: int

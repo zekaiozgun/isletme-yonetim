@@ -46,6 +46,7 @@ from app.modules.reports.schemas import (
     AnimalEvaluationReportRead,
     AnimalMarketValueRead,
     AnimalProfitabilityRead,
+    AnimalValuationRead,
     BredAnimalRead,
     BreedingCandidateRead,
     BreedingPerformanceRead,
@@ -2655,6 +2656,48 @@ def list_herd_animal_market_values(db: Session, as_of_date: date) -> list[Animal
         )
     rows.sort(key=lambda r: (r.age_months is None, -(r.age_months or 0)))
     return rows
+
+
+def get_animal_valuation(db: Session, animal_id: uuid.UUID, as_of_date: date | None = None) -> AnimalValuationRead | None:
+    """Hayvan Profili sayfasi icin: bir hayvanin edinme (giris) degerini
+    (TL + o TARIHTEKI TCMB kuruyla USD karsiligi - sabit bir referans
+    noktasi) ve GUNCEL tahmini piyasa degerini (TL + USD,
+    list_herd_animal_market_values ile AYNI mantik) tek seferde dondurur
+    - "ne kadara aldik, bugun ne degerde" karsilastirmasi icin. Hayvan
+    bulunamazsa None doner. Tek hayvan icin cagrildigindan, bulk context
+    olusturmanin (SURU genelinde saglik/yem/tohumlama verisi) getirdigi
+    fazladan sorgu maliyeti onemsizdir - kod tekrari yerine
+    list_herd_animal_market_values'un AYNI, zaten test edilmis
+    yapi taslarini (bkz. _CostContext/_AssetContext) yeniden kullanir."""
+    as_of_date = as_of_date or date.today()
+    animal = db.get(Animal, animal_id)
+    if animal is None:
+        return None
+
+    entry_value_usd = (
+        _round_money(_try_to_usd(db, animal.entry_value, animal.entry_date))
+        if animal.entry_value is not None
+        else None
+    )
+
+    growth_checkpoints_by_gender, mature_checkpoints_by_gender = _checkpoint_maps(db)
+    rate = fx_service.get_usd_try_rate(db, as_of_date)
+    cost_ctx = _build_cost_context(db)
+    asset_ctx = _build_asset_context(db)
+    current_try, current_usd, source_code = _estimated_market_value_usd_try_ctx(
+        db, cost_ctx, asset_ctx, animal, as_of_date, growth_checkpoints_by_gender, mature_checkpoints_by_gender, rate
+    )
+    status_code = _valuation_status_code_ctx(asset_ctx, animal, as_of_date, growth_checkpoints_by_gender)
+
+    return AnimalValuationRead(
+        entry_value_try=animal.entry_value,
+        entry_value_usd=entry_value_usd,
+        current_value_try=current_try,
+        current_value_usd=current_usd,
+        current_value_source_code=source_code,
+        current_value_status_code=status_code,
+        as_of_date=as_of_date,
+    )
 
 
 def list_animal_evaluations_report(db: Session, start_date: date, end_date: date) -> list[AnimalEvaluationReportRead]:

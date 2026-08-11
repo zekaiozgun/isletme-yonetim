@@ -2,9 +2,10 @@
 (Anayasa m.2). Her endpoint app/modules/reports/service.py'deki turetme
 mantigini cagirir; hicbir hesaplama burada yapilmaz."""
 
+import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -13,6 +14,7 @@ from app.modules.reports.schemas import (
     AnimalEvaluationReportRead,
     AnimalMarketValueRead,
     AnimalProfitabilityRead,
+    AnimalValuationRead,
     BredAnimalRead,
     BreedingCandidateRead,
     BreedingPerformanceRead,
@@ -182,6 +184,16 @@ def feed_stock_runway(as_of_date: date | None = None, db: Session = Depends(get_
 @router.get("/mixer-batch", response_model=list[MixerBatchRead])
 def mixer_batch(as_of_date: date | None = None, db: Session = Depends(get_db)) -> list[MixerBatchRead]:
     return service.list_mixer_batch(db, as_of_date)
+
+
+@router.get("/animal-valuation/{animal_id}", response_model=AnimalValuationRead)
+def animal_valuation(
+    animal_id: uuid.UUID, as_of_date: date | None = None, db: Session = Depends(get_db)
+) -> AnimalValuationRead:
+    result = service.get_animal_valuation(db, animal_id, as_of_date)
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"Animal bulunamadi: {animal_id}")
+    return result
 
 
 @router.get("/calving-intervals", response_model=list[CalvingIntervalRead])
