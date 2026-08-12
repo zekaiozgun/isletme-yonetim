@@ -82,6 +82,11 @@ export interface ResourceConfig {
   relatedReports?: { slug: string; title: string }[];
   /** Varsa, liste sayfasında "Toplu Giriş" butonuyla gösterilecek özel sayfa yolu (örn. toplu tartı girişi). */
   bulkEntryPath?: string;
+  /** getRelatedLookups'a EK olarak gösterilecek tanım/referans kaynak slug'ları
+   * - fields üzerinden otomatik türetilemeyen durumlar için (örn. health-events
+   * artık medication_id/dosage_unit_id'yi fields'ta taşımıyor, çünkü özel
+   * HealthEventForm kullanıyor - bkz. app/(app)/[resource]/new). */
+  relatedLookups?: string[];
 }
 
 const label =
@@ -368,6 +373,10 @@ const mainResources: ResourceConfig[] = [
     listEndpoint: '/health-events',
     createEndpoint: '/health-events',
     bulkEntryPath: '/health-events/bulk',
+    // 'diseases' zaten disease_id alanindan otomatik turetiliyor; medications
+    // ve dosage-units artik fields'ta yok (ozel HealthEventForm kullaniyor),
+    // bu yuzden burada EKlenmesi gerekiyor.
+    relatedLookups: ['medications', 'dosage-units'],
     columns: [
       { key: 'animal_id', label: 'Hayvan', lookup: animals },
       { key: 'event_type_id', label: 'Tip', lookup: healthEventTypes },
@@ -625,6 +634,37 @@ export const resources: ResourceConfig[] = [...mainResources, ...lookupResources
 
 export function getResource(slug: string): ResourceConfig | undefined {
   return resources.find((r) => r.slug === slug);
+}
+
+/** Bu kaynağın veri girişi için ÖNCE var olması gereken tanım/referans
+ * kayıtları (örn. Sağlık Olayı girmeden önce Hastalıklar/İlaçlar dolu
+ * olmalı) - kullanıcı "bu bilgiyi nereden bulacağım" diye vakit
+ * kaybetmesin diye giriş formunun üstünde hızlı link olarak gösterilir.
+ * Çoğu alan zaten `type: 'select'` + `options.endpoint` taşıdığından bu
+ * OTOMATİK türetilir (yeni bir kaynak eklendiğinde elle güncellenmesi
+ * gerekmez); `relatedLookups` sadece fields'tan türetilemeyen özel form
+ * durumları için bir EKtir, birincil kaynak değildir.
+ *
+ * 'animals' HARİÇ tutulur: neredeyse her formda bir animal_id alanı var,
+ * bu da onu "tanım" değil uygulamanın ANA konusu yapar - zaten Hızlı
+ * Erişim'de her zaman bir tık uzakta, her formda tekrar önermek gürültü
+ * olurdu. */
+const RELATED_LOOKUPS_EXCLUDED_SLUGS = new Set(['animals']);
+
+export function getRelatedLookups(resource: ResourceConfig): { slug: string; title: string }[] {
+  const matches = new Map<string, string>();
+  for (const field of resource.fields) {
+    if (field.type !== 'select' || !field.options) continue;
+    const target = resources.find(
+      (r) => r.listEndpoint === field.options!.endpoint && r.slug !== resource.slug && !RELATED_LOOKUPS_EXCLUDED_SLUGS.has(r.slug)
+    );
+    if (target) matches.set(target.slug, target.title);
+  }
+  for (const slug of resource.relatedLookups ?? []) {
+    const target = resources.find((r) => r.slug === slug);
+    if (target) matches.set(target.slug, target.title);
+  }
+  return Array.from(matches, ([slug, title]) => ({ slug, title }));
 }
 
 function groupBy(list: ResourceConfig[]): { group: string; items: ResourceConfig[] }[] {

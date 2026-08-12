@@ -1,7 +1,14 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { apiGetSafe, type ApiRecord } from '@/lib/api';
+import { getResource } from '@/lib/resources';
 import { RationForm, type RationFormInitial } from '@/components/RationForm';
+import { RelatedLookupsBar } from '@/components/RelatedLookupsBar';
+
+const RATION_RELATED_LOOKUPS = ['feed-items', 'feed-units']
+  .map((slug) => getResource(slug))
+  .filter((r): r is NonNullable<typeof r> => r !== undefined)
+  .map((r) => ({ slug: r.slug, title: r.title }));
 
 export default async function EditPenRationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -49,6 +56,7 @@ export default async function EditPenRationPage({ params }: { params: Promise<{ 
         Bu, dönem geçişi (önceki rasyonu otomatik kapatma) tetiklemez — sadece bu kaydın kendisini düzeltir. Yeni bir
         dönem başlatmak için &quot;Padok Rasyonları&quot; sayfasından &quot;+ Yeni Rasyon&quot; kullanın.
       </p>
+      <RelatedLookupsBar items={RATION_RELATED_LOOKUPS} />
       <RationForm
         pens={penOptions}
         feedItems={feedItemOptions}

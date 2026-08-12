@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { apiGetSafe, type ApiRecord } from '@/lib/api';
+import { getResource, getRelatedLookups } from '@/lib/resources';
 import { BulkPenAssignmentForm } from '@/components/BulkPenAssignmentForm';
+import { RelatedLookupsBar } from '@/components/RelatedLookupsBar';
 
 export default async function BulkPenAssignmentsPage() {
   const statuses = await apiGetSafe<ApiRecord[]>('/animals/statuses', []);
@@ -34,6 +36,7 @@ export default async function BulkPenAssignmentsPage() {
         Bir grup hayvanı (örn. sütten kesim grubu) aynı anda yeni padoğa taşımak için kullanın — hedef padok/tarih/
         neden seçtiğiniz TÜM hayvanlara aynen uygulanır, sadece hangi hayvanların dahil olduğunu işaretlersiniz.
       </p>
+      <RelatedLookupsBar items={getRelatedLookups(getResource('pen-assignments')!)} />
       <BulkPenAssignmentForm animals={animalOptions} pens={penOptions} reasons={reasonOptions} />
     </div>
   );

@@ -3,11 +3,12 @@ import { notFound } from 'next/navigation';
 import { apiGet, apiGetSafe, type ApiRecord } from '@/lib/api';
 import { cancelAnimalEntryAction, deleteResource, updateResource } from '@/lib/actions';
 import { loadFormOptions } from '@/lib/formOptions';
-import { getResource } from '@/lib/resources';
+import { getResource, getRelatedLookups } from '@/lib/resources';
 import { ResourceForm } from '@/components/ResourceForm';
 import { DeleteButton } from '@/components/DeleteButton';
 import { CancelEntryButton } from '@/components/CancelEntryButton';
 import { HealthEventForm, type HealthEventFormInitial } from '@/components/HealthEventForm';
+import { RelatedLookupsBar } from '@/components/RelatedLookupsBar';
 
 interface MeResponse {
   role: 'YONETICI' | 'CALISAN';
@@ -42,6 +43,7 @@ export default async function EditResourcePage({ params }: { params: Promise<{ r
   // degildir (kullanici tercihiyle: "Sadece Calisan'a kilit").
   const isAnimal = resource.slug === 'animals';
   const isLockedForCalisan = isAnimal && Boolean(record.is_locked) && me.role === 'CALISAN';
+  const relatedLookups = getRelatedLookups(resource);
 
   // bkz. [resource]/new/page.tsx aynı not - health-events çoklu ilaç
   // desteği için özel form kullanır.
@@ -76,6 +78,7 @@ export default async function EditResourcePage({ params }: { params: Promise<{ r
           </Link>
         </div>
         <h1 className="mb-4 text-xl font-semibold text-slate-900">{resource.singularTitle} Düzenle</h1>
+        <RelatedLookupsBar items={relatedLookups} />
         <HealthEventForm
           animals={animals.map((a) => ({ id: String(a.id), label: `${String(a.tag_number)}${a.name ? ' - ' + String(a.name) : ''}` }))}
           eventTypes={eventTypes.map((t) => ({ id: Number(t.id), name: String(t.name) }))}
@@ -115,6 +118,7 @@ export default async function EditResourcePage({ params }: { params: Promise<{ r
           </Link>
         )}
       </div>
+      <RelatedLookupsBar items={relatedLookups} />
 
       {isLockedForCalisan && (
         <p className="mb-4 max-w-xl rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">

@@ -1,6 +1,13 @@
 import Link from 'next/link';
 import { apiGetSafe, type ApiRecord } from '@/lib/api';
+import { getResource } from '@/lib/resources';
 import { RationForm } from '@/components/RationForm';
+import { RelatedLookupsBar } from '@/components/RelatedLookupsBar';
+
+const RATION_RELATED_LOOKUPS = ['feed-items', 'feed-units']
+  .map((slug) => getResource(slug))
+  .filter((r): r is NonNullable<typeof r> => r !== undefined)
+  .map((r) => ({ slug: r.slug, title: r.title }));
 
 export default async function NewPenRationPage() {
   const [pens, feedItems, units, scopes] = await Promise.all([
@@ -33,6 +40,7 @@ export default async function NewPenRationPage() {
         buzağıların yetişkinlerle aynı porsiyonu yiyormuş gibi hesaplanmaması için her kalemin{' '}
         <strong>Uygulanacak Grup</strong>unu (Tüm Hayvanlar / Sadece Buzağı / Sadece Yetişkin) seçin.
       </p>
+      <RelatedLookupsBar items={RATION_RELATED_LOOKUPS} />
       <RationForm pens={penOptions} feedItems={feedItemOptions} units={unitOptions} scopes={scopeOptions} />
     </div>
   );

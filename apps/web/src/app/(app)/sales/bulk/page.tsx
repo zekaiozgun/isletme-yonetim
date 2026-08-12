@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { apiGetSafe, type ApiRecord } from '@/lib/api';
+import { getResource, getRelatedLookups } from '@/lib/resources';
 import { BulkSaleForm } from '@/components/BulkSaleForm';
+import { RelatedLookupsBar } from '@/components/RelatedLookupsBar';
 
 export default async function BulkSalesPage() {
   const statuses = await apiGetSafe<ApiRecord[]>('/animals/statuses', []);
@@ -34,6 +36,7 @@ export default async function BulkSalesPage() {
         Aynı gün aynı alıcıya birden fazla hayvan sattığınızda kullanın — tarih/alıcı/satış tipini bir kez seçin,
         sadece sattığınız hayvanlara ağırlık ve tutar girin. Boş bırakılan (tutarsız) satırlar kaydedilmez.
       </p>
+      <RelatedLookupsBar items={getRelatedLookups(getResource('sales')!)} />
       <BulkSaleForm animals={animalOptions} buyers={buyerOptions} saleTypes={saleTypeOptions} />
     </div>
   );

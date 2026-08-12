@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { apiGetSafe, type ApiRecord } from '@/lib/api';
+import { getResource, getRelatedLookups } from '@/lib/resources';
 import { BulkHealthEventForm } from '@/components/BulkHealthEventForm';
+import { RelatedLookupsBar } from '@/components/RelatedLookupsBar';
 
 function toLookupOptions(records: ApiRecord[]): { id: number; name: string }[] {
   return records.map((r) => ({ id: Number(r.id), name: String(r.name) }));
@@ -37,6 +39,7 @@ export default async function BulkHealthEventsPage() {
         Aynı gün aynı işlemi (örn. toplu aşılama) gören hayvanlar için kullanın — üstteki bilgiler (tarih, ilaç, doz
         vb.) seçtiğiniz TÜM hayvanlara aynen uygulanır, sadece hangi hayvanların dahil olduğunu işaretlersiniz.
       </p>
+      <RelatedLookupsBar items={getRelatedLookups(getResource('health-events')!)} />
       <BulkHealthEventForm
         animals={animalOptions}
         eventTypes={toLookupOptions(eventTypes)}

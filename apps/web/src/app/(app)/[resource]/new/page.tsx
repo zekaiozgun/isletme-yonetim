@@ -3,9 +3,10 @@ import { notFound } from 'next/navigation';
 import { apiGet, apiGetSafe, type ApiRecord } from '@/lib/api';
 import { createResource } from '@/lib/actions';
 import { loadFormOptions } from '@/lib/formOptions';
-import { getResource } from '@/lib/resources';
+import { getResource, getRelatedLookups } from '@/lib/resources';
 import { ResourceForm } from '@/components/ResourceForm';
 import { HealthEventForm } from '@/components/HealthEventForm';
+import { RelatedLookupsBar } from '@/components/RelatedLookupsBar';
 
 interface MeResponse {
   role: 'YONETICI' | 'CALISAN';
@@ -18,6 +19,7 @@ export default async function NewResourcePage({ params }: { params: Promise<{ re
 
   const { options, clientFields } = await loadFormOptions(resource);
   const action = createResource.bind(null, resource.slug);
+  const relatedLookups = getRelatedLookups(resource);
 
   // Bir saglik olayinda birden fazla ilac kullanilabildigi icin (bkz.
   // kullanici geri bildirimi), health-events genel ResourceForm yerine
@@ -38,6 +40,7 @@ export default async function NewResourcePage({ params }: { params: Promise<{ re
           </Link>
         </div>
         <h1 className="mb-4 text-xl font-semibold text-slate-900">Yeni {resource.singularTitle}</h1>
+        <RelatedLookupsBar items={relatedLookups} />
         <HealthEventForm
           animals={animals.map((a) => ({ id: String(a.id), label: `${String(a.tag_number)}${a.name ? ' - ' + String(a.name) : ''}` }))}
           eventTypes={eventTypes.map((t) => ({ id: Number(t.id), name: String(t.name) }))}
@@ -78,6 +81,7 @@ export default async function NewResourcePage({ params }: { params: Promise<{ re
         </Link>
       </div>
       <h1 className="mb-4 text-xl font-semibold text-slate-900">Yeni {resource.singularTitle}</h1>
+      <RelatedLookupsBar items={relatedLookups} />
       {requireConfirmation && (
         <p className="mb-4 max-w-xl rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           Bu kayıt, onayladıktan sonra sizin tarafınızdan değiştirilemez veya silinemez. Bilgileri dikkatle girin.

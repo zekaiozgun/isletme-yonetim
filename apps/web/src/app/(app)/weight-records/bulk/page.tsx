@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { apiGetSafe, type ApiRecord } from '@/lib/api';
+import { getResource, getRelatedLookups } from '@/lib/resources';
 import { BulkWeightForm } from '@/components/BulkWeightForm';
+import { RelatedLookupsBar } from '@/components/RelatedLookupsBar';
 
 export default async function BulkWeightRecordsPage() {
   const statuses = await apiGetSafe<ApiRecord[]>('/animals/statuses', []);
@@ -32,6 +34,7 @@ export default async function BulkWeightRecordsPage() {
         Aktif hayvanlar aşağıda listelenir. Tarih ve tartı yöntemini bir kez seçin, sadece tarttığınız hayvanların
         kilosunu girin — boş bırakılan satırlar kaydedilmez.
       </p>
+      <RelatedLookupsBar items={getRelatedLookups(getResource('weight-records')!)} />
       <BulkWeightForm animals={animalOptions} weighingMethods={methodOptions} />
     </div>
   );

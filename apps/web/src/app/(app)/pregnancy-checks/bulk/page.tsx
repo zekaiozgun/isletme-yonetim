@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { apiGetSafe, type ApiRecord } from '@/lib/api';
+import { getResource, getRelatedLookups } from '@/lib/resources';
 import { BulkPregnancyCheckForm } from '@/components/BulkPregnancyCheckForm';
+import { RelatedLookupsBar } from '@/components/RelatedLookupsBar';
 
 export default async function BulkPregnancyChecksPage() {
   const pendingEvents = await apiGetSafe<ApiRecord[]>('/breeding-events?pending_check=true', []);
@@ -30,6 +32,7 @@ export default async function BulkPregnancyChecksPage() {
         Kontrol bekleyen (tohumlanmış, henüz sonuçlanmamış) hayvanlar aşağıda listelenir. Tarih ve kontrol yöntemini
         bir kez seçin, sadece kontrol ettiğiniz hayvanlara sonuç girin — boş bırakılan satırlar kaydedilmez.
       </p>
+      <RelatedLookupsBar items={getRelatedLookups(getResource('pregnancy-checks')!)} />
       <BulkPregnancyCheckForm pendingEvents={pendingOptions} methods={methodOptions} results={resultOptions} />
     </div>
   );
