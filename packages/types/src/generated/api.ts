@@ -3590,12 +3590,11 @@ export interface components {
             event_date: string;
             /** Disease Id */
             disease_id?: number | null;
-            /** Medication Id */
-            medication_id?: number | null;
-            /** Dosage Amount */
-            dosage_amount?: number | string | null;
-            /** Dosage Unit Id */
-            dosage_unit_id?: number | null;
+            /**
+             * Medications
+             * @default []
+             */
+            medications: components["schemas"]["HealthEventMedicationInput"][];
             /** Veterinarian Note */
             veterinarian_note?: string | null;
             /** Cost */
@@ -3603,8 +3602,34 @@ export interface components {
             /** Note */
             note?: string | null;
         };
+        /** HealthEventMedicationInput */
+        HealthEventMedicationInput: {
+            /** Medication Id */
+            medication_id: number;
+            /** Dosage Amount */
+            dosage_amount?: number | string | null;
+            /** Dosage Unit Id */
+            dosage_unit_id?: number | null;
+        };
+        /** HealthEventMedicationRead */
+        HealthEventMedicationRead: {
+            /** Medication Id */
+            medication_id: number;
+            /** Dosage Amount */
+            dosage_amount?: string | null;
+            /** Dosage Unit Id */
+            dosage_unit_id?: number | null;
+            /** Id */
+            id: number;
+            /** Medication Name */
+            medication_name: string;
+            /** Dosage Unit Name */
+            dosage_unit_name?: string | null;
+        };
         /** HealthEventRead */
         HealthEventRead: {
+            /** Id */
+            id: number;
             /**
              * Animal Id
              * Format: uuid
@@ -3619,20 +3644,17 @@ export interface components {
             event_date: string;
             /** Disease Id */
             disease_id?: number | null;
-            /** Medication Id */
-            medication_id?: number | null;
-            /** Dosage Amount */
-            dosage_amount?: string | null;
-            /** Dosage Unit Id */
-            dosage_unit_id?: number | null;
+            /**
+             * Medications
+             * @default []
+             */
+            medications: components["schemas"]["HealthEventMedicationRead"][];
             /** Veterinarian Note */
             veterinarian_note?: string | null;
             /** Cost */
             cost?: string | null;
             /** Note */
             note?: string | null;
-            /** Id */
-            id: number;
             /**
              * Created At
              * Format: date-time
@@ -3666,12 +3688,8 @@ export interface components {
             is_illness: boolean;
             /** Disease Name */
             disease_name?: string | null;
-            /** Medication Name */
-            medication_name?: string | null;
-            /** Dosage Amount */
-            dosage_amount?: string | null;
-            /** Dosage Unit Name */
-            dosage_unit_name?: string | null;
+            /** Medications */
+            medications?: string | null;
             /** Veterinarian Note */
             veterinarian_note?: string | null;
         };

@@ -186,13 +186,87 @@ export async function bulkCreatePregnancyChecks(
   return { success, failed };
 }
 
+export interface HealthEventMedicationInput {
+  medicationId: number;
+  dosageAmount: number | null;
+  dosageUnitId: number | null;
+}
+
+function toMedicationPayload(medications: HealthEventMedicationInput[]) {
+  return medications.map((med) => ({
+    medication_id: med.medicationId,
+    dosage_amount: med.dosageAmount,
+    dosage_unit_id: med.dosageUnitId,
+  }));
+}
+
+/** Tekli sağlık olayı girişi (bkz. components/HealthEventForm.tsx) - birden
+ * fazla ilaç satırı destekler, bu yüzden genel createResource/updateResource
+ * (düz FormData'dan tek seviyeli payload üretir) yerine özel action. */
+export async function createHealthEventAction(
+  animalId: string,
+  eventTypeId: number,
+  eventDate: string,
+  diseaseId: number | null,
+  medications: HealthEventMedicationInput[],
+  veterinarianNote: string | null,
+  cost: number | null,
+  note: string | null
+): Promise<{ error?: string }> {
+  const result = await apiPost('/health-events', {
+    animal_id: animalId,
+    event_type_id: eventTypeId,
+    event_date: eventDate,
+    disease_id: diseaseId,
+    medications: toMedicationPayload(medications),
+    veterinarian_note: veterinarianNote,
+    cost,
+    note,
+  });
+
+  if (result.error !== undefined) {
+    return { error: result.error };
+  }
+
+  revalidatePath('/health-events');
+  return {};
+}
+
+export async function updateHealthEventAction(
+  eventId: string,
+  animalId: string,
+  eventTypeId: number,
+  eventDate: string,
+  diseaseId: number | null,
+  medications: HealthEventMedicationInput[],
+  veterinarianNote: string | null,
+  cost: number | null,
+  note: string | null
+): Promise<{ error?: string }> {
+  const result = await apiPut(`/health-events/${eventId}`, {
+    animal_id: animalId,
+    event_type_id: eventTypeId,
+    event_date: eventDate,
+    disease_id: diseaseId,
+    medications: toMedicationPayload(medications),
+    veterinarian_note: veterinarianNote,
+    cost,
+    note,
+  });
+
+  if (result.error !== undefined) {
+    return { error: result.error };
+  }
+
+  revalidatePath('/health-events');
+  return {};
+}
+
 export interface BulkHealthEventShared {
   eventTypeId: number;
   eventDate: string;
   diseaseId: number | null;
-  medicationId: number | null;
-  dosageAmount: number | null;
-  dosageUnitId: number | null;
+  medications: HealthEventMedicationInput[];
   veterinarianNote: string | null;
   cost: number | null;
   note: string | null;
@@ -221,9 +295,7 @@ export async function bulkCreateHealthEvents(
       event_type_id: shared.eventTypeId,
       event_date: shared.eventDate,
       disease_id: shared.diseaseId,
-      medication_id: shared.medicationId,
-      dosage_amount: shared.dosageAmount,
-      dosage_unit_id: shared.dosageUnitId,
+      medications: toMedicationPayload(shared.medications),
       veterinarian_note: shared.veterinarianNote,
       cost: shared.cost,
       note: shared.note,

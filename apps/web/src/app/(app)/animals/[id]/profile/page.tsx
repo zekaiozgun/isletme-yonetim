@@ -38,8 +38,6 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
     healthEvents,
     healthEventTypes,
     diseases,
-    medicationTypes,
-    dosageUnits,
     penAssignments,
     pens,
     allOffspringByMother,
@@ -59,8 +57,6 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
     apiGetSafe<ApiRecord[]>(`/health-events/animals/${id}`, []),
     apiGetSafe<ApiRecord[]>('/health-events/event-types', []),
     apiGetSafe<ApiRecord[]>('/health-events/diseases', []),
-    apiGetSafe<ApiRecord[]>('/health-events/medication-types', []),
-    apiGetSafe<ApiRecord[]>('/health-events/dosage-units', []),
     apiGetSafe<ApiRecord[]>(`/pens/animals/${id}/assignments`, []),
     apiGetSafe<ApiRecord[]>('/pens', []),
     apiGetSafe<ApiRecord[]>('/reports/offspring-by-mother', []),
@@ -327,27 +323,34 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
                       <th className="px-3 py-2 text-left font-medium text-slate-600">Tarih</th>
                       <th className="px-3 py-2 text-left font-medium text-slate-600">Olay Tipi</th>
                       <th className="px-3 py-2 text-left font-medium text-slate-600">Hastalık/Tanı</th>
-                      <th className="px-3 py-2 text-left font-medium text-slate-600">İlaç</th>
-                      <th className="px-3 py-2 text-left font-medium text-slate-600">Doz</th>
+                      <th className="px-3 py-2 text-left font-medium text-slate-600">İlaçlar</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {healthEvents
                       .slice()
                       .sort((a, b) => String(b.event_date).localeCompare(String(a.event_date)))
-                      .map((h) => (
-                        <tr key={String(h.id)}>
-                          <td className="whitespace-nowrap px-3 py-2 text-slate-700">{formatDateDMY(h.event_date)}</td>
-                          <td className="whitespace-nowrap px-3 py-2 text-slate-700">{findName(healthEventTypes, h.event_type_id) ?? '—'}</td>
-                          <td className="whitespace-nowrap px-3 py-2 text-slate-700">{findName(diseases, h.disease_id) ?? '—'}</td>
-                          <td className="whitespace-nowrap px-3 py-2 text-slate-700">{findName(medicationTypes, h.medication_id) ?? '—'}</td>
-                          <td className="whitespace-nowrap px-3 py-2 text-slate-700">
-                            {h.dosage_amount !== null && h.dosage_amount !== undefined
-                              ? `${String(h.dosage_amount)} ${findName(dosageUnits, h.dosage_unit_id) ?? ''}`
-                              : '—'}
-                          </td>
-                        </tr>
-                      ))}
+                      .map((h) => {
+                        const meds = Array.isArray(h.medications) ? (h.medications as ApiRecord[]) : [];
+                        const medsText =
+                          meds.length === 0
+                            ? '—'
+                            : meds
+                                .map((m) =>
+                                  m.dosage_amount !== null && m.dosage_amount !== undefined
+                                    ? `${String(m.medication_name)} (${String(m.dosage_amount)}${m.dosage_unit_name ? ' ' + String(m.dosage_unit_name) : ''})`
+                                    : String(m.medication_name)
+                                )
+                                .join(', ');
+                        return (
+                          <tr key={String(h.id)}>
+                            <td className="whitespace-nowrap px-3 py-2 text-slate-700">{formatDateDMY(h.event_date)}</td>
+                            <td className="whitespace-nowrap px-3 py-2 text-slate-700">{findName(healthEventTypes, h.event_type_id) ?? '—'}</td>
+                            <td className="whitespace-nowrap px-3 py-2 text-slate-700">{findName(diseases, h.disease_id) ?? '—'}</td>
+                            <td className="px-3 py-2 text-slate-700">{medsText}</td>
+                          </tr>
+                        );
+                      })}
                   </tbody>
                 </table>
               </div>

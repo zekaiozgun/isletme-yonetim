@@ -7,6 +7,7 @@ import { getResource } from '@/lib/resources';
 import { ResourceForm } from '@/components/ResourceForm';
 import { DeleteButton } from '@/components/DeleteButton';
 import { CancelEntryButton } from '@/components/CancelEntryButton';
+import { HealthEventForm, type HealthEventFormInitial } from '@/components/HealthEventForm';
 
 interface MeResponse {
   role: 'YONETICI' | 'CALISAN';
@@ -41,6 +42,63 @@ export default async function EditResourcePage({ params }: { params: Promise<{ r
   // degildir (kullanici tercihiyle: "Sadece Calisan'a kilit").
   const isAnimal = resource.slug === 'animals';
   const isLockedForCalisan = isAnimal && Boolean(record.is_locked) && me.role === 'CALISAN';
+
+  // bkz. [resource]/new/page.tsx aynı not - health-events çoklu ilaç
+  // desteği için özel form kullanır.
+  if (resource.slug === 'health-events') {
+    const [animals, eventTypes, diseases, medications, dosageUnits] = await Promise.all([
+      apiGetSafe<ApiRecord[]>('/animals', []),
+      apiGetSafe<ApiRecord[]>('/health-events/event-types', []),
+      apiGetSafe<ApiRecord[]>('/health-events/diseases', []),
+      apiGetSafe<ApiRecord[]>('/health-events/medications', []),
+      apiGetSafe<ApiRecord[]>('/health-events/dosage-units', []),
+    ]);
+    const recordMedications = Array.isArray(record.medications) ? (record.medications as ApiRecord[]) : [];
+    const initial: HealthEventFormInitial = {
+      animalId: String(record.animal_id),
+      eventTypeId: String(record.event_type_id),
+      eventDate: String(record.event_date),
+      diseaseId: record.disease_id !== null && record.disease_id !== undefined ? String(record.disease_id) : '',
+      veterinarianNote: record.veterinarian_note ? String(record.veterinarian_note) : '',
+      cost: record.cost !== null && record.cost !== undefined ? String(record.cost) : '',
+      note: record.note ? String(record.note) : '',
+      medications: recordMedications.map((med) => ({
+        medicationId: String(med.medication_id),
+        dosageAmount: med.dosage_amount !== null && med.dosage_amount !== undefined ? String(med.dosage_amount) : '',
+        dosageUnitId: med.dosage_unit_id !== null && med.dosage_unit_id !== undefined ? String(med.dosage_unit_id) : '',
+      })),
+    };
+    return (
+      <div>
+        <div className="mb-4 flex items-center gap-3">
+          <Link href={`/${resource.slug}`} className="text-sm text-slate-500 hover:text-slate-800">
+            ← {resource.title}
+          </Link>
+        </div>
+        <h1 className="mb-4 text-xl font-semibold text-slate-900">{resource.singularTitle} Düzenle</h1>
+        <HealthEventForm
+          animals={animals.map((a) => ({ id: String(a.id), label: `${String(a.tag_number)}${a.name ? ' - ' + String(a.name) : ''}` }))}
+          eventTypes={eventTypes.map((t) => ({ id: Number(t.id), name: String(t.name) }))}
+          diseases={diseases.map((d) => ({ id: Number(d.id), name: String(d.name) }))}
+          medications={medications.map((m) => ({ id: Number(m.id), name: String(m.name) }))}
+          dosageUnits={dosageUnits.map((u) => ({ id: Number(u.id), name: String(u.name) }))}
+          eventId={id}
+          initial={initial}
+        />
+        <div className="mt-8 max-w-xl border-t border-slate-200 pt-6">
+          <h2 className="mb-2 text-sm font-semibold text-slate-700">Tehlikeli Bölge</h2>
+          <p className="mb-3 text-sm text-slate-500">
+            Bu sağlık olayı kaydını kalıcı olarak siler.
+          </p>
+          <DeleteButton
+            action={deleteAction}
+            confirmMessage="Bu sağlık olayı kaydını silmek istediğinize emin misiniz?"
+            redirectTo="/health-events"
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

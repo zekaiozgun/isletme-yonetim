@@ -17,7 +17,7 @@ from app.core.exceptions import ConflictError, NotFoundError
 from app.core.validators import require_date_order
 from app.modules.animal.models import Animal
 from app.modules.animal.service import get_animal_exit_date
-from app.modules.health.models import HealthEvent, Medication
+from app.modules.health.models import HealthEvent, HealthEventMedication, Medication
 from app.modules.health.schemas import HealthEventCreate, MedicationCreate
 
 
@@ -68,7 +68,10 @@ def list_medications(db: Session) -> list[Medication]:
 
 
 def create_health_event(db: Session, data: HealthEventCreate) -> HealthEvent:
-    event = HealthEvent(**data.model_dump())
+    payload = data.model_dump()
+    medications = payload.pop("medications")
+    event = HealthEvent(**payload)
+    event.medications = [HealthEventMedication(**med) for med in medications]
     _validate_health_event_date(db, event)
     db.add(event)
     db.commit()
@@ -85,8 +88,12 @@ def get_health_event(db: Session, event_id: int) -> HealthEvent:
 
 def update_health_event(db: Session, event_id: int, data: HealthEventCreate) -> HealthEvent:
     event = get_health_event(db, event_id)
-    for key, value in data.model_dump().items():
+    payload = data.model_dump()
+    medications = payload.pop("medications")
+    for key, value in payload.items():
         setattr(event, key, value)
+    # cascade="all, delete-orphan" - eski satirlar silinir, yenileri eklenir.
+    event.medications = [HealthEventMedication(**med) for med in medications]
     _validate_health_event_date(db, event)
     db.commit()
     db.refresh(event)
@@ -107,10 +114,14 @@ def list_health_events(db: Session, animal_id: uuid.UUID | None = None) -> list[
 
 
 def calculate_withdrawal_end_date(db: Session, health_event_id: int) -> date | None:
+    """Bu olayda kullanilan TUM ilaclarin arinma bitis tarihlerinin EN
+    GECI (max) - hayvan satisa/kesime, verilen ilaclardan HERHANGI biri
+    hala arinmamisken hazir sayilamaz, o yuzden tek bir ilacin degil
+    hepsinin arinmasi beklenir."""
     event = db.get(HealthEvent, health_event_id)
-    if event is None or event.medication_id is None:
+    if event is None or not event.medications:
         return None
-    medication = db.get(Medication, event.medication_id)
-    if medication is None:
-        return None
-    return event.event_date + timedelta(days=medication.withdrawal_period_days)
+    end_dates = [
+        event.event_date + timedelta(days=med.medication.withdrawal_period_days) for med in event.medications
+    ]
+    return max(end_dates)

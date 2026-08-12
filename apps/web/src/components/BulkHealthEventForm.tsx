@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { bulkCreateHealthEvents, type BulkHealthEventResult } from '@/lib/actions';
+import { bulkCreateHealthEvents, type BulkHealthEventResult, type HealthEventMedicationInput } from '@/lib/actions';
 
 interface AnimalOption {
   id: string;
@@ -15,8 +15,19 @@ interface LookupOption {
   name: string;
 }
 
+interface MedicationRow {
+  key: number;
+  medicationId: string;
+  dosageAmount: string;
+  dosageUnitId: string;
+}
+
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+function emptyRow(key: number): MedicationRow {
+  return { key, medicationId: '', dosageAmount: '', dosageUnitId: '' };
 }
 
 /** Diğer toplu giriş formlarından farklı desen: burada hayvana özel bir
@@ -41,9 +52,8 @@ export function BulkHealthEventForm({
   const [eventDate, setEventDate] = useState(todayIso());
   const [eventTypeId, setEventTypeId] = useState('');
   const [diseaseId, setDiseaseId] = useState('');
-  const [medicationId, setMedicationId] = useState('');
-  const [dosageAmount, setDosageAmount] = useState('');
-  const [dosageUnitId, setDosageUnitId] = useState('');
+  const [rows, setRows] = useState<MedicationRow[]>([]);
+  const [nextKey, setNextKey] = useState(0);
   const [veterinarianNote, setVeterinarianNote] = useState('');
   const [cost, setCost] = useState('');
   const [note, setNote] = useState('');
@@ -52,6 +62,19 @@ export function BulkHealthEventForm({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BulkHealthEventResult | null>(null);
+
+  function updateRow(key: number, patch: Partial<MedicationRow>) {
+    setRows((prev) => prev.map((row) => (row.key === key ? { ...row, ...patch } : row)));
+  }
+
+  function addRow() {
+    setRows((prev) => [...prev, emptyRow(nextKey)]);
+    setNextKey((k) => k + 1);
+  }
+
+  function removeRow(key: number) {
+    setRows((prev) => prev.filter((row) => row.key !== key));
+  }
 
   const filteredAnimals = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase('tr-TR');
@@ -102,6 +125,13 @@ export function BulkHealthEventForm({
     }
 
     const chosen = animals.filter((a) => selected.has(a.id)).map((a) => ({ animalId: a.id, tagNumber: a.tagNumber }));
+    const medications: HealthEventMedicationInput[] = rows
+      .filter((row) => row.medicationId)
+      .map((row) => ({
+        medicationId: Number(row.medicationId),
+        dosageAmount: row.dosageAmount ? Number(row.dosageAmount) : null,
+        dosageUnitId: row.dosageUnitId ? Number(row.dosageUnitId) : null,
+      }));
 
     startTransition(async () => {
       const outcome = await bulkCreateHealthEvents(
@@ -109,9 +139,7 @@ export function BulkHealthEventForm({
           eventTypeId: Number(eventTypeId),
           eventDate,
           diseaseId: diseaseId ? Number(diseaseId) : null,
-          medicationId: medicationId ? Number(medicationId) : null,
-          dosageAmount: dosageAmount ? Number(dosageAmount) : null,
-          dosageUnitId: dosageUnitId ? Number(dosageUnitId) : null,
+          medications,
           veterinarianNote: veterinarianNote || null,
           cost: cost ? Number(cost) : null,
           note: note || null,
@@ -182,46 +210,65 @@ export function BulkHealthEventForm({
             ))}
           </select>
         </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">İlaç</label>
-          <select
-            value={medicationId}
-            onChange={(e) => setMedicationId(e.target.value)}
-            className="w-full rounded border border-slate-300 px-3 py-1.5 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
-          >
-            <option value="">—</option>
-            {medications.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
+        <div className="sm:col-span-2 lg:col-span-3">
+          <div className="mb-2 flex items-center justify-between">
+            <label className="block text-sm font-medium text-slate-700">İlaçlar</label>
+            <span className="text-xs text-slate-400">Seçili tüm hayvanlara aynı ilaçlar uygulanır</span>
+          </div>
+          <div className="space-y-2">
+            {rows.map((row) => (
+              <div key={row.key} className="flex flex-wrap items-center gap-2 rounded border border-slate-200 bg-white p-2">
+                <select
+                  value={row.medicationId}
+                  onChange={(e) => updateRow(row.key, { medicationId: e.target.value })}
+                  className="flex-1 rounded border border-slate-300 px-2 py-1.5 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
+                >
+                  <option value="">İlaç seçin...</option>
+                  {medications.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="Doz"
+                  value={row.dosageAmount}
+                  onChange={(e) => updateRow(row.key, { dosageAmount: e.target.value })}
+                  className="w-24 rounded border border-slate-300 px-2 py-1.5 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
+                />
+                <select
+                  value={row.dosageUnitId}
+                  onChange={(e) => updateRow(row.key, { dosageUnitId: e.target.value })}
+                  className="w-28 rounded border border-slate-300 px-2 py-1.5 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
+                >
+                  <option value="">Birim</option>
+                  {dosageUnits.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => removeRow(row.key)}
+                  className="rounded px-2 py-1.5 text-sm text-slate-400 hover:bg-slate-100 hover:text-red-600"
+                  aria-label="İlacı kaldır"
+                >
+                  ✕
+                </button>
+              </div>
             ))}
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Doz Miktarı</label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            value={dosageAmount}
-            onChange={(e) => setDosageAmount(e.target.value)}
-            className="w-full rounded border border-slate-300 px-3 py-1.5 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Doz Birimi</label>
-          <select
-            value={dosageUnitId}
-            onChange={(e) => setDosageUnitId(e.target.value)}
-            className="w-full rounded border border-slate-300 px-3 py-1.5 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
+          </div>
+          <button
+            type="button"
+            onClick={addRow}
+            className="mt-2 rounded border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
-            <option value="">—</option>
-            {dosageUnits.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name}
-              </option>
-            ))}
-          </select>
+            + İlaç Ekle
+          </button>
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700">Maliyet (TL, hayvan başına)</label>

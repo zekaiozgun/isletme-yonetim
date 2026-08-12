@@ -1,5 +1,5 @@
 import type { ReportConfig } from './types';
-import { formatDate, formatDays, formatDosage, formatPlain } from './formatters';
+import { formatDate, formatDays, formatPlain } from './formatters';
 
 /** Sağlık ve ilaç arınma süresi raporları. */
 export const healthReports: ReportConfig[] = [
@@ -15,8 +15,7 @@ export const healthReports: ReportConfig[] = [
       { key: 'event_date', label: 'Tarih', format: formatDate, width: 'narrow' },
       { key: 'event_type_name', label: 'Olay Tipi', width: 'narrow' },
       { key: 'disease_name', label: 'Hastalık/Tanı', format: formatPlain, width: 'narrow' },
-      { key: 'medication_name', label: 'İlaç', format: formatPlain, width: 'narrow' },
-      { key: 'dosage_amount', label: 'Doz', format: formatDosage, width: 'narrow' },
+      { key: 'medications', label: 'İlaçlar', format: formatPlain, width: 'wide' },
       { key: 'veterinarian_note', label: 'Veteriner Notu', format: formatPlain, width: 'wide' },
     ],
     rowHighlight: (row) => Boolean(row.is_illness),

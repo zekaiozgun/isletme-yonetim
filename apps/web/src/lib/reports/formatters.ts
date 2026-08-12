@@ -85,12 +85,6 @@ export function formatSireIdentity(value: unknown, row: ApiRecord): string {
   return `Kayıt No ${String(value)} — ${name}`;
 }
 
-export function formatDosage(value: unknown, row: ApiRecord): string {
-  if (value === null || value === undefined || value === '') return '—';
-  const unit = row.dosage_unit_name;
-  return unit ? `${String(value)} ${String(unit)}` : String(value);
-}
-
 export function formatQuantityWithUnit(value: unknown, row: ApiRecord): string {
   if (value === null || value === undefined || value === '') return '—';
   const unit = row.unit_name;

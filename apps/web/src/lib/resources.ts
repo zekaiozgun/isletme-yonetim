@@ -12,6 +12,23 @@ function formatDecimalColumn(value: unknown): string {
  * satış tiplerinde/eksik veride "—" gösterir. Satır bazında; toplu (Satış
  * Raporu'ndaki) ortalaması için bkz. apps/api reports/service.py
  * list_sales_report. */
+/** Bir sağlık olayının ilaç satırlarını ("İlaç (doz birim)") birleşik tek
+ * metin olarak gösterir - bir olayda artık birden fazla ilaç girilebiliyor
+ * (bkz. components/HealthEventForm.tsx), liste tablosunda tek sütunda
+ * özetlenir. */
+function formatHealthEventMedications(value: unknown): string {
+  if (!Array.isArray(value) || value.length === 0) return '—';
+  return value
+    .map((med) => {
+      const row = med as ApiRecord;
+      const name = String(row.medication_name ?? '');
+      if (row.dosage_amount === null || row.dosage_amount === undefined || row.dosage_amount === '') return name;
+      const unit = row.dosage_unit_name ? ` ${String(row.dosage_unit_name)}` : '';
+      return `${name} (${formatNumberTR(row.dosage_amount)}${unit})`;
+    })
+    .join(', ');
+}
+
 function formatDressingPercentage(_value: unknown, row: ApiRecord): string {
   const live = Number(row.sale_weight_kg);
   const carcass = Number(row.carcass_weight_kg);
@@ -96,7 +113,6 @@ const pregnancyResults: OptionSource = { endpoint: '/breeding-events/pregnancy-r
 const healthEventTypes: OptionSource = { endpoint: '/health-events/event-types', label: label('name') };
 const diseases: OptionSource = { endpoint: '/health-events/diseases', label: label('name') };
 const medicationTypes: OptionSource = { endpoint: '/health-events/medication-types', label: label('name') };
-const dosageUnits: OptionSource = { endpoint: '/health-events/dosage-units', label: label('name') };
 const feedTypes: OptionSource = { endpoint: '/feed/types', label: label('name') };
 const feedUnits: OptionSource = { endpoint: '/feed/units', label: label('name') };
 const saleTypes: OptionSource = { endpoint: '/sales/types', label: label('name') };
@@ -117,7 +133,6 @@ const semenBatches: OptionSource = {
 };
 const buyers: OptionSource = { endpoint: '/sales/buyers', label: label('name') };
 const feedItems: OptionSource = { endpoint: '/feed/items', label: label('name') };
-const medications: OptionSource = { endpoint: '/health-events/medications', label: label('name') };
 const breedingEventLabel = (e: ApiRecord): string =>
   `${e.dam_tag_number ? String(e.dam_tag_number) : '?'} — Aşım #${String(e.id)} (${String(e.service_date)})`;
 
@@ -357,17 +372,20 @@ const mainResources: ResourceConfig[] = [
       { key: 'animal_id', label: 'Hayvan', lookup: animals },
       { key: 'event_type_id', label: 'Tip', lookup: healthEventTypes },
       { key: 'event_date', label: 'Tarih', date: true },
-      { key: 'medication_id', label: 'İlaç', lookup: medications },
+      { key: 'medications', label: 'İlaçlar', format: formatHealthEventMedications },
       { key: 'cost', label: 'Maliyet (TL)', format: formatCurrencyTRY },
     ],
+    // NOT: bu kaynagin girisi/duzenlemesi genel ResourceForm ile DEGIL,
+    // ozel HealthEventForm bilesenle yapilir (bir olayda birden fazla ilac
+    // girilebilmesi icin - bkz. components/HealthEventForm.tsx,
+    // app/(app)/[resource]/new ve [resource]/[id] sayfalarindaki
+    // 'health-events' ozel durumu). Asagidaki fields sadece liste/filtre
+    // amaciyla var, forma beslenmiyor.
     fields: [
       { name: 'animal_id', label: 'Hayvan', type: 'select', options: animals, required: true },
       { name: 'event_type_id', label: 'Olay Tipi', type: 'select', options: healthEventTypes, required: true },
       { name: 'event_date', label: 'Tarih', type: 'date', required: true },
       { name: 'disease_id', label: 'Hastalık/Tanı', type: 'select', options: diseases },
-      { name: 'medication_id', label: 'İlaç', type: 'select', options: medications },
-      { name: 'dosage_amount', label: 'Doz Miktarı', type: 'decimal' },
-      { name: 'dosage_unit_id', label: 'Doz Birimi', type: 'select', options: dosageUnits },
       { name: 'veterinarian_note', label: 'Veteriner Notu', type: 'textarea' },
       { name: 'cost', label: 'Maliyet (TL)', type: 'decimal' },
       { name: 'note', label: 'Not', type: 'textarea' },

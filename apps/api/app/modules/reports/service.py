@@ -37,7 +37,7 @@ from app.modules.evaluation.lookups import EvaluationDirection
 from app.modules.evaluation.models import AnimalEvaluation, EvaluationReason
 from app.modules.feed.models import FeedItem, FeedPurchase, PenRation, RationItem
 from app.modules.fx import service as fx_service
-from app.modules.health.models import HealthEvent
+from app.modules.health.models import HealthEvent, HealthEventMedication
 from app.modules.sale.models import Sale
 from app.modules.valuation.models import GrowthValuationCheckpoint
 from app.modules.weight.models import WeightRecord
@@ -529,15 +529,20 @@ def list_active_withdrawal_periods(db: Session, today: date | None = None) -> li
     today = today or date.today()
     active_id = get_lookup_by_code(db, AnimalStatus, ACTIVE_STATUS_CODE).id
     stmt = (
-        select(HealthEvent)
+        select(HealthEventMedication)
+        .join(HealthEvent, HealthEventMedication.health_event_id == HealthEvent.id)
         .join(Animal, HealthEvent.animal_id == Animal.id)
-        .options(joinedload(HealthEvent.animal), joinedload(HealthEvent.medication))
-        .where(Animal.status_id == active_id, HealthEvent.medication_id.isnot(None))
+        .options(
+            joinedload(HealthEventMedication.medication),
+            joinedload(HealthEventMedication.health_event).joinedload(HealthEvent.animal),
+        )
+        .where(Animal.status_id == active_id)
     )
     rows: list[WithdrawalPeriodRead] = []
-    for event in db.scalars(stmt).all():
-        medication = event.medication
-        if medication is None or medication.withdrawal_period_days <= 0:
+    for med_row in db.scalars(stmt).all():
+        medication = med_row.medication
+        event = med_row.health_event
+        if medication.withdrawal_period_days <= 0:
             continue
         withdrawal_end = event.event_date + timedelta(days=medication.withdrawal_period_days)
         if withdrawal_end < today:
@@ -982,14 +987,18 @@ def list_health_events(db: Session, start_date: date, end_date: date) -> list[He
             joinedload(HealthEvent.animal),
             joinedload(HealthEvent.event_type),
             joinedload(HealthEvent.disease),
-            joinedload(HealthEvent.medication),
-            joinedload(HealthEvent.dosage_unit),
+            joinedload(HealthEvent.medications).joinedload(HealthEventMedication.medication),
+            joinedload(HealthEvent.medications).joinedload(HealthEventMedication.dosage_unit),
         )
         .where(HealthEvent.event_date >= start_date, HealthEvent.event_date <= end_date)
         .order_by(HealthEvent.event_date, HealthEvent.animal_id)
     )
     rows: list[HealthEventReportRead] = []
-    for event in db.scalars(stmt).all():
+    for event in db.scalars(stmt).unique().all():
+        medications = ", ".join(
+            f"{med.medication_name} ({formatted})" if (formatted := _format_dosage(med)) else med.medication_name
+            for med in event.medications
+        )
         rows.append(
             HealthEventReportRead(
                 animal_id=event.animal_id,
@@ -999,13 +1008,18 @@ def list_health_events(db: Session, start_date: date, end_date: date) -> list[He
                 event_type_name=event.event_type.name,
                 is_illness=event.event_type.code == ILLNESS_EVENT_TYPE_CODE or event.disease_id is not None,
                 disease_name=event.disease.name if event.disease else None,
-                medication_name=event.medication.name if event.medication else None,
-                dosage_amount=event.dosage_amount,
-                dosage_unit_name=event.dosage_unit.name if event.dosage_unit else None,
+                medications=medications or None,
                 veterinarian_note=event.veterinarian_note,
             )
         )
     return rows
+
+
+def _format_dosage(med: HealthEventMedication) -> str | None:
+    if med.dosage_amount is None:
+        return None
+    unit = f" {med.dosage_unit_name}" if med.dosage_unit_name else ""
+    return f"{med.dosage_amount}{unit}"
 
 
 def list_weight_gains(db: Session, start_date: date, end_date: date) -> list[WeightGainRead]:

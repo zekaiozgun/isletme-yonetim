@@ -30,6 +30,35 @@ class Medication(TimestampMixin, Base):
     medication_type = relationship("MedicationType")
 
 
+class HealthEventMedication(TimestampMixin, Base):
+    """Bir sağlık olayında kullanılan TEK bir ilaç satırı - bir muayene/
+    tedavide genelde birden fazla ilaç kullanıldığından (bkz. kullanıcı
+    geri bildirimi), HealthEvent artık tek bir medication_id yerine bu
+    alt tablo üzerinden istediği kadar ilaç satırı taşıyabiliyor."""
+
+    __tablename__ = "health_event_medications"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    health_event_id: Mapped[int] = mapped_column(
+        ForeignKey("health_events.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    medication_id: Mapped[int] = mapped_column(ForeignKey("medications.id"), nullable=False)
+    dosage_amount: Mapped[Decimal | None] = mapped_column(Numeric(8, 2), nullable=True)
+    dosage_unit_id: Mapped[int | None] = mapped_column(ForeignKey("dosage_units.id"), nullable=True)
+
+    medication = relationship("Medication")
+    dosage_unit = relationship("DosageUnit")
+    health_event = relationship("HealthEvent", back_populates="medications")
+
+    @property
+    def medication_name(self) -> str:
+        return self.medication.name
+
+    @property
+    def dosage_unit_name(self) -> str | None:
+        return self.dosage_unit.name if self.dosage_unit else None
+
+
 class HealthEvent(TimestampMixin, Base):
     __tablename__ = "health_events"
 
@@ -38,9 +67,6 @@ class HealthEvent(TimestampMixin, Base):
     event_type_id: Mapped[int] = mapped_column(ForeignKey("health_event_types.id"), nullable=False)
     event_date: Mapped[date] = mapped_column(Date, nullable=False)
     disease_id: Mapped[int | None] = mapped_column(ForeignKey("diseases.id"), nullable=True)
-    medication_id: Mapped[int | None] = mapped_column(ForeignKey("medications.id"), nullable=True)
-    dosage_amount: Mapped[Decimal | None] = mapped_column(Numeric(8, 2), nullable=True)
-    dosage_unit_id: Mapped[int | None] = mapped_column(ForeignKey("dosage_units.id"), nullable=True)
     veterinarian_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
     # Bu olayin toplam maliyeti (ilac + varsa veteriner ucreti dahil tek tutar, TL).
     cost: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
@@ -49,5 +75,9 @@ class HealthEvent(TimestampMixin, Base):
     animal = relationship("Animal")
     event_type = relationship("HealthEventType")
     disease = relationship("Disease")
-    medication = relationship("Medication")
-    dosage_unit = relationship("DosageUnit")
+    medications: Mapped[list[HealthEventMedication]] = relationship(
+        "HealthEventMedication",
+        back_populates="health_event",
+        cascade="all, delete-orphan",
+        order_by="HealthEventMedication.id",
+    )

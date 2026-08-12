@@ -304,9 +304,7 @@ class HealthEventReportRead(BaseModel):
     event_type_name: str
     is_illness: bool
     disease_name: str | None = None
-    medication_name: str | None = None
-    dosage_amount: Decimal | None = None
-    dosage_unit_name: str | None = None
+    medications: str | None = None
     veterinarian_note: str | None = None
 
 

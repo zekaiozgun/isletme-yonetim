@@ -5,6 +5,7 @@ import { createResource } from '@/lib/actions';
 import { loadFormOptions } from '@/lib/formOptions';
 import { getResource } from '@/lib/resources';
 import { ResourceForm } from '@/components/ResourceForm';
+import { HealthEventForm } from '@/components/HealthEventForm';
 
 interface MeResponse {
   role: 'YONETICI' | 'CALISAN';
@@ -17,6 +18,36 @@ export default async function NewResourcePage({ params }: { params: Promise<{ re
 
   const { options, clientFields } = await loadFormOptions(resource);
   const action = createResource.bind(null, resource.slug);
+
+  // Bir saglik olayinda birden fazla ilac kullanilabildigi icin (bkz.
+  // kullanici geri bildirimi), health-events genel ResourceForm yerine
+  // ozel bir form kullanir (bkz. components/HealthEventForm.tsx).
+  if (slug === 'health-events') {
+    const [animals, eventTypes, diseases, medications, dosageUnits] = await Promise.all([
+      apiGetSafe<ApiRecord[]>('/animals', []),
+      apiGetSafe<ApiRecord[]>('/health-events/event-types', []),
+      apiGetSafe<ApiRecord[]>('/health-events/diseases', []),
+      apiGetSafe<ApiRecord[]>('/health-events/medications', []),
+      apiGetSafe<ApiRecord[]>('/health-events/dosage-units', []),
+    ]);
+    return (
+      <div>
+        <div className="mb-4 flex items-center gap-3">
+          <Link href={`/${resource.slug}`} className="text-sm text-slate-500 hover:text-slate-800">
+            ← {resource.title}
+          </Link>
+        </div>
+        <h1 className="mb-4 text-xl font-semibold text-slate-900">Yeni {resource.singularTitle}</h1>
+        <HealthEventForm
+          animals={animals.map((a) => ({ id: String(a.id), label: `${String(a.tag_number)}${a.name ? ' - ' + String(a.name) : ''}` }))}
+          eventTypes={eventTypes.map((t) => ({ id: Number(t.id), name: String(t.name) }))}
+          diseases={diseases.map((d) => ({ id: Number(d.id), name: String(d.name) }))}
+          medications={medications.map((m) => ({ id: Number(m.id), name: String(m.name) }))}
+          dosageUnits={dosageUnits.map((u) => ({ id: Number(u.id), name: String(u.name) }))}
+        />
+      </div>
+    );
+  }
 
   // Calisan modunda hayvan girisi cift onaylidir: once "Incele ve Onayla"
   // ile ozet gosterilir, kayit ancak ikinci onaydan sonra olusturulur ve
