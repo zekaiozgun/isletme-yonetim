@@ -9,7 +9,14 @@ import { financialReports } from './financial';
 import { evaluationReports } from './evaluation';
 
 export type { ReportColumn, ReportConfig } from './types';
-export { formatGenderShort, formatMonths, formatSireIdentity, formatSourceCode, formatValuationStatus } from './formatters';
+export {
+  formatAgeMixed,
+  formatGenderShort,
+  formatMonths,
+  formatSireIdentity,
+  formatSourceCode,
+  formatValuationStatus,
+} from './formatters';
 
 /** Tüm raporların tek listesi - mantıksal gruplara bölünmüş dosyalardan
  * (breeding/health/growth/outcomes/herd/pens-feed/financial/evaluation)
