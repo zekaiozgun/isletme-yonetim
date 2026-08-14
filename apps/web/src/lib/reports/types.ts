@@ -65,4 +65,13 @@ export interface ReportConfig {
    * kaydı gibi asla küçülmeyen) raporlar için kullanılır - bkz.
    * apps/api'deki ilgili list_* fonksiyonunun `q` parametresi. */
   serverSearch?: boolean;
+  /** Belirtilirse ReportTable yerine GroupedOffspringList kullanılır: satırlar
+   * key()'e göre gruplanır, her grup büyük punto bir üst başlık (label()) +
+   * altında sıra numaralı bir alt tablo (columns) olarak gösterilir - örn.
+   * Anne/Baba Bazında Yavru Listesi. Gruplar, satırların sunucudan geldiği
+   * sırayla (ilk görülme) listelenir. */
+  groupBy?: {
+    key: (row: ApiRecord) => string;
+    label: (row: ApiRecord) => string;
+  };
 }

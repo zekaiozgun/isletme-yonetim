@@ -69,8 +69,11 @@ export const breedingReports: ReportConfig[] = [
     endpoint: '/reports/offspring-by-mother',
     group: 'Üreme',
     serverSearch: true,
+    groupBy: {
+      key: (row) => String(row.mother_id ?? row.mother_tag_number ?? ''),
+      label: (row) => `Anne: ${row.mother_tag_number ? String(row.mother_tag_number) : '—'}`,
+    },
     columns: [
-      { key: 'mother_tag_number', label: 'Anne Küpe No', width: 'narrow' },
       { key: 'tag_number', label: 'Yavru Küpe No', width: 'narrow' },
       { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate, width: 'narrow' },
       { key: 'gender_name', label: 'D/E', format: formatGenderShort, width: 'narrow' },
@@ -85,8 +88,11 @@ export const breedingReports: ReportConfig[] = [
     endpoint: '/reports/offspring-by-sire',
     group: 'Üreme',
     serverSearch: true,
+    groupBy: {
+      key: (row) => String(row.sire_id ?? ''),
+      label: (row) => `Baba: ${formatSireIdentity(row.sire_id, row)}`,
+    },
     columns: [
-      { key: 'sire_id', label: 'Baba', format: formatSireIdentity, width: 'narrow' },
       { key: 'tag_number', label: 'Yavru Küpe No', width: 'narrow' },
       { key: 'mother_tag_number', label: 'Anne Küpe No', format: formatPlain, width: 'narrow' },
       { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate, width: 'narrow' },

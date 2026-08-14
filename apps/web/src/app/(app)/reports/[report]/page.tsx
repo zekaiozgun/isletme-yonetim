@@ -6,6 +6,7 @@ import { ReportTable } from '@/components/ReportTable';
 import { HerdAnimalValueTable } from '@/components/HerdAnimalValueTable';
 import { ParentPerformanceSection } from '@/components/ParentPerformanceSection';
 import { DailyFeedCostSection } from '@/components/DailyFeedCostSection';
+import { GroupedOffspringList } from '@/components/GroupedOffspringList';
 import { DateRangeFilter } from '@/components/DateRangeFilter';
 import { MarketValueSeriesFilter } from '@/components/MarketValueSeriesFilter';
 import { formatNowIstanbulDMYHM } from '@/lib/format';
@@ -130,6 +131,8 @@ export default async function ReportPage({
         <ParentPerformanceSection motherRows={rows} sireRows={sireRows} />
       ) : report.slug === 'feed-daily-cost' ? (
         <DailyFeedCostSection costReport={report} costRows={rows} runwayRows={feedStockRunwayRows} />
+      ) : report.groupBy ? (
+        <GroupedOffspringList report={report} rows={rows} searchQuery={searchQuery} />
       ) : (
         <ReportTable report={report} rows={rows} serverQuery={searchQuery} />
       )}
