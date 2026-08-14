@@ -554,6 +554,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/animals/{animal_id}/pedigree": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Animal Pedigree
+         * @description Anayasa m.4/m.5: soy agaci hicbir yerde saklanmaz, mother_id/
+         *     father_sire_id zincirinden istek aninda kurulur (bkz. service.get_pedigree_tree).
+         */
+        get: operations["get_animal_pedigree_animals__animal_id__pedigree_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/animals/{animal_id}/cancel-entry": {
         parameters: {
             query?: never;
@@ -4047,6 +4068,32 @@ export interface components {
              */
             highlighted_rows: number[];
         };
+        /**
+         * PedigreeNodeRead
+         * @description Soy ağacındaki TEK bir düğüm (bkz. animal/service.py get_pedigree_tree).
+         *     Sürüye ait bir hayvansa animal_id doludur; dış kaynaklı bir boğaysa
+         *     (Sire.is_external, kendi Animal kaydı yok) is_external=True olur ve
+         *     zincir orada sonlanır - o boğanın kendi ebeveyni sistemde bilinmez.
+         */
+        PedigreeNodeRead: {
+            /** Animal Id */
+            animal_id?: string | null;
+            /** Tag Number */
+            tag_number?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Breed Name */
+            breed_name?: string | null;
+            /** Crossbreed Ratio */
+            crossbreed_ratio?: string | null;
+            /**
+             * Is External
+             * @default false
+             */
+            is_external: boolean;
+            mother?: components["schemas"]["PedigreeNodeRead"] | null;
+            father?: components["schemas"]["PedigreeNodeRead"] | null;
+        };
         /** PenAssignmentCreate */
         PenAssignmentCreate: {
             /**
@@ -6639,6 +6686,39 @@ export interface operations {
                     "application/json": {
                         [key: string]: number | null;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_animal_pedigree_animals__animal_id__pedigree_get: {
+        parameters: {
+            query?: {
+                generations?: number;
+            };
+            header?: never;
+            path: {
+                animal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PedigreeNodeRead"];
                 };
             };
             /** @description Validation Error */

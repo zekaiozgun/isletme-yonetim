@@ -63,3 +63,22 @@ class AnimalCancelEntry(BaseModel):
     """'Hatalı Giriş İptali' istegi: sadece opsiyonel bir aciklama."""
 
     note: str | None = None
+
+
+class PedigreeNodeRead(BaseModel):
+    """Soy ağacındaki TEK bir düğüm (bkz. animal/service.py get_pedigree_tree).
+    Sürüye ait bir hayvansa animal_id doludur; dış kaynaklı bir boğaysa
+    (Sire.is_external, kendi Animal kaydı yok) is_external=True olur ve
+    zincir orada sonlanır - o boğanın kendi ebeveyni sistemde bilinmez."""
+
+    animal_id: uuid.UUID | None = None
+    tag_number: str | None = None
+    name: str | None = None
+    breed_name: str | None = None
+    crossbreed_ratio: Decimal | None = None
+    is_external: bool = False
+    mother: "PedigreeNodeRead | None" = None
+    father: "PedigreeNodeRead | None" = None
+
+
+PedigreeNodeRead.model_rebuild()

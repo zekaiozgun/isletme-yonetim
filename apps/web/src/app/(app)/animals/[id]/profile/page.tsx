@@ -4,6 +4,7 @@ import { apiGetSafe, type ApiRecord } from '@/lib/api';
 import { formatDateDMY, formatCurrencyTRY, formatUsdValue, formatNumberTR } from '@/lib/format';
 import { formatValuationStatus, formatSourceCode } from '@/lib/reports';
 import { TrendLineChart, type TrendPoint } from '@/components/TrendLineChart';
+import { PedigreeTree } from '@/components/PedigreeTree';
 
 function findName(list: ApiRecord[], id: unknown): string | null {
   const item = list.find((i) => String(i.id) === String(id));
@@ -69,13 +70,9 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
     apiGetSafe<ApiRecord | null>(`/reports/animal-valuation/${id}`, null),
   ]);
 
-  // Anne/baba bilgisi - ayrı, koşullu fetch'ler (çoğu hayvanda ikisi de
-  // olmayabilir, gereksiz istek atmamak için sadece FK doluysa çekilir).
-  const mother = animal.mother_id ? await apiGetSafe<ApiRecord | null>(`/animals/${animal.mother_id}`, null) : null;
-  const sire = animal.father_sire_id
-    ? await apiGetSafe<ApiRecord | null>(`/genetic-resource/sires/${animal.father_sire_id}`, null)
-    : null;
-  const sireAnimal = sire?.animal_id ? await apiGetSafe<ApiRecord | null>(`/animals/${sire.animal_id}`, null) : null;
+  // Soy ağacı (3 nesil: anne/baba + anneanne/dede vb.) - tek uç noktadan,
+  // hiçbir yerde saklanmaz (bkz. components/PedigreeTree.tsx).
+  const pedigree = await apiGetSafe<ApiRecord | null>(`/animals/${id}/pedigree?generations=3`, null);
 
   // Bu hayvan kendisi bir boğa (Sire) olarak kayıtlıysa (sürüye ait,
   // damızlık kullanılmış olabilir), kendi yavrularını da gösterelim.
@@ -177,36 +174,7 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="flex flex-col gap-6">
           <Section title="Soy Kütüğü">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <p className="mb-1 text-xs font-medium text-slate-500">Anne</p>
-                {mother ? (
-                  <Link href={`/animals/${mother.id}/profile`} className="text-sm font-medium text-slate-800 hover:underline">
-                    {String(mother.tag_number)}
-                    {mother.name ? ` — ${String(mother.name)}` : ''}
-                  </Link>
-                ) : (
-                  <p className="text-sm text-slate-400">—</p>
-                )}
-              </div>
-              <div>
-                <p className="mb-1 text-xs font-medium text-slate-500">Baba</p>
-                {sire ? (
-                  sireAnimal ? (
-                    <Link href={`/animals/${sireAnimal.id}/profile`} className="text-sm font-medium text-slate-800 hover:underline">
-                      {String(sireAnimal.tag_number)} — {String(sire.name)}
-                    </Link>
-                  ) : (
-                    <p className="text-sm font-medium text-slate-800">
-                      {sire.registry_no ? `Kayıt No ${String(sire.registry_no)} — ` : ''}
-                      {String(sire.name)}
-                    </p>
-                  )
-                ) : (
-                  <p className="text-sm text-slate-400">—</p>
-                )}
-              </div>
-            </div>
+            <PedigreeTree node={pedigree} />
             {(offspringAsMother.length > 0 || offspringAsSire.length > 0) && (
               <div className="mt-4">
                 <p className="mb-1 text-xs font-medium text-slate-500">

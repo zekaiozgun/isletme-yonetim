@@ -13,10 +13,13 @@ from app.core.lookup_helpers import get_lookup_by_code
 from app.core.validators import require_date_order
 from app.modules.animal.lookups import AnimalStatus
 from app.modules.animal.models import Animal
-from app.modules.animal.schemas import AnimalCreate
+from app.modules.animal.schemas import AnimalCreate, PedigreeNodeRead
 from app.modules.auth.schemas import Role
 from app.modules.death.models import Death
+from app.modules.genetic_resource.models import Sire
 from app.modules.sale.models import Sale
+
+DEFAULT_PEDIGREE_GENERATIONS = 4
 
 ACTIVE_STATUS_CODE = "AKTIF"
 CANCELLED_ENTRY_STATUS_CODE = "HATALI_GIRIS"
@@ -127,3 +130,73 @@ def calculate_age_in_days(animal: Animal, as_of: date | None = None) -> int | No
         return None
     reference_date = as_of or date.today()
     return (reference_date - animal.birth_date).days
+
+
+def _pedigree_node_from_sire(sire: Sire) -> PedigreeNodeRead:
+    """Sadece Sire kaydi olarak var olan (suruye ait Animal kaydi OLMAYAN,
+    dis kaynakli) bir atayi tek bir yaprak dugum olarak dondurur - o
+    boganin kendi ebeveyni sistemde bilinmedigi icin zincir burada
+    sonlanir (Faz 2'de eklenecek 'bilinen baba/anne kimligi' alanlari,
+    bu yaprak dugumu bir nesil daha derine indirebilecek)."""
+    return PedigreeNodeRead(
+        animal_id=None,
+        tag_number=sire.registry_no,
+        name=sire.name,
+        breed_name=sire.breed.name if sire.breed else None,
+        crossbreed_ratio=None,
+        is_external=True,
+        mother=None,
+        father=None,
+    )
+
+
+def _build_pedigree_node(db: Session, animal: Animal, remaining_generations: int) -> PedigreeNodeRead:
+    """Bir hayvanin kendisini VE (remaining_generations > 0 ise) ebeveyn
+    dugumlerini ozyinelemeli olarak insa eder. Anne zinciri Animal.mother_id
+    (kendine referans) uzerinden; baba zinciri once Animal.father_sire_id
+    (Sire katalogu) uzerinden, suruye ait bir boga ise (Sire.animal_id dolu)
+    onun da KENDI Animal kaydina inerek devam eder - boylece baba tarafi da
+    anne tarafi kadar derin takip edilebilir. remaining_generations, kotu
+    veride (kazara dongu) bile sonsuz ozyinelemeyi imkansiz kilan sabit bir
+    derinlik siniridir."""
+    mother_node: PedigreeNodeRead | None = None
+    father_node: PedigreeNodeRead | None = None
+
+    if remaining_generations > 0:
+        if animal.mother_id is not None:
+            mother = db.get(Animal, animal.mother_id)
+            if mother is not None:
+                mother_node = _build_pedigree_node(db, mother, remaining_generations - 1)
+        if animal.father_sire_id is not None:
+            sire = db.get(Sire, animal.father_sire_id)
+            if sire is not None:
+                if sire.animal_id is not None:
+                    sire_animal = db.get(Animal, sire.animal_id)
+                    father_node = (
+                        _build_pedigree_node(db, sire_animal, remaining_generations - 1)
+                        if sire_animal is not None
+                        else _pedigree_node_from_sire(sire)
+                    )
+                else:
+                    father_node = _pedigree_node_from_sire(sire)
+
+    return PedigreeNodeRead(
+        animal_id=animal.id,
+        tag_number=animal.tag_number,
+        name=animal.name,
+        breed_name=animal.breed.name if animal.breed else None,
+        crossbreed_ratio=animal.crossbreed_ratio,
+        is_external=False,
+        mother=mother_node,
+        father=father_node,
+    )
+
+
+def get_pedigree_tree(db: Session, animal_id: uuid.UUID, generations: int = DEFAULT_PEDIGREE_GENERATIONS) -> PedigreeNodeRead:
+    """Bir hayvanin kendisinden baslayarak N nesil geriye soy agacini
+    dondurur (bkz. _build_pedigree_node). Hicbir yerde SAKLANMAZ - her
+    istekte mother_id/father_sire_id zincirinden yeniden kurulur (Anayasa
+    m.4/m.5). Kucuk, sabit derinlikli bir agac oldugundan (4 nesil = en
+    fazla 15 dugum) toplu on-yukleme yerine dugum basina sorgu yeterlidir."""
+    animal = get_animal(db, animal_id)
+    return _build_pedigree_node(db, animal, generations)

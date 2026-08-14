@@ -20,7 +20,7 @@ from app.modules.animal.lookups import (
     LitterType,
     SourceFarm,
 )
-from app.modules.animal.schemas import AnimalCancelEntry, AnimalCreate, AnimalRead
+from app.modules.animal.schemas import AnimalCancelEntry, AnimalCreate, AnimalRead, PedigreeNodeRead
 
 router = APIRouter(prefix="/animals", tags=["animals"])
 
@@ -76,6 +76,18 @@ def get_animal_age(animal_id: uuid.UUID, db: Session = Depends(get_db)) -> dict[
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"age_days": service.calculate_age_in_days(animal)}
+
+
+@router.get("/{animal_id}/pedigree", response_model=PedigreeNodeRead)
+def get_animal_pedigree(
+    animal_id: uuid.UUID, generations: int = 4, db: Session = Depends(get_db)
+) -> PedigreeNodeRead:
+    """Anayasa m.4/m.5: soy agaci hicbir yerde saklanmaz, mother_id/
+    father_sire_id zincirinden istek aninda kurulur (bkz. service.get_pedigree_tree)."""
+    try:
+        return service.get_pedigree_tree(db, animal_id, generations)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.put("/{animal_id}", response_model=AnimalRead)
