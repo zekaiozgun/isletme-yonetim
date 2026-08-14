@@ -42,6 +42,7 @@ class HerdExitRead(BaseModel):
     exit_type: str
     exit_date: date
     exit_age_months: int | None = None
+    exit_age_days: int | None = None
     herd_tenure_days: int | None = None
     # Bu hayvana ait, cikistan ONCE girilmis TUM "Suruden Cikarma" yonlu
     # degerlendirmeler - tarih sirasiyla tek metinde birlestirilir (bkz.
@@ -483,6 +484,7 @@ class AnimalMarketValueRead(BaseModel):
     name: str | None = None
     gender_name: str
     age_months: int | None = None
+    age_days: int | None = None
     amount_try: Decimal
     amount_usd: Decimal
     # "market_estimate" (büyüme çıpalarından interpolasyon) | "cost_basis"

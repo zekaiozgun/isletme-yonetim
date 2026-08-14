@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { apiGetSafe, type ApiRecord } from '@/lib/api';
-import { formatDateDMY, formatCurrencyTRY, formatUsdValue, formatNumberTR } from '@/lib/format';
+import { formatDateDMY, formatCurrencyTRY, formatUsdValue, formatNumberTR, formatAgeMixed } from '@/lib/format';
 import { formatValuationStatus, formatSourceCode } from '@/lib/reports';
 import { TrendLineChart, type TrendPoint } from '@/components/TrendLineChart';
 import { PedigreeTree, flattenPedigreeTree } from '@/components/PedigreeTree';
@@ -130,7 +130,7 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
         <Chip>{genderName}</Chip>
         <Chip>{breedName}</Chip>
         <Chip tone={isActiveStatus ? 'success' : 'neutral'}>{statusName}</Chip>
-        <Chip>{typeof animal.age_months === 'number' ? `${animal.age_months} ay` : '—'}</Chip>
+        <Chip>{formatAgeMixed(animal.age_months, animal)}</Chip>
       </div>
       <p className="mb-5 text-xs text-slate-400">
         Doğum {animal.birth_date ? formatDateDMY(animal.birth_date) : '—'}

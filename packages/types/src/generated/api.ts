@@ -2877,6 +2877,8 @@ export interface components {
             gender_name: string;
             /** Age Months */
             age_months?: number | null;
+            /** Age Days */
+            age_days?: number | null;
             /** Amount Try */
             amount_try: string;
             /** Amount Usd */
@@ -2977,6 +2979,8 @@ export interface components {
             death_reason_id?: number | null;
             /** Age Months */
             age_months?: number | null;
+            /** Age Days */
+            age_days?: number | null;
             /** Is Locked */
             is_locked: boolean;
             /**
@@ -3858,6 +3862,8 @@ export interface components {
             exit_date: string;
             /** Exit Age Months */
             exit_age_months?: number | null;
+            /** Exit Age Days */
+            exit_age_days?: number | null;
             /** Herd Tenure Days */
             herd_tenure_days?: number | null;
             /** Culling Evaluation Reasons */

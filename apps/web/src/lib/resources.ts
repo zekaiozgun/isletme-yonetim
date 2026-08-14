@@ -1,5 +1,5 @@
 import type { ApiRecord } from './api';
-import { formatCurrencyTRY, formatNumberTR } from './format';
+import { formatAgeMixed, formatCurrencyTRY, formatNumberTR } from './format';
 
 /** formatNumberTR'nin ColumnConfig.format imzasına (value, row) uyarlanmış
  * hali - kaynak liste tablolarındaki ondalık sütunlarda kullanılır. */
@@ -94,11 +94,6 @@ const label =
   (item: ApiRecord): string =>
     String(item[key] ?? '');
 
-function formatAgeMonths(value: unknown): string {
-  if (typeof value !== 'number') return '—';
-  return `${value} ay`;
-}
-
 // --- Master Data (lookup) kaynakları ---
 const breeds: OptionSource = { endpoint: '/animals/breeds', label: label('name') };
 const genders: OptionSource = { endpoint: '/animals/genders', label: label('name') };
@@ -167,7 +162,7 @@ const mainResources: ResourceConfig[] = [
       { key: 'name', label: 'İsim' },
       { key: 'breed_id', label: 'Irk', lookup: breeds },
       { key: 'gender_id', label: 'Cinsiyet', lookup: genders },
-      { key: 'age_months', label: 'Yaş', format: formatAgeMonths },
+      { key: 'age_months', label: 'Yaş', format: formatAgeMixed },
       { key: 'status_id', label: 'Statü', lookup: animalStatuses },
       { key: 'birth_date', label: 'Doğum Tarihi', date: true },
       { key: 'entry_value', label: 'Giriş Değeri (TL)', format: formatCurrencyTRY },

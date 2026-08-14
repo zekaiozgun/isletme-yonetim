@@ -1,5 +1,5 @@
 import type { ReportConfig } from './types';
-import { formatCurrency, formatDate, formatGenderShort, formatMonths, formatPlain, formatSourceCode, formatUsd } from './formatters';
+import { formatAgeMixed, formatCurrency, formatDate, formatGenderShort, formatPlain, formatSourceCode, formatUsd } from './formatters';
 
 /** Mali/kârlılık raporları: hayvan bazlı kâr-zarar, sürü geneli maliyet-gelir özeti, tahmini piyasa değeri. */
 export const financialReports: ReportConfig[] = [
@@ -56,7 +56,7 @@ export const financialReports: ReportConfig[] = [
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
       { key: 'gender_name', label: 'D/E', format: formatGenderShort, width: 'narrow' },
-      { key: 'age_months', label: 'Yaş (ay)', format: formatMonths, width: 'narrow' },
+      { key: 'age_months', label: 'Yaş', format: formatAgeMixed, width: 'narrow' },
       { key: 'amount_try', label: 'Tutar (TL)', format: formatCurrency, width: 'narrow' },
       { key: 'amount_usd', label: 'Tutar ($)', format: formatUsd, width: 'narrow' },
       { key: 'source_code', label: 'Kaynak', format: formatSourceCode, width: 'narrow' },

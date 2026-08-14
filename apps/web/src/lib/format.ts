@@ -50,6 +50,33 @@ export function formatUsdValue(value: unknown): string {
   return `$${num.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+const AGE_DAY_DISPLAY_THRESHOLD_DAYS = 60;
+
+/**
+ * Ay bazlı yaş küçük hayvanlarda (buzağı) her zaman tam sayıya
+ * yuvarlandığından gün/ay küsuratı görünmüyordu - 2 günlük bir buzağı ile
+ * 29 günlük bir buzağı ekranda ikisi de "0 ay" görünüyordu (bkz. kullanıcı
+ * geri bildirimi). Eşiğin altında (60 gün) gerçek gün sayısını, üstünde
+ * mevcut ay değerini gösterir - olgun hayvanların görünümü değişmez.
+ */
+function formatAgeFromDaysAndMonths(days: unknown, months: unknown): string {
+  if (typeof days === 'number' && days < AGE_DAY_DISPLAY_THRESHOLD_DAYS) {
+    return `${days} gün`;
+  }
+  if (typeof months === 'number') return `${months} ay`;
+  return '—';
+}
+
+/** age_days alanı taşıyan satırlar için (bkz. YoungAnimalRead, AnimalRead, AnimalMarketValueRead). */
+export function formatAgeMixed(value: unknown, row: Record<string, unknown>): string {
+  return formatAgeFromDaysAndMonths(row.age_days, value);
+}
+
+/** exit_age_days alanı taşıyan satırlar için (bkz. HerdExitRead - Sürüden Çıkış Raporu). */
+export function formatExitAgeMixed(value: unknown, row: Record<string, unknown>): string {
+  return formatAgeFromDaysAndMonths(row.exit_age_days, value);
+}
+
 /**
  * "Şimdi"yi DD/MM/YYYY HH:MM olarak, sunucunun kendi saat dilimi ne olursa
  * olsun (Render'da genelde UTC) her zaman Türkiye yerel saatiyle gösterir -

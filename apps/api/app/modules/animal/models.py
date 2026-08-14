@@ -103,3 +103,14 @@ class Animal(TimestampMixin, Base):
             return None
         reference_date = self.status_date or date.today()
         return full_months_between(self.birth_date, reference_date)
+
+    @property
+    def age_days(self) -> int | None:
+        """age_months ile ayni referans tarihi (status_date veya bugun)
+        kullanir - kucuk hayvanlarda ay tek basina gun/ay kusuratini
+        gizledigi icin (bkz. kullanici geri bildirimi: bir buzaginin 2
+        gunluk mu 29 gunluk mu oldugu ay bazinda ayirt edilemiyordu)."""
+        if self.birth_date is None:
+            return None
+        reference_date = self.status_date or date.today()
+        return (reference_date - self.birth_date).days

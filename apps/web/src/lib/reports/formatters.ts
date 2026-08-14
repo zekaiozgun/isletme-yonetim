@@ -1,7 +1,14 @@
 import type { ApiRecord } from '../api';
-import { formatDateDMY as formatDate, formatCurrencyTRY, formatUsdValue, formatNumberTR } from '../format';
+import {
+  formatDateDMY as formatDate,
+  formatCurrencyTRY,
+  formatUsdValue,
+  formatNumberTR,
+  formatAgeMixed,
+  formatExitAgeMixed,
+} from '../format';
 
-export { formatDate };
+export { formatDate, formatAgeMixed, formatExitAgeMixed };
 
 export function formatDays(value: unknown): string {
   if (value === null || value === undefined) return '—';

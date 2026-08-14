@@ -1,5 +1,5 @@
 import type { ReportConfig } from './types';
-import { formatCurrency, formatDate, formatDays, formatKg, formatMonths, formatPercent, formatPlain } from './formatters';
+import { formatCurrency, formatDate, formatDays, formatExitAgeMixed, formatKg, formatPercent, formatPlain } from './formatters';
 
 /** Sürüden çıkış raporları: satış, ölüm/kayıp, giriş-çıkış özeti. */
 export const outcomeReports: ReportConfig[] = [
@@ -74,7 +74,7 @@ export const outcomeReports: ReportConfig[] = [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
       { key: 'exit_type', label: 'Çıkış Tipi', width: 'narrow' },
       { key: 'exit_date', label: 'Çıkış Tarihi', format: formatDate, width: 'narrow' },
-      { key: 'exit_age_months', label: 'Çıkış Yaşı (ay)', format: formatMonths, width: 'narrow' },
+      { key: 'exit_age_months', label: 'Çıkış Yaşı', format: formatExitAgeMixed, width: 'narrow' },
       { key: 'herd_tenure_days', label: 'Sürüde Kalma Süresi', format: formatDays, width: 'narrow' },
       { key: 'culling_evaluation_reasons', label: 'Geçmiş Değerlendirme Nedenleri', format: formatPlain, width: 'wide' },
       { key: 'decision_to_exit_days', label: 'Son Değerlendirmeden Çıkışa Geçen Süre', format: formatDays, width: 'narrow' },

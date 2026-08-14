@@ -2774,6 +2774,7 @@ def list_herd_animal_market_values(db: Session, as_of_date: date) -> list[Animal
         )
         status_code = _valuation_status_code_ctx(asset_ctx, animal, as_of_date, growth_checkpoints_by_gender)
         age_months = full_months_between(animal.birth_date, as_of_date) if animal.birth_date else None
+        age_days = (as_of_date - animal.birth_date).days if animal.birth_date else None
         rows.append(
             AnimalMarketValueRead(
                 animal_id=animal.id,
@@ -2781,6 +2782,7 @@ def list_herd_animal_market_values(db: Session, as_of_date: date) -> list[Animal
                 name=animal.name,
                 gender_name=animal.gender.name,
                 age_months=age_months,
+                age_days=age_days,
                 amount_try=amount_try,
                 amount_usd=amount_usd,
                 source_code=source_code,
@@ -2930,6 +2932,7 @@ def list_herd_exits(db: Session, start_date: date, end_date: date) -> list[HerdE
         tenure_start = animal.birth_date or animal.entry_date
         tenure_days = (exit_date - tenure_start).days if tenure_start else None
         exit_age_months = full_months_between(animal.birth_date, exit_date) if animal.birth_date else None
+        exit_age_days = (exit_date - animal.birth_date).days if animal.birth_date else None
 
         culling_evals = db.scalars(
             select(AnimalEvaluation)
@@ -2957,6 +2960,7 @@ def list_herd_exits(db: Session, start_date: date, end_date: date) -> list[HerdE
                 exit_type=exit_type,
                 exit_date=exit_date,
                 exit_age_months=exit_age_months,
+                exit_age_days=exit_age_days,
                 herd_tenure_days=tenure_days,
                 culling_evaluation_reasons=reasons_text,
                 last_evaluation_date=last_eval_date,
