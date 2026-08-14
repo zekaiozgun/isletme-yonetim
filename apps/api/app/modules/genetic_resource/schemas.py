@@ -10,6 +10,14 @@ class SireCreate(BaseModel):
     breed_id: int
     animal_id: uuid.UUID | None = None
     is_external: bool = True
+    # Sadece dis kaynakli (is_external=True) bogalarda anlamli - bkz.
+    # models.py Sire dokstringi. Suruye ait bir bogada (animal_id dolu)
+    # bu alanlar kullanilmaz, o boganin kendi soy agaci zaten Animal
+    # kaydindan turetilir.
+    known_sire_registry_no: str | None = None
+    known_sire_name: str | None = None
+    known_dam_registry_no: str | None = None
+    known_dam_name: str | None = None
     note: str | None = None
 
 

@@ -4527,6 +4527,14 @@ export interface components {
              * @default true
              */
             is_external: boolean;
+            /** Known Sire Registry No */
+            known_sire_registry_no?: string | null;
+            /** Known Sire Name */
+            known_sire_name?: string | null;
+            /** Known Dam Registry No */
+            known_dam_registry_no?: string | null;
+            /** Known Dam Name */
+            known_dam_name?: string | null;
             /** Note */
             note?: string | null;
         };
@@ -4566,6 +4574,14 @@ export interface components {
              * @default true
              */
             is_external: boolean;
+            /** Known Sire Registry No */
+            known_sire_registry_no?: string | null;
+            /** Known Sire Name */
+            known_sire_name?: string | null;
+            /** Known Dam Registry No */
+            known_dam_registry_no?: string | null;
+            /** Known Dam Name */
+            known_dam_name?: string | null;
             /** Note */
             note?: string | null;
             /** Id */

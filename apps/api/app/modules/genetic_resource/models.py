@@ -29,6 +29,17 @@ class Sire(TimestampMixin, Base):
         UUID(as_uuid=True), ForeignKey("animals.id"), nullable=True, unique=True
     )
     is_external: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
+    # Dis kaynakli (is_external=True) bir boganin KENDI ebeveyni suruye
+    # ait degildir, tam bir Animal kaydi acilmaz - ama suni tohumlama
+    # kataloğunda cogunlukla bilinir (kimlik no + ad). Girilirse, soy
+    # agaci (bkz. animal/service.py get_pedigree_tree) bu boga dugumunde
+    # sonlanmak yerine bir nesil daha derine iner - opsiyoneldir, hicbiri
+    # zorunlu degildir (Anayasa m.4: yalnizca gercekten bilinen fact'ler
+    # girilir, tahmin uretilmez).
+    known_sire_registry_no: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    known_sire_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    known_dam_registry_no: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    known_dam_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     note: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     breed = relationship("Breed")

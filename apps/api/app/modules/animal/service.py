@@ -132,12 +132,33 @@ def calculate_age_in_days(animal: Animal, as_of: date | None = None) -> int | No
     return (reference_date - animal.birth_date).days
 
 
-def _pedigree_node_from_sire(sire: Sire) -> PedigreeNodeRead:
+def _known_ancestor_node(registry_no: str | None, name: str | None) -> PedigreeNodeRead | None:
+    """Dis kaynakli bir boganin KENDI (Sire kaydina bile sahip olmayan,
+    sadece kimlik no + ad olarak bilinen) ebeveynini tek bir yaprak dugum
+    olarak dondurur - hicbiri girilmemisse None (uydurma bir dugum
+    eklenmez, bkz. Sire.known_sire_name docstring'i)."""
+    if not registry_no and not name:
+        return None
+    return PedigreeNodeRead(
+        animal_id=None,
+        tag_number=registry_no,
+        name=name,
+        breed_name=None,
+        crossbreed_ratio=None,
+        is_external=True,
+        mother=None,
+        father=None,
+    )
+
+
+def _pedigree_node_from_sire(sire: Sire, remaining_generations: int) -> PedigreeNodeRead:
     """Sadece Sire kaydi olarak var olan (suruye ait Animal kaydi OLMAYAN,
-    dis kaynakli) bir atayi tek bir yaprak dugum olarak dondurur - o
-    boganin kendi ebeveyni sistemde bilinmedigi icin zincir burada
-    sonlanir (Faz 2'de eklenecek 'bilinen baba/anne kimligi' alanlari,
-    bu yaprak dugumu bir nesil daha derine indirebilecek)."""
+    dis kaynakli) bir atayi dondurur. Bu boganin kendi ebeveyni suruye ait
+    degildir/tam bir Animal kaydi yoktur, ama katalogda bilinen bir kimlik
+    (known_sire_*/known_dam_*) girilmisse - ve derinlik siniri hala
+    izin veriyorsa - zincir orada sonlanmaz, bir nesil daha derine iner."""
+    mother_node = _known_ancestor_node(sire.known_dam_registry_no, sire.known_dam_name) if remaining_generations > 0 else None
+    father_node = _known_ancestor_node(sire.known_sire_registry_no, sire.known_sire_name) if remaining_generations > 0 else None
     return PedigreeNodeRead(
         animal_id=None,
         tag_number=sire.registry_no,
@@ -145,8 +166,8 @@ def _pedigree_node_from_sire(sire: Sire) -> PedigreeNodeRead:
         breed_name=sire.breed.name if sire.breed else None,
         crossbreed_ratio=None,
         is_external=True,
-        mother=None,
-        father=None,
+        mother=mother_node,
+        father=father_node,
     )
 
 
@@ -175,10 +196,10 @@ def _build_pedigree_node(db: Session, animal: Animal, remaining_generations: int
                     father_node = (
                         _build_pedigree_node(db, sire_animal, remaining_generations - 1)
                         if sire_animal is not None
-                        else _pedigree_node_from_sire(sire)
+                        else _pedigree_node_from_sire(sire, remaining_generations - 1)
                     )
                 else:
-                    father_node = _pedigree_node_from_sire(sire)
+                    father_node = _pedigree_node_from_sire(sire, remaining_generations - 1)
 
     return PedigreeNodeRead(
         animal_id=animal.id,
