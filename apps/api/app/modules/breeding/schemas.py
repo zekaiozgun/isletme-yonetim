@@ -19,6 +19,15 @@ class BreedingEventCreate(BaseModel):
         return self
 
 
+class InbreedingCheckRead(BaseModel):
+    """bkz. service.check_inbreeding. Hicbir yerde SAKLANMAZ, sadece
+    Asim Kaydi formunda ONERI/UYARI olarak gosterilir - sistem hicbir
+    seyi ENGELLEMEZ, sadece celiskiyi gorunur kilar (Anayasa m.4)."""
+
+    has_common_ancestor: bool
+    common_ancestor_names: list[str] = []
+
+
 class BreedingEventRead(BreedingEventCreate):
     model_config = ConfigDict(from_attributes=True)
 

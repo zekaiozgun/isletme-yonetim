@@ -1016,6 +1016,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/breeding-events/inbreeding-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Inbreeding Check
+         * @description Anayasa m.4/m.5: hicbir yerde saklanmaz, sadece Asim Kaydi formunda
+         *     ONERI/UYARI olarak gosterilir - engellemez (bkz. service.check_inbreeding).
+         */
+        get: operations["get_inbreeding_check_breeding_events_inbreeding_check_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/breeding-events/pregnancy-checks": {
         parameters: {
             query?: never;
@@ -3894,6 +3915,21 @@ export interface components {
              * @default false
              */
             is_total: boolean;
+        };
+        /**
+         * InbreedingCheckRead
+         * @description bkz. service.check_inbreeding. Hicbir yerde SAKLANMAZ, sadece
+         *     Asim Kaydi formunda ONERI/UYARI olarak gosterilir - sistem hicbir
+         *     seyi ENGELLEMEZ, sadece celiskiyi gorunur kilar (Anayasa m.4).
+         */
+        InbreedingCheckRead: {
+            /** Has Common Ancestor */
+            has_common_ancestor: boolean;
+            /**
+             * Common Ancestor Names
+             * @default []
+             */
+            common_ancestor_names: string[];
         };
         /** LoginRequest */
         LoginRequest: {
@@ -8315,6 +8351,39 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_inbreeding_check_breeding_events_inbreeding_check_get: {
+        parameters: {
+            query?: {
+                dam_id?: string | null;
+                sire_animal_id?: string | null;
+                semen_batch_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InbreedingCheckRead"];
                 };
             };
             /** @description Validation Error */

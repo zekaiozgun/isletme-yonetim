@@ -224,6 +224,50 @@ def get_pedigree_tree(db: Session, animal_id: uuid.UUID, generations: int = DEFA
     return _build_pedigree_node(db, animal, generations)
 
 
+def build_pedigree_tree_for_sire_id(
+    db: Session, sire_id: int, generations: int = DEFAULT_PEDIGREE_GENERATIONS
+) -> PedigreeNodeRead | None:
+    """get_pedigree_tree'nin Sire.id uzerinden calisan hali - dogal asim
+    disi (suni tohumlama/sperma partisi uzerinden) bir boga icin soy agaci
+    lazim oldugunda (bkz. breeding modulu check_inbreeding) kullanilir.
+    Sire bulunamazsa None doner."""
+    sire = db.get(Sire, sire_id)
+    if sire is None:
+        return None
+    if sire.animal_id is not None:
+        sire_animal = db.get(Animal, sire.animal_id)
+        if sire_animal is not None:
+            return _build_pedigree_node(db, sire_animal, generations)
+    return _pedigree_node_from_sire(sire, generations)
+
+
+def _collect_pedigree_keys(node: PedigreeNodeRead | None, keys: dict[tuple, str]) -> None:
+    """Bir soy agacindaki HER dugumu (kok dahil) benzersiz bir anahtarla
+    (surudeki bir hayvansa animal_id, dis kaynakli bir atasysa kupe/kayit
+    no + ad ikilisi) bir sozluge toplar - bkz. find_common_ancestors."""
+    if node is None:
+        return
+    key = (node.animal_id,) if node.animal_id is not None else (node.tag_number, node.name)
+    if key != (None, None):
+        keys.setdefault(key, node.tag_number or node.name or "?")
+    _collect_pedigree_keys(node.mother, keys)
+    _collect_pedigree_keys(node.father, keys)
+
+
+def find_common_ancestors(tree_a: PedigreeNodeRead, tree_b: PedigreeNodeRead) -> list[str]:
+    """Iki soy agacinda ORTAK olan atalari bulur - KOK dugumler DAHIL
+    (biri digerinin dogrudan atasiysa - orn. baba-kiz - da yakalanir).
+    Sadece GORUNTULEME icin isim listesi doner, hicbir yerde saklanmaz;
+    kullanici uyariyi gorup KENDI karar verir, sistem hicbir seyi
+    engellemez (bkz. breeding modulu check_inbreeding)."""
+    keys_a: dict[tuple, str] = {}
+    keys_b: dict[tuple, str] = {}
+    _collect_pedigree_keys(tree_a, keys_a)
+    _collect_pedigree_keys(tree_b, keys_b)
+    common_keys = set(keys_a) & set(keys_b)
+    return sorted({keys_a[k] for k in common_keys})
+
+
 # --- Melez Orani Tahmini (soy agaci Faz 3) ---
 #
 # Kural seti (kullanici ile uzerinde mutabik kalinan): her ebeveyn icin

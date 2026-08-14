@@ -8,6 +8,7 @@ import { ResourceForm } from '@/components/ResourceForm';
 import { HealthEventForm } from '@/components/HealthEventForm';
 import { RelatedLookupsBar } from '@/components/RelatedLookupsBar';
 import { CrossbreedRatioCalculator } from '@/components/CrossbreedRatioCalculator';
+import { InbreedingCheckWidget } from '@/components/InbreedingCheckWidget';
 
 interface MeResponse {
   role: 'YONETICI' | 'CALISAN';
@@ -93,6 +94,13 @@ export default async function NewResourcePage({ params }: { params: Promise<{ re
           animals={options['/animals'] ?? []}
           sires={options['/genetic-resource/sires'] ?? []}
           breeds={options['/animals/breeds'] ?? []}
+        />
+      )}
+      {slug === 'breeding-events' && (
+        <InbreedingCheckWidget
+          animals={options['/animals'] ?? []}
+          sireAnimals={options['/animals'] ?? []}
+          semenBatches={options['/genetic-resource/semen-batches'] ?? []}
         />
       )}
       <ResourceForm

@@ -15,9 +15,11 @@ from sqlalchemy.orm import Session, joinedload
 from app.core.date_utils import add_months
 from app.core.exceptions import ConflictError, DomainError, NotFoundError
 from app.core.validators import require_date_order
+from app.modules.animal import service as animal_service
 from app.modules.animal.models import Animal
 from app.modules.breeding.models import BreedingEvent, PregnancyCheck
-from app.modules.breeding.schemas import BreedingEventCreate, PregnancyCheckCreate
+from app.modules.breeding.schemas import BreedingEventCreate, InbreedingCheckRead, PregnancyCheckCreate
+from app.modules.genetic_resource.models import SemenBatch
 
 AVERAGE_GESTATION_DAYS = 283
 # Boğanın cinsel olgunluğa erişip damızlıkta fiilen kullanılabildiği asgari
@@ -144,3 +146,36 @@ def list_pregnancy_checks(db: Session, breeding_event_id: int | None = None) -> 
     if breeding_event_id is not None:
         stmt = stmt.where(PregnancyCheck.breeding_event_id == breeding_event_id)
     return list(db.scalars(stmt.order_by(PregnancyCheck.check_date)).all())
+
+
+INBREEDING_CHECK_GENERATIONS = 4
+
+
+def check_inbreeding(
+    db: Session, dam_id: uuid.UUID | None, sire_animal_id: uuid.UUID | None, semen_batch_id: int | None
+) -> InbreedingCheckRead:
+    """Anne adayi ile prospektif boganin (dogal asim -> sire_animal_id,
+    suni tohumlama -> semen_batch_id uzerinden Sire) soy agaclarinda
+    (bkz. animal/service.py get_pedigree_tree) ORTAK bir ata olup
+    olmadigini kontrol eder - formu ENGELLEMEZ, sadece kullaniciyi
+    bilgilendirir (kullanicinin onayladigi kural seti, Faz 4)."""
+    no_match = InbreedingCheckRead(has_common_ancestor=False, common_ancestor_names=[])
+    if dam_id is None:
+        return no_match
+
+    dam_tree = animal_service.get_pedigree_tree(db, dam_id, INBREEDING_CHECK_GENERATIONS)
+
+    if sire_animal_id is not None:
+        sire_tree = animal_service.get_pedigree_tree(db, sire_animal_id, INBREEDING_CHECK_GENERATIONS)
+    elif semen_batch_id is not None:
+        batch = db.get(SemenBatch, semen_batch_id)
+        if batch is None:
+            return no_match
+        sire_tree = animal_service.build_pedigree_tree_for_sire_id(db, batch.sire_id, INBREEDING_CHECK_GENERATIONS)
+        if sire_tree is None:
+            return no_match
+    else:
+        return no_match
+
+    common = animal_service.find_common_ancestors(dam_tree, sire_tree)
+    return InbreedingCheckRead(has_common_ancestor=len(common) > 0, common_ancestor_names=common)

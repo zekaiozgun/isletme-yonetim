@@ -504,6 +504,33 @@ export interface CrossbreedRatioEstimate {
   note: string;
 }
 
+export interface InbreedingCheckResult {
+  hasCommonAncestor: boolean;
+  commonAncestorNames: string[];
+}
+
+/** Aşım Kaydı formundaki "Akrabalık Kontrolü" yardımcı aracı için (bkz.
+ * components/InbreedingCheckWidget.tsx) - aynı sebeple (apiGet cookie
+ * gerektirir) sadece bu Server Action üzerinden erişilir. */
+export async function checkInbreedingAction(
+  damId: string | null,
+  sireAnimalId: string | null,
+  semenBatchId: number | null
+): Promise<{ data?: InbreedingCheckResult; error?: string }> {
+  const query = new URLSearchParams();
+  if (damId) query.set('dam_id', damId);
+  if (sireAnimalId) query.set('sire_animal_id', sireAnimalId);
+  if (semenBatchId) query.set('semen_batch_id', String(semenBatchId));
+  try {
+    const data = await apiGet<{ has_common_ancestor: boolean; common_ancestor_names: string[] }>(
+      `/breeding-events/inbreeding-check?${query.toString()}`
+    );
+    return { data: { hasCommonAncestor: data.has_common_ancestor, commonAncestorNames: data.common_ancestor_names } };
+  } catch {
+    return { error: 'Kontrol başarısız oldu.' };
+  }
+}
+
 /** Yeni Hayvan formundaki "Melez Oranı Hesapla" yardımcı aracı için (bkz.
  * components/CrossbreedRatioCalculator.tsx) - apiGet cookie/next-headers
  * kullandığından sadece sunucu tarafında çağrılabilir, bu yüzden Client

@@ -12,6 +12,7 @@ from app.modules.breeding.lookups import PregnancyCheckMethod, PregnancyResult, 
 from app.modules.breeding.schemas import (
     BreedingEventCreate,
     BreedingEventRead,
+    InbreedingCheckRead,
     PregnancyCheckCreate,
     PregnancyCheckRead,
 )
@@ -36,6 +37,21 @@ def list_breeding_events(
 @router.get("/expected-calving-date")
 def get_expected_calving_date(service_date: date) -> dict[str, date]:
     return {"expected_calving_date": service.calculate_expected_calving_date(service_date)}
+
+
+@router.get("/inbreeding-check", response_model=InbreedingCheckRead)
+def get_inbreeding_check(
+    dam_id: uuid.UUID | None = None,
+    sire_animal_id: uuid.UUID | None = None,
+    semen_batch_id: int | None = None,
+    db: Session = Depends(get_db),
+) -> InbreedingCheckRead:
+    """Anayasa m.4/m.5: hicbir yerde saklanmaz, sadece Asim Kaydi formunda
+    ONERI/UYARI olarak gosterilir - engellemez (bkz. service.check_inbreeding)."""
+    try:
+        return service.check_inbreeding(db, dam_id, sire_animal_id, semen_batch_id)
+    except NotFoundError:
+        return InbreedingCheckRead(has_common_ancestor=False, common_ancestor_names=[])
 
 
 @router.post("/pregnancy-checks", response_model=PregnancyCheckRead, status_code=201)
