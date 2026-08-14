@@ -110,6 +110,27 @@ class CalvingRead(BaseModel):
     note: str | None = None
 
 
+class CalfLossAnalysisRead(BaseModel):
+    """Buzağı Kaybı Analizi - bkz. reports/service.py list_calf_loss_analysis
+    ve _calf_loss_category. outcome_category hiçbir yerde SAKLANMAZ, doğum
+    tipi + (varsa) ölüm tarihinden rapor anında türetilir."""
+
+    animal_id: uuid.UUID
+    tag_number: str
+    name: str | None = None
+    birth_date: date
+    breed_name: str | None = None
+    gender_name: str
+    litter_type_name: str | None = None
+    mother_tag_number: str | None = None
+    father_sire_name: str | None = None
+    # "Ölü Doğum" | "0-48 Saat" | "3-30 Gün" | "31-60 Gün" | "61 Gün-Sütten
+    # Kesim" | "Sütten Kesim Sonrası" | "Sütten Kesildi" | "Büyüme Döneminde"
+    outcome_category: str
+    death_date: date | None = None
+    death_reason_name: str | None = None
+
+
 class OffspringByMotherRead(BaseModel):
     mother_id: uuid.UUID
     mother_tag_number: str
@@ -505,3 +526,7 @@ class DashboardSummaryRead(BaseModel):
     pen_occupancy_rate: float | None = None
     average_calving_interval_days: float | None = None
     annual_loss_rate: float | None = None
+    # Son 12 ayda dogan ve kaderi kesinlesmis (hala buyume doneminde
+    # olmayan) buzagilardan sutten kesilenlerin, o buzagilarin annelerine
+    # (tekil dam sayisina) orani x100 - bkz. list_calf_loss_analysis.
+    weaning_rate_per_100_cows: float | None = None

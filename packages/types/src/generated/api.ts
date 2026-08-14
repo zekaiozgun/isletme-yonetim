@@ -2054,6 +2054,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports/calf-loss-analysis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Calf Loss Analysis */
+        get: operations["calf_loss_analysis_reports_calf_loss_analysis_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reports/offspring-by-mother": {
         parameters: {
             query?: never;
@@ -3180,6 +3197,44 @@ export interface components {
              */
             updated_at: string;
         };
+        /**
+         * CalfLossAnalysisRead
+         * @description Buzağı Kaybı Analizi - bkz. reports/service.py list_calf_loss_analysis
+         *     ve _calf_loss_category. outcome_category hiçbir yerde SAKLANMAZ, doğum
+         *     tipi + (varsa) ölüm tarihinden rapor anında türetilir.
+         */
+        CalfLossAnalysisRead: {
+            /**
+             * Animal Id
+             * Format: uuid
+             */
+            animal_id: string;
+            /** Tag Number */
+            tag_number: string;
+            /** Name */
+            name?: string | null;
+            /**
+             * Birth Date
+             * Format: date
+             */
+            birth_date: string;
+            /** Breed Name */
+            breed_name?: string | null;
+            /** Gender Name */
+            gender_name: string;
+            /** Litter Type Name */
+            litter_type_name?: string | null;
+            /** Mother Tag Number */
+            mother_tag_number?: string | null;
+            /** Father Sire Name */
+            father_sire_name?: string | null;
+            /** Outcome Category */
+            outcome_category: string;
+            /** Death Date */
+            death_date?: string | null;
+            /** Death Reason Name */
+            death_reason_name?: string | null;
+        };
         /** CalvingIntervalRead */
         CalvingIntervalRead: {
             /**
@@ -3289,6 +3344,8 @@ export interface components {
             average_calving_interval_days?: number | null;
             /** Annual Loss Rate */
             annual_loss_rate?: number | null;
+            /** Weaning Rate Per 100 Cows */
+            weaning_rate_per_100_cows?: number | null;
         };
         /** DeathCreate */
         DeathCreate: {
@@ -12327,6 +12384,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CalvingRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    calf_loss_analysis_reports_calf_loss_analysis_get: {
+        parameters: {
+            query: {
+                start_date: string;
+                end_date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalfLossAnalysisRead"][];
                 };
             };
             /** @description Validation Error */

@@ -51,6 +51,7 @@ from app.modules.reports.schemas import (
     BreedingCandidateRead,
     BreedingPerformanceRead,
     BreedingRecommendationRead,
+    CalfLossAnalysisRead,
     CalvingIntervalRead,
     CalvingRead,
     DailyRationCostRead,
@@ -597,6 +598,98 @@ def list_calvings(db: Session, start_date: date, end_date: date) -> list[Calving
                 father_sire_name=animal.father_sire.name if animal.father_sire else None,
                 status_name=animal.status.name,
                 note=animal.note,
+            )
+        )
+    return rows
+
+
+# --- Buzağı Kaybı Analizi ---
+#
+# Amaç sadece gecmis dogumlari listelemek degil, kayiplarin hayatin HANGI
+# evresinde yogunlastigini olcmek (kullanici geri bildirimi). "Kayip
+# kategorisi" (zaman dilimi) ile "kayip nedeni" (Death.death_reason_id,
+# zaten var olan ayri bir alan) BILINCLI olarak ayri tutulur - kategori
+# hicbir yerde SAKLANMAZ, dogum tipi + (varsa) olum tarihinden rapor
+# aninda turetilir (Anayasa m.4/m.5), tipki _death_age_group gibi.
+
+STILLBIRTH_TYPE_CODE = "OLU"
+
+
+def _calf_loss_category(animal: Animal, death: Death | None, today: date) -> str:
+    """Bir buzaginin dogum-sonrasi kaderini zaman dilimine gore siniflandirir.
+    Olu dogumlar (birth_type=OLU) ayri bir Death kaydi GEREKTIRMEZ - dogumda
+    zaten yakalanir, bu yuzden Death olmadan da doğru siniflanir. Sutten
+    kesim siniri, rasyon/degerleme modullerinde zaten kullanilan
+    CALF_MAX_MONTHS sabitiyle (add_months uzerinden) tutarli tutulur - ayri
+    bir 'sutten kesim yasi' degeri icat edilmez."""
+    if animal.birth_type is not None and animal.birth_type.code == STILLBIRTH_TYPE_CODE:
+        return "Ölü Doğum"
+    if animal.birth_date is None:
+        return "Bilinmiyor"
+    weaning_date = add_months(animal.birth_date, CALF_MAX_MONTHS)
+    if death is not None:
+        age_days = (death.death_date - animal.birth_date).days
+        if age_days <= 2:
+            return "0-48 Saat"
+        if age_days <= 30:
+            return "3-30 Gün"
+        if age_days <= 60:
+            return "31-60 Gün"
+        if death.death_date <= weaning_date:
+            return "61 Gün-Sütten Kesim"
+        return "Sütten Kesim Sonrası"
+    return "Sütten Kesildi" if today >= weaning_date else "Büyüme Döneminde"
+
+
+def list_calf_loss_analysis(
+    db: Session, start_date: date, end_date: date, today: date | None = None
+) -> list[CalfLossAnalysisRead]:
+    """Belirtilen tarih araliginda (birth_date) dogan TUM buzagilari,
+    dogum-sonrasi kaderine gore (bkz. _calf_loss_category) siniflandirir -
+    irk/cinsiyet/ikiz/anne/boga kirilimiyla (list_calvings ile ayni desen)
+    hangi grupta kaybin yogunlastigini karsilastirmaya izin verir."""
+    today = today or date.today()
+    stmt = (
+        select(Animal)
+        .options(
+            joinedload(Animal.breed),
+            joinedload(Animal.gender),
+            joinedload(Animal.birth_type),
+            joinedload(Animal.litter_type),
+            joinedload(Animal.mother),
+            joinedload(Animal.father_sire),
+        )
+        .where(Animal.birth_date.isnot(None), Animal.birth_date >= start_date, Animal.birth_date <= end_date)
+        .order_by(Animal.birth_date, Animal.tag_number)
+    )
+    animals = list(db.scalars(stmt).all())
+
+    # Tek seferde bulk-preload (N+1 onlenir) - bkz. dosya genelindeki
+    # _CostContext/_AssetContext deseni.
+    deaths_by_animal: dict[uuid.UUID, Death] = {}
+    animal_ids = [a.id for a in animals]
+    if animal_ids:
+        death_stmt = select(Death).options(joinedload(Death.death_reason)).where(Death.animal_id.in_(animal_ids))
+        deaths_by_animal = {d.animal_id: d for d in db.scalars(death_stmt).all()}
+
+    rows: list[CalfLossAnalysisRead] = []
+    for animal in animals:
+        assert animal.birth_date is not None
+        death = deaths_by_animal.get(animal.id)
+        rows.append(
+            CalfLossAnalysisRead(
+                animal_id=animal.id,
+                tag_number=animal.tag_number,
+                name=animal.name,
+                birth_date=animal.birth_date,
+                breed_name=animal.breed.name if animal.breed else None,
+                gender_name=animal.gender.name,
+                litter_type_name=animal.litter_type.name if animal.litter_type else None,
+                mother_tag_number=animal.mother.tag_number if animal.mother else None,
+                father_sire_name=animal.father_sire.name if animal.father_sire else None,
+                outcome_category=_calf_loss_category(animal, death, today),
+                death_date=death.death_date if death else None,
+                death_reason_name=death.death_reason.name if death else None,
             )
         )
     return rows
@@ -1820,6 +1913,18 @@ def get_dashboard_summary(db: Session, today: date | None = None) -> DashboardSu
 
     breeding_candidates = list_breeding_candidates(db, today)
 
+    # "Büyüme Döneminde" (henüz sütten kesim yaşına gelmemiş, kaderi
+    # kesinleşmemiş) satırlar HARİÇ - yoksa yakın zamanda doğan, henüz
+    # kaybedilmemiş ama sütten de kesilmemiş buzağılar oranı yapay
+    # düşürürdü. Payda tekil dam (anne) sayısıdır (bkz. modül geneli
+    # docstring) - "100 ineğe karşılık kaç buzağı sütten kesiliyor".
+    resolved_calf_losses = [
+        r for r in list_calf_loss_analysis(db, today - timedelta(days=365), today, today) if r.outcome_category != "Büyüme Döneminde"
+    ]
+    weaned_count = sum(1 for r in resolved_calf_losses if r.outcome_category == "Sütten Kesildi")
+    dam_count = len({r.mother_tag_number for r in resolved_calf_losses if r.mother_tag_number is not None})
+    weaning_rate_per_100_cows = round(weaned_count / dam_count * 100, 1) if dam_count > 0 else None
+
     return DashboardSummaryRead(
         active_animal_count=inventory.total_active,
         # "Post Partum" (henuz dogum sonrasi bekleme suresini tamamlamamis,
@@ -1834,6 +1939,7 @@ def get_dashboard_summary(db: Session, today: date | None = None) -> DashboardSu
         pen_occupancy_rate=pen_occupancy_rate,
         average_calving_interval_days=average_calving_interval,
         annual_loss_rate=annual_loss_rate,
+        weaning_rate_per_100_cows=weaning_rate_per_100_cows,
     )
 
 

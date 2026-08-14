@@ -15,6 +15,10 @@ function formatDaysValue(value: unknown): string {
   return typeof value === 'number' ? `${value} gün` : '—';
 }
 
+function formatPer100Cows(value: unknown): string {
+  return typeof value === 'number' ? `${value} / 100 inek` : '—';
+}
+
 interface AttentionItem {
   key: string;
   label: string;
@@ -94,6 +98,7 @@ export default async function Home() {
   const occupancyRate = typeof summary.pen_occupancy_rate === 'number' ? summary.pen_occupancy_rate : null;
   const calvingInterval = typeof summary.average_calving_interval_days === 'number' ? summary.average_calving_interval_days : null;
   const annualLossRate = typeof summary.annual_loss_rate === 'number' ? summary.annual_loss_rate : null;
+  const weaningRate = typeof summary.weaning_rate_per_100_cows === 'number' ? summary.weaning_rate_per_100_cows : null;
 
   // "Post Partum" (henuz aksiyon gerektirmeyen, bilgi amacli) haric - bkz.
   // reports.service.get_dashboard_summary'deki ayni filtre.
@@ -170,6 +175,12 @@ export default async function Home() {
           value={formatPercent(annualLossRate)}
           href="/reports/deaths"
           status={annualLossRate !== null && annualLossRate >= 10 ? 'critical' : 'neutral'}
+        />
+        <StatTile
+          label="Sütten Kesim Oranı (Son 12 Ay)"
+          value={formatPer100Cows(weaningRate)}
+          href="/reports/calf-loss-analysis"
+          status="neutral"
         />
       </div>
 

@@ -40,6 +40,28 @@ export const breedingReports: ReportConfig[] = [
     rowHighlight: (row) => Boolean(row.is_difficult_birth),
   },
   {
+    slug: 'calf-loss-analysis',
+    title: 'Buzağı Kaybı Analizi',
+    description:
+      'Belirtilen tarih aralığında doğan tüm buzağıların doğum-sonrası kaderi (ölü doğum, 0-48 saat, 3-30 gün, 31-60 gün, 61 gün-sütten kesim, sütten kesim sonrası, sütten kesildi, büyüme döneminde) - ırk/cinsiyet/ikiz/anne/boğa kırılımıyla kayıpların hangi evrede yoğunlaştığını gösterir.',
+    endpoint: '/reports/calf-loss-analysis',
+    group: 'Üreme',
+    dateRange: true,
+    defaultRangeDays: 365,
+    columns: [
+      { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
+      { key: 'mother_tag_number', label: 'Anne/Baba', format: formatParentage, width: 'narrow' },
+      { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate, width: 'narrow' },
+      { key: 'breed_name', label: 'Irk', format: formatPlain, width: 'narrow' },
+      { key: 'gender_name', label: 'D/E', format: formatGenderShort, width: 'narrow' },
+      { key: 'litter_type_name', label: 'Doğum Tipi', format: formatPlain, width: 'narrow' },
+      { key: 'outcome_category', label: 'Sonuç Kategorisi', width: 'narrow' },
+      { key: 'death_date', label: 'Ölüm Tarihi', format: formatDate, width: 'narrow' },
+      { key: 'death_reason_name', label: 'Ölüm Nedeni', format: formatPlain, width: 'narrow' },
+    ],
+    rowHighlight: (row) => !['Sütten Kesildi', 'Büyüme Döneminde'].includes(String(row.outcome_category)),
+  },
+  {
     slug: 'offspring-by-mother',
     title: 'Anne Bazında Yavru Listesi',
     description:
