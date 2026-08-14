@@ -88,12 +88,14 @@ def get_animal(animal_id: uuid.UUID, db: Session = Depends(get_db)) -> AnimalRea
 
 @router.get("/{animal_id}/age-days")
 def get_animal_age(animal_id: uuid.UUID, db: Session = Depends(get_db)) -> dict[str, int | None]:
-    """Anayasa m.4/m.5: yas saklanmaz, istek aninda hesaplanir."""
+    """Anayasa m.4/m.5: yas saklanmaz, istek aninda hesaplanir. Animal.age_days
+    (bkz. models.py) satilmis/olmus bir hayvanda status_date'i referans alir -
+    cikistan sonra yaslanmaya devam etmez."""
     try:
         animal = service.get_animal(db, animal_id)
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return {"age_days": service.calculate_age_in_days(animal)}
+    return {"age_days": animal.age_days}
 
 
 @router.get("/{animal_id}/pedigree", response_model=PedigreeNodeRead)

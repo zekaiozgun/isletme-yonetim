@@ -125,14 +125,6 @@ def list_animals(db: Session, status_id: int | None = None) -> list[Animal]:
     return list(db.scalars(stmt.order_by(Animal.birth_date, Animal.tag_number)).all())
 
 
-def calculate_age_in_days(animal: Animal, as_of: date | None = None) -> int | None:
-    """Yas, birth_date'ten turetilir; DB'de saklanmaz (Anayasa m.4/m.5)."""
-    if animal.birth_date is None:
-        return None
-    reference_date = as_of or date.today()
-    return (reference_date - animal.birth_date).days
-
-
 def _known_ancestor_node(registry_no: str | None, name: str | None) -> PedigreeNodeRead | None:
     """Dis kaynakli bir boganin KENDI (Sire kaydina bile sahip olmayan,
     sadece kimlik no + ad olarak bilinen) ebeveynini tek bir yaprak dugum
