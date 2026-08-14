@@ -3,6 +3,7 @@ degerler (yas gibi) burada hesaplanir, hicbir zaman DB'de saklanmaz."""
 
 import uuid
 from datetime import date
+from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -13,7 +14,7 @@ from app.core.lookup_helpers import get_lookup_by_code
 from app.core.validators import require_date_order
 from app.modules.animal.lookups import AnimalStatus
 from app.modules.animal.models import Animal
-from app.modules.animal.schemas import AnimalCreate, PedigreeNodeRead
+from app.modules.animal.schemas import AnimalCreate, CrossbreedRatioEstimateRead, PedigreeNodeRead
 from app.modules.auth.schemas import Role
 from app.modules.death.models import Death
 from app.modules.genetic_resource.models import Sire
@@ -221,3 +222,77 @@ def get_pedigree_tree(db: Session, animal_id: uuid.UUID, generations: int = DEFA
     fazla 15 dugum) toplu on-yukleme yerine dugum basina sorgu yeterlidir."""
     animal = get_animal(db, animal_id)
     return _build_pedigree_node(db, animal, generations)
+
+
+# --- Melez Orani Tahmini (soy agaci Faz 3) ---
+#
+# Kural seti (kullanici ile uzerinde mutabik kalinan): her ebeveyn icin
+# HEDEF irktan (breed_id) payi uc degerden biridir - BILINEN bir yuzde
+# (kendi irki hedefle ayniysa kendi crossbreed_ratio'su), %0 (kendi irki
+# FARKLI ama bilinen baska bir irksa - kanitlanmayan bir pay sayilmaz,
+# Anayasa m.4) ya da BILINMIYOR (Belirsiz Melez: breed_id=hedef VE
+# crossbreed_ratio=None, ya da kendi irki hic bilinmiyor). Iki ebeveynin
+# payi da biliniyorsa ortalamalari (bu, hem ilk melezlemeyi/F1'i HEM
+# kan temizleme/backcross zincirini AYNI formulle dogru sonuclandirir -
+# bkz. kullanici ile yapilan tartisma); sadece biri biliniyorsa onun
+# yarisi (ihtiyatli bir ALT SINIR - digeri gercekte daha yuksek olabilir
+# ama kanitlanamadigi icin sayilmaz); ikisi de bilinmiyorsa None
+# (yavru da Belirsiz Melez kalir, hicbir sayi uydurulmaz).
+
+
+def _animal_breed_share(animal: Animal, target_breed_id: int) -> Decimal | None:
+    if animal.breed_id is None:
+        return None
+    if animal.breed_id == target_breed_id:
+        return animal.crossbreed_ratio  # None ise (Belirsiz Melez) None olarak kalir
+    return Decimal("0")
+
+
+def _father_breed_share(db: Session, father_sire_id: int | None, target_breed_id: int) -> Decimal | None:
+    """Baba tarafinin hedef irktan payi. Suruye ait bir boga ise
+    (Sire.animal_id dolu) kendi Animal kaydindaki gercek pay kullanilir;
+    dis kaynakli bir boga ise (Sire'da ayri bir oran alani YOK) kendi
+    breed_id'si HER ZAMAN taniml/bilinen kabul edilir - yani hedefle
+    ayniysa %100, farkliysa %0 (Belirsiz Melez durumu dis boga icin
+    gecerli degildir, Sire.breed_id zaten zorunlu bir alandir)."""
+    if father_sire_id is None:
+        return None
+    sire = db.get(Sire, father_sire_id)
+    if sire is None:
+        return None
+    if sire.animal_id is not None:
+        father_animal = db.get(Animal, sire.animal_id)
+        if father_animal is not None:
+            return _animal_breed_share(father_animal, target_breed_id)
+    return Decimal("100") if sire.breed_id == target_breed_id else Decimal("0")
+
+
+def estimate_crossbreed_ratio(
+    db: Session, mother_id: uuid.UUID | None, father_sire_id: int | None, breed_id: int
+) -> CrossbreedRatioEstimateRead:
+    """Yeni bir yavrunun, secilen breed_id irkindan tahmini yuzdesini
+    dondurur - bkz. modul basindaki kural seti. Hicbir yerde SAKLANMAZ,
+    sadece formda ONERI olarak gosterilir; kullanici degistirebilir."""
+    mother_share: Decimal | None = None
+    if mother_id is not None:
+        mother = db.get(Animal, mother_id)
+        if mother is not None:
+            mother_share = _animal_breed_share(mother, breed_id)
+    father_share = _father_breed_share(db, father_sire_id, breed_id)
+
+    if mother_share is not None and father_share is not None:
+        ratio = (mother_share + father_share) / 2
+        return CrossbreedRatioEstimateRead(
+            ratio=ratio, basis="both_known", note="İki ebeveynin de bu ırktan payı biliniyor - ortalaması alındı."
+        )
+    known_share = mother_share if mother_share is not None else father_share
+    if known_share is not None:
+        ratio = known_share / 2
+        return CrossbreedRatioEstimateRead(
+            ratio=ratio,
+            basis="one_known_lower_bound",
+            note="Sadece bir ebeveynin bu ırktan payı biliniyor - diğeri Belirsiz Melez olduğundan bu, kanıtlanan alt sınırdır (gerçek oran daha yüksek olabilir).",
+        )
+    return CrossbreedRatioEstimateRead(
+        ratio=None, basis="unknown", note="İki ebeveynin de bu ırktan payı bilinmiyor - yavru da Belirsiz Melez kalmalı."
+    )

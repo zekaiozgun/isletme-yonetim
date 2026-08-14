@@ -515,6 +515,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/animals/crossbreed-ratio-estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Crossbreed Ratio Estimate
+         * @description Anayasa m.4/m.5: hicbir yerde saklanmaz, sadece Yeni Hayvan formunda
+         *     ONERI olarak gosterilir (bkz. service.estimate_crossbreed_ratio).
+         */
+        get: operations["get_crossbreed_ratio_estimate_animals_crossbreed_ratio_estimate_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/animals/{animal_id}": {
         parameters: {
             query?: never;
@@ -3324,6 +3345,20 @@ export interface components {
             current_password: string;
             /** New Password */
             new_password: string;
+        };
+        /**
+         * CrossbreedRatioEstimateRead
+         * @description bkz. animal/service.py estimate_crossbreed_ratio. ratio None ise
+         *     (her iki ebeveynin de hedef irktan payi bilinmiyor) hicbir sayi
+         *     uretilmez - kullanici Belirsiz Melez olarak birakir.
+         */
+        CrossbreedRatioEstimateRead: {
+            /** Ratio */
+            ratio?: string | null;
+            /** Basis */
+            basis: string;
+            /** Note */
+            note: string;
         };
         /** DailyRationCostRead */
         DailyRationCostRead: {
@@ -6575,6 +6610,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_crossbreed_ratio_estimate_animals_crossbreed_ratio_estimate_get: {
+        parameters: {
+            query: {
+                breed_id: number;
+                mother_id?: string | null;
+                father_sire_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CrossbreedRatioEstimateRead"];
+                };
             };
             /** @description Validation Error */
             422: {

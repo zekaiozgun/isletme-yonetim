@@ -82,3 +82,14 @@ class PedigreeNodeRead(BaseModel):
 
 
 PedigreeNodeRead.model_rebuild()
+
+
+class CrossbreedRatioEstimateRead(BaseModel):
+    """bkz. animal/service.py estimate_crossbreed_ratio. ratio None ise
+    (her iki ebeveynin de hedef irktan payi bilinmiyor) hicbir sayi
+    uretilmez - kullanici Belirsiz Melez olarak birakir."""
+
+    ratio: Decimal | None = None
+    # 'both_known' | 'one_known_lower_bound' | 'unknown'
+    basis: str
+    note: str
