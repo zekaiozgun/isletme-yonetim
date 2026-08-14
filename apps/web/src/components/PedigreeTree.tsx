@@ -49,6 +49,46 @@ function PedigreeBranch({ label, node }: { label: string; node: ApiRecord | null
   );
 }
 
+export interface PedigreeTableRow {
+  generation: number;
+  relation: string;
+  tagNumber: string;
+  name: string;
+  breedName: string;
+  ratio: string;
+}
+
+/** Soy Kütüğü Belgesi (PDF) için - ağacı, mevcut genel amaçlı tablo PDF
+ * altyapısının (bkz. components/PdfExportButton.tsx) anlayacağı düz bir
+ * satır listesine çevirir. Hiçbir yeni backend uç noktası GEREKMEZ -
+ * zaten fetch edilmiş ağaç, sadece farklı şekilde sunulur. Dal bazında
+ * (önce anne tarafı tam, sonra baba tarafı tam) toplanır, sonra nesile
+ * göre KARARLI (stable) sıralanır - böylece aynı nesildeki tüm satırlar
+ * bir arada görünür ama dal içi sıra bozulmaz. */
+export function flattenPedigreeTree(node: ApiRecord | null): PedigreeTableRow[] {
+  const rows: PedigreeTableRow[] = [];
+
+  function visit(current: ApiRecord | null, generation: number, relationPath: string[]): void {
+    if (!current) return;
+    rows.push({
+      generation,
+      relation: relationPath.length === 0 ? 'Kendisi' : relationPath.join(' › '),
+      tagNumber: current.tag_number ? String(current.tag_number) : '—',
+      name: current.name ? String(current.name) : '—',
+      breedName: current.breed_name ? String(current.breed_name) : '—',
+      ratio:
+        current.crossbreed_ratio !== null && current.crossbreed_ratio !== undefined
+          ? `%${String(current.crossbreed_ratio)}`
+          : '—',
+    });
+    visit((current.mother as ApiRecord | null) ?? null, generation + 1, [...relationPath, 'Anne']);
+    visit((current.father as ApiRecord | null) ?? null, generation + 1, [...relationPath, 'Baba']);
+  }
+
+  visit(node, 0, []);
+  return rows.sort((a, b) => a.generation - b.generation);
+}
+
 export function PedigreeTree({ node }: { node: ApiRecord | null }) {
   if (!node) {
     return (

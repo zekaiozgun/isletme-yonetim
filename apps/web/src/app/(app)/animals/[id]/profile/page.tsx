@@ -4,7 +4,8 @@ import { apiGetSafe, type ApiRecord } from '@/lib/api';
 import { formatDateDMY, formatCurrencyTRY, formatUsdValue, formatNumberTR } from '@/lib/format';
 import { formatValuationStatus, formatSourceCode } from '@/lib/reports';
 import { TrendLineChart, type TrendPoint } from '@/components/TrendLineChart';
-import { PedigreeTree } from '@/components/PedigreeTree';
+import { PedigreeTree, flattenPedigreeTree } from '@/components/PedigreeTree';
+import { PdfExportButton } from '@/components/PdfExportButton';
 
 function findName(list: ApiRecord[], id: unknown): string | null {
   const item = list.find((i) => String(i.id) === String(id));
@@ -73,6 +74,7 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
   // Soy ağacı (3 nesil: anne/baba + anneanne/dede vb.) - tek uç noktadan,
   // hiçbir yerde saklanmaz (bkz. components/PedigreeTree.tsx).
   const pedigree = await apiGetSafe<ApiRecord | null>(`/animals/${id}/pedigree?generations=3`, null);
+  const pedigreeRows = flattenPedigreeTree(pedigree);
 
   // Bu hayvan kendisi bir boğa (Sire) olarak kayıtlıysa (sürüye ait,
   // damızlık kullanılmış olabilir), kendi yavrularını da gösterelim.
@@ -174,6 +176,30 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="flex flex-col gap-6">
           <Section title="Soy Kütüğü">
+            {pedigreeRows.length > 1 && (
+              <div className="mb-3 flex justify-end print:hidden">
+                <PdfExportButton
+                  title={`${String(animal.tag_number)} — Soy Kütüğü Belgesi`}
+                  columns={[
+                    { label: 'Nesil', width: 'narrow' },
+                    { label: 'İlişki', width: 'narrow' },
+                    { label: 'Küpe No / Kimlik', width: 'narrow' },
+                    { label: 'Ad', width: 'narrow' },
+                    { label: 'Irk', width: 'narrow' },
+                    { label: 'Melez Oranı', width: 'narrow' },
+                  ]}
+                  rows={pedigreeRows.map((r) => [
+                    String(r.generation),
+                    r.relation,
+                    r.tagNumber,
+                    r.name,
+                    r.breedName,
+                    r.ratio,
+                  ])}
+                  filename={`${String(animal.tag_number)}-soy-kutugu.pdf`}
+                />
+              </div>
+            )}
             <PedigreeTree node={pedigree} />
             {(offspringAsMother.length > 0 || offspringAsSire.length > 0) && (
               <div className="mt-4">
