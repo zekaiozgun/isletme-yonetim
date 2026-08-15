@@ -50,17 +50,25 @@ export function formatUsdValue(value: unknown): string {
   return `$${num.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-const AGE_DAY_DISPLAY_THRESHOLD_DAYS = 60;
+const AGE_MONTH_DAY_DISPLAY_THRESHOLD = 2;
 
 /**
  * Ay bazlı yaş küçük hayvanlarda (buzağı) her zaman tam sayıya
  * yuvarlandığından gün/ay küsuratı görünmüyordu - 2 günlük bir buzağı ile
  * 29 günlük bir buzağı ekranda ikisi de "0 ay" görünüyordu (bkz. kullanıcı
- * geri bildirimi). Eşiğin altında (60 gün) gerçek gün sayısını, üstünde
- * mevcut ay değerini gösterir - olgun hayvanların görünümü değişmez.
+ * geri bildirimi). 2 aydan küçükse gerçek gün sayısını, değilse mevcut ay
+ * değerini gösterir - olgun hayvanların görünümü değişmez.
+ *
+ * Eşik BİLEREK ay üzerinden (gün üzerinden değil) kuruludur: takvim
+ * ayları 28-31 gün arasında değişir (örn. Temmuz+Ağustos = 31+31 gün),
+ * bu yüzden sabit bir "60 gün" sınırı bazı 1 aylık hayvanları 60+ gün
+ * gösterip yanlışlıkla "ay" formatına düşürebiliyordu (gerçek üretim
+ * verisiyle görülen kullanıcı geri bildirimi - bkz. Buz-4440-Prolap).
+ * age_months zaten tek doğruluk kaynağı (full_months_between) olduğundan
+ * karar onun üzerinden verilir, gün sayısı sadece GÖRÜNTÜ değeridir.
  */
 function formatAgeFromDaysAndMonths(days: unknown, months: unknown): string {
-  if (typeof days === 'number' && days < AGE_DAY_DISPLAY_THRESHOLD_DAYS) {
+  if (typeof months === 'number' && months < AGE_MONTH_DAY_DISPLAY_THRESHOLD && typeof days === 'number') {
     return `${days} gün`;
   }
   if (typeof months === 'number') return `${months} ay`;
