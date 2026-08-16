@@ -16,8 +16,21 @@ from app.core.exceptions import ConflictError, NotFoundError
 from app.core.schemas import LookupCreate, LookupRead
 
 
-def build_lookup_router(model: type, path: str, tag: str, display_name: str | None = None) -> APIRouter:
+def build_lookup_router(
+    model: type,
+    path: str,
+    tag: str,
+    display_name: str | None = None,
+    protected_codes: frozenset[str] | None = None,
+) -> APIRouter:
+    """protected_codes: servis katmanında baska modullerin hardcoded string
+    olarak referans verdigi (orn. reports/service.py'deki FORCED_SLAUGHTER_
+    SALE_TYPE_CODE) kod degerleri - bu satirlarin 'code' alani UI'dan
+    DEGISTIRILEMEZ (ad/aktiflik hala degistirilebilir). Aksi halde bir
+    kullanici Tanimlar ekranindan kodu sessizce degistirip, o koda bagli
+    rapor mantigini kirabilir (bkz. kullanici geri bildirimi)."""
     display_name = display_name or model.__tablename__
+    protected_codes = protected_codes or frozenset()
     router = APIRouter()
     item_path = f"{path}/{{item_id}}"
 
@@ -49,6 +62,11 @@ def build_lookup_router(model: type, path: str, tag: str, display_name: str | No
     @router.put(item_path, response_model=LookupRead, tags=[tag])
     def update_lookup(item_id: int, payload: LookupCreate, db: Session = Depends(get_db)):
         item = _get_or_404(db, item_id)
+        if item.code in protected_codes and payload.code != item.code:
+            raise ConflictError(
+                f"Bu {display_name} kaydının kodu, sistem tarafından (rapor mantığında) "
+                "kullanıldığı için değiştirilemez. Ad ve aktiflik durumu değiştirilebilir."
+            )
         for key, value in payload.model_dump().items():
             setattr(item, key, value)
         db.commit()

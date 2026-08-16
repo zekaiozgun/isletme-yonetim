@@ -10,6 +10,16 @@ from app.modules.sale.schemas import BuyerCreate, BuyerRead, SaleCreate, SaleRea
 
 router = APIRouter(prefix="/sales", tags=["sale"])
 
+# reports/service.py bu kodlari (hardcoded string olarak) fiyatlama/rapor
+# mantiginda kullanir (bkz. WEIGHT_PRICED_SALE_TYPE_CODES/CARCASS_PRICED_
+# SALE_TYPE_CODES/FORCED_SLAUGHTER_SALE_TYPE_CODE) - modul katmanlari
+# arasinda dogrudan import ETMIYORUZ (Anayasa m.2: veri girisi/raporlama
+# ayrimi, reports -> sale bagimliligi tek yonlu olmali), bu yuzden ayni
+# kod kumesi burada da BILEREK tekrar tanimlanir. Kullanici Tanimlar
+# ekranindan bu satirlarin 'code' alanini degistirirse rapor mantigi
+# sessizce kirilir - bu yuzden kod (ad/aktiflik degil) burada korunur.
+PROTECTED_SALE_TYPE_CODES = frozenset({"CANLI", "KESIM", "DAMIZLIK", "ZORUNLU"})
+
 
 @router.post("/buyers", response_model=BuyerRead, status_code=201)
 def create_buyer(payload: BuyerCreate, db: Session = Depends(get_db)) -> BuyerRead:
@@ -55,7 +65,11 @@ def list_sales(db: Session = Depends(get_db)) -> list[SaleRead]:
     return service.list_sales(db)
 
 
-router.include_router(build_lookup_router(SaleType, "/types", "sale-lookups", "satış tipi"))
+router.include_router(
+    build_lookup_router(
+        SaleType, "/types", "sale-lookups", "satış tipi", protected_codes=PROTECTED_SALE_TYPE_CODES
+    )
+)
 
 
 # NOT: /{sale_id} (tek segment, wildcard), yukaridaki /buyers ve /types
