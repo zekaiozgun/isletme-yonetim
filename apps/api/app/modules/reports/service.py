@@ -3022,8 +3022,11 @@ def list_herd_exits(db: Session, start_date: date, end_date: date) -> list[HerdE
 
     rows: list[HerdExitRead] = []
     for animal, exit_type, exit_date in exits:
-        tenure_start = animal.birth_date or animal.entry_date
-        tenure_days = (exit_date - tenure_start).days if tenure_start else None
+        # Suruye giris tarihi (dogumla ise dogum tarihiyle ayni, satin alma
+        # ise gercek giris tarihi) - dogum tarihi DEGIL: satin alinan bir
+        # hayvanda "surude kalma suresi", o hayvanin YASI degil, bu
+        # ISLETMEDE gecirdigi sure olmali (bkz. kullanici geri bildirimi).
+        tenure_days = (exit_date - animal.entry_date).days
         exit_age_months = full_months_between(animal.birth_date, exit_date) if animal.birth_date else None
         exit_age_days = (exit_date - animal.birth_date).days if animal.birth_date else None
 
