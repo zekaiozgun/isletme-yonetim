@@ -564,7 +564,9 @@ export interface paths {
         };
         /**
          * Get Animal Age
-         * @description Anayasa m.4/m.5: yas saklanmaz, istek aninda hesaplanir.
+         * @description Anayasa m.4/m.5: yas saklanmaz, istek aninda hesaplanir. Animal.age_days
+         *     (bkz. models.py) satilmis/olmus bir hayvanda status_date'i referans alir -
+         *     cikistan sonra yaslanmaya devam etmez.
          */
         get: operations["get_animal_age_animals__animal_id__age_days_get"];
         put?: never;

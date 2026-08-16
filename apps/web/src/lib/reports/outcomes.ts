@@ -7,7 +7,7 @@ export const outcomeReports: ReportConfig[] = [
     slug: 'sales',
     title: 'Satış Raporu',
     description:
-      'Aralıktaki satışlar; alıcı VE satış tipi bazında kırılım (Canlı/Kesim/Damızlık farklı fiyatlama mantığına sahip olduğu için karıştırılmaz). Kg başına fiyat, sadece o ağırlığın girildiği satışların gelirinden hesaplanır. Randıman (karkas/canlı oranı), sadece her iki ağırlığın da girildiği kesim satışlarından ortalanır.',
+      'Aralıktaki satışlar; alıcı VE satış tipi bazında kırılım (Canlı/Kesim/Damızlık/Zorunlu Kesim farklı fiyatlama mantığına sahip olduğu için karıştırılmaz - Zorunlu Kesim, kesim ile aynı kg-bazlı fiyatlama mantığını kullanır). Kg başına fiyat, sadece o ağırlığın girildiği satışların gelirinden hesaplanır. Randıman (karkas/canlı oranı), sadece her iki ağırlığın da girildiği kesim ve zorunlu kesim satışlarından ortalanır.',
     endpoint: '/reports/sales',
     group: 'Satış ve Kayıp',
     dateRange: true,
@@ -33,7 +33,7 @@ export const outcomeReports: ReportConfig[] = [
     slug: 'deaths',
     title: 'Ölüm/Kayıp Raporu',
     description:
-      'Aralıktaki ölümler; buzağı (0-7 ay) ve yetişkin kaybı ayrı ayrı, neden dağılımı ve kayıp oranı. "Toplam" satırı ikisinin birleşik oranını gösterir - Dashboard\'daki "Yıllık Kayıp Oranı" ile karşılaştırmak için (o tek bir sürü-geneli oran verir, buradaki iki ayrı satır ağırlıklı ortalaması alınınca ona eşit olur).',
+      'Aralıktaki ölümler; buzağı (0-7 ay) ve yetişkin kaybı ayrı ayrı, neden dağılımı ve kayıp oranı. "Toplam" satırı ikisinin birleşik oranını gösterir - Dashboard\'daki "Yıllık Kayıp Oranı" ile karşılaştırmak için (o tek bir sürü-geneli oran verir, buradaki iki ayrı satır ağırlıklı ortalaması alınınca ona eşit olur). Zorunlu Kesim satışları da AYNI yaş kırılımıyla, ama ayrı satır/oranlarda gösterilir - biyolojik ölüm değildir (bir miktar satış geliri getirir), bu yüzden ölüm sayısı/oranına karıştırılmaz; "Neden Dağılımı" sütununda o satışın Not alanı kullanılır.',
     endpoint: '/reports/deaths',
     group: 'Satış ve Kayıp',
     dateRange: true,
@@ -65,7 +65,7 @@ export const outcomeReports: ReportConfig[] = [
     slug: 'herd-exits',
     title: 'Sürüden Çıkış Raporu',
     description:
-      'Aralıktaki satış ve ölüm çıkışlarını hayvan bazında birleştirir; sürüde kalma süresini ve varsa o hayvana ait geçmiş "Sürüden Çıkarma" yönlü değerlendirmeleri (tarih sırasıyla) gösterir - sübjektif değerlendirme notunu fiili çıkışla yan yana karşılaştırmak için.',
+      'Aralıktaki satış ve ölüm çıkışlarını hayvan bazında birleştirir; sürüde kalma süresini ve varsa o hayvana ait geçmiş "Sürüden Çıkarma" yönlü değerlendirmeleri (tarih sırasıyla) gösterir - sübjektif değerlendirme notunu fiili çıkışla yan yana karşılaştırmak için. "Çıkış Tipi" sütunu, satışlarda gerçek satış tipini (Canlı Satış/Kesim İçin Satış/Damızlık Satış/Zorunlu Kesim) gösterir, tek bir "Satış" etiketine indirgemez.',
     endpoint: '/reports/herd-exits',
     group: 'Satış ve Kayıp',
     dateRange: true,

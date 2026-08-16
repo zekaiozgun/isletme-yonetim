@@ -26,6 +26,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, aliased, joinedload
 
 from app.core.date_utils import add_months, full_months_between
+from app.core.exceptions import NotFoundError
 from app.core.lookup_helpers import get_lookup_by_code
 from app.modules.animal.lookups import AnimalStatus, EntrySource, Gender
 from app.modules.animal.models import Animal
@@ -38,6 +39,7 @@ from app.modules.evaluation.models import AnimalEvaluation, EvaluationReason
 from app.modules.feed.models import FeedItem, FeedPurchase, PenRation, RationItem
 from app.modules.fx import service as fx_service
 from app.modules.health.models import HealthEvent, HealthEventMedication
+from app.modules.sale.lookups import SaleType
 from app.modules.sale.models import Sale
 from app.modules.valuation.models import GrowthValuationCheckpoint
 from app.modules.weight.models import WeightRecord
@@ -89,6 +91,10 @@ FEED_TON_UNIT_CODE = "TON"
 FEED_GRAM_UNIT_CODE = "GR"
 CULLING_DIRECTION_CODE = "SURUDEN_CIKARMA"
 BREEDING_DIRECTION_CODE = "DAMIZLIK_ONERISI"
+# Kullanici tarafindan SONRADAN eklenmis bir satis tipi (seed'de yok) -
+# normal kesimden AYRI: zorunlu kesimin degeri saglikli bir hayvaninki gibi
+# olmadigindan ekonomik kayip olarak da izlenir (bkz. list_death_losses).
+FORCED_SLAUGHTER_SALE_TYPE_CODE = "ZORUNLU"
 
 
 def _to_kg(quantity: Decimal, unit_code: str) -> float:
@@ -1176,6 +1182,16 @@ class _SalesBucket:
     dressing_percentage_count: int = 0
 
 
+# Kg-bazli fiyatlanan satis tipleri (Damizlik haric - o soy/genetik degerine
+# gore satilir, kg fiyati kavrami yok). Zorunlu Kesim ("ZORUNLU"), dusuk
+# deger sebebiyle Kesim'den AYRI bir satis tipi olarak tanimlansa da
+# (bkz. kullanici geri bildirimi - zorunlu kesimin degeri saglikli bir
+# hayvaninki gibi olmuyor), fiziksel olarak yine kesim satisidir; fiyatlama
+# MEKANIZMASI (canli/karkas kg, randiman) aynidir.
+WEIGHT_PRICED_SALE_TYPE_CODES = ("CANLI", "KESIM", FORCED_SLAUGHTER_SALE_TYPE_CODE)
+CARCASS_PRICED_SALE_TYPE_CODES = ("KESIM", FORCED_SLAUGHTER_SALE_TYPE_CODE)
+
+
 def list_sales_report(db: Session, start_date: date, end_date: date) -> list[SalesReportRead]:
     """Belirtilen tarih araliginda (sale_date) yapilan satislar, ALICI+SATIS
     TIPI ikilisine gore gruplanip ozetlenir.
@@ -1206,7 +1222,9 @@ def list_sales_report(db: Session, start_date: date, end_date: date) -> list[Sal
        donulur) - kullanicinin bilgi amacli girdigi bir agirlik, yanlis
        bir "bu tip agirlik bazli fiyatlanir" izlenimi yaratmasin diye:
        - CANLI: sadece canli kg fiyati anlamli (karkas/randiman bastirilir).
-       - KESIM: hepsi anlamli, bastirma yok.
+       - KESIM / ZORUNLU (Zorunlu Kesim): hepsi anlamli, bastirma yok - ikisi
+         de fiziksel olarak kesim satisidir (bkz. WEIGHT_PRICED_SALE_TYPE_CODES/
+         CARCASS_PRICED_SALE_TYPE_CODES).
        - DAMIZLIK: hicbiri anlamli degil (soy/genetik degerine gore satilir,
          kg fiyati kavrami yok) - hepsi bastirilir.
        Ham agirlik TOPLAMLARI (total_live_weight_kg/total_carcass_weight_kg)
@@ -1245,9 +1263,9 @@ def list_sales_report(db: Session, start_date: date, end_date: date) -> list[Sal
     for bucket in buckets.values():
         # bkz. fonksiyon dokumantasyonundaki 3. madde - satis tipine gore
         # hangi fiyat/randiman metriginin anlamli oldugu.
-        live_price_applicable = bucket.sale_type_code in ("CANLI", "KESIM")
-        carcass_price_applicable = bucket.sale_type_code == "KESIM"
-        dressing_applicable = bucket.sale_type_code == "KESIM"
+        live_price_applicable = bucket.sale_type_code in WEIGHT_PRICED_SALE_TYPE_CODES
+        carcass_price_applicable = bucket.sale_type_code in CARCASS_PRICED_SALE_TYPE_CODES
+        dressing_applicable = bucket.sale_type_code in CARCASS_PRICED_SALE_TYPE_CODES
 
         rows.append(
             SalesReportRead(
@@ -1605,7 +1623,15 @@ def _death_age_group(animal: Animal, at_date: date) -> str:
 def list_death_losses(db: Session, start_date: date, end_date: date, today: date | None = None) -> list[DeathLossReportRead]:
     """Belirtilen tarih araliginda (death_date) olen hayvanlari, olum aninda ki
     yasina gore buzagi/yetiskin diye ikiye ayirip neden dagilimi ve kayip
-    oranini (o kategorideki mevcut aktif hayvan sayisina oranla) hesaplar."""
+    oranini (o kategorideki mevcut aktif hayvan sayisina oranla) hesaplar.
+
+    Zorunlu Kesim (bkz. FORCED_SLAUGHTER_SALE_TYPE_CODE) satislari da AYNI
+    yas kirilimiyla, ama ayri satirlarda/oranlarda eklenir - kullanici geri
+    bildirimi: zorunlu kesim biyolojik olum degildir (bir miktar satis geliri
+    getirir), bu yuzden olum sayisi/oranina KARISTIRILMAZ; ekonomik kayip
+    olarak ayrica izlenebilsin diye kendi sayisi/orani vardir. "Neden
+    Dagilimi" icin DeathReason gibi yapilandirilmis bir alan olmadigindan
+    (bkz. tasarim karari) satisin serbest metin Not alani kullanilir."""
     today = today or date.today()
     stmt = (
         select(Death)
@@ -1620,6 +1646,32 @@ def list_death_losses(db: Session, start_date: date, end_date: date, today: date
         death_counts[group] += 1
         reason_name = death.death_reason.name
         reason_counts[group][reason_name] = reason_counts[group].get(reason_name, 0) + 1
+
+    # FORCED_SLAUGHTER_SALE_TYPE_CODE, kullanicinin SONRADAN eklemis olabilecegi
+    # ozel bir satis tipidir (seed'de yok) - henuz eklenmemis bir kurulumda
+    # (orn. yerel gelistirme veritabani) rapor CRASH OLMAMALI, sadece bu
+    # kategori 0 ile gorunmelidir.
+    forced_counts: dict[str, int] = {g: 0 for g in groups}
+    forced_notes: dict[str, list[str]] = {g: [] for g in groups}
+    try:
+        forced_slaughter_type_id = get_lookup_by_code(db, SaleType, FORCED_SLAUGHTER_SALE_TYPE_CODE).id
+    except NotFoundError:
+        forced_slaughter_type_id = None
+    if forced_slaughter_type_id is not None:
+        forced_stmt = (
+            select(Sale)
+            .options(joinedload(Sale.animal))
+            .where(
+                Sale.sale_type_id == forced_slaughter_type_id,
+                Sale.sale_date >= start_date,
+                Sale.sale_date <= end_date,
+            )
+        )
+        for sale in db.scalars(forced_stmt).all():
+            group = _death_age_group(sale.animal, sale.sale_date)
+            forced_counts[group] += 1
+            if sale.note:
+                forced_notes[group].append(sale.note)
 
     active_counts: dict[str, int] = {g: 0 for g in groups}
     for animal, age_months in _active_animals_with_age(db, today):
@@ -1666,6 +1718,39 @@ def list_death_losses(db: Session, start_date: date, end_date: date, today: date
             reason_breakdown=total_breakdown,
             current_active_count=total_acount,
             loss_rate=total_rate,
+            is_summary=True,
+        )
+    )
+
+    # Zorunlu Kesim - olum satirlariyla AYNI yas kirilimi, AYRI sayac/oran
+    # (bkz. fonksiyon dokumantasyonu - olum oranina karistirilmaz).
+    for group in groups:
+        fcount = forced_counts[group]
+        acount = active_counts[group]
+        breakdown = ", ".join(forced_notes[group])
+        rate = round(fcount / (fcount + acount) * 100, 1) if (fcount + acount) > 0 else None
+        rows.append(
+            DeathLossReportRead(
+                age_group=f"{group} - Zorunlu Kesim",
+                death_count=fcount,
+                reason_breakdown=breakdown,
+                current_active_count=acount,
+                loss_rate=rate,
+            )
+        )
+
+    total_fcount = sum(forced_counts.values())
+    total_forced_breakdown = ", ".join(note for notes in forced_notes.values() for note in notes)
+    total_forced_rate = (
+        round(total_fcount / (total_fcount + total_acount) * 100, 1) if (total_fcount + total_acount) > 0 else None
+    )
+    rows.append(
+        DeathLossReportRead(
+            age_group="Toplam - Zorunlu Kesim",
+            death_count=total_fcount,
+            reason_breakdown=total_forced_breakdown,
+            current_active_count=total_acount,
+            loss_rate=total_forced_rate,
             is_summary=True,
         )
     )
@@ -2907,7 +2992,13 @@ def list_herd_exits(db: Session, start_date: date, end_date: date) -> list[HerdE
     birlestirir; her satirda surude kalma suresini (dogum/giris -> cikis)
     ve varsa o hayvana ait, cikistan onceki TUM 'Suruden Cikarma' yonlu
     degerlendirmeleri (tarih sirasiyla tek metinde) gosterir - subjektif
-    degerlendirme notunu fiili cikis olayiyla yan yana koyar."""
+    degerlendirme notunu fiili cikis olayiyla yan yana koyar.
+
+    exit_type, satislarda sabit "Satış" DEGIL, satisin GERCEK tipidir
+    (Canlı Satış/Kesim İçin Satış/Damızlık Satış/Zorunlu Kesim) - kullanici
+    geri bildirimi: Zorunlu Kesim, ekonomik olarak normal bir satistan
+    farkli (dusuk deger) oldugu icin sabit "Satış" etiketinin altinda
+    gorunmemeli, diger satis tipleri gibi kendi adiyla ayirt edilebilmeli."""
     culling_direction_id = get_lookup_by_code(db, EvaluationDirection, CULLING_DIRECTION_CODE).id
     culling_reason_ids = set(
         db.scalars(select(EvaluationReason.id).where(EvaluationReason.direction_id == culling_direction_id)).all()
@@ -2915,7 +3006,7 @@ def list_herd_exits(db: Session, start_date: date, end_date: date) -> list[HerdE
 
     sales = db.scalars(
         select(Sale)
-        .options(joinedload(Sale.animal))
+        .options(joinedload(Sale.animal), joinedload(Sale.sale_type))
         .where(Sale.sale_date >= start_date, Sale.sale_date <= end_date)
     ).all()
     deaths = db.scalars(
@@ -2924,7 +3015,9 @@ def list_herd_exits(db: Session, start_date: date, end_date: date) -> list[HerdE
         .where(Death.death_date >= start_date, Death.death_date <= end_date)
     ).all()
 
-    exits: list[tuple[Animal, str, date]] = [(s.animal, "Satış", s.sale_date) for s in sales if s.animal is not None]
+    exits: list[tuple[Animal, str, date]] = [
+        (s.animal, s.sale_type.name, s.sale_date) for s in sales if s.animal is not None
+    ]
     exits += [(d.animal, "Ölüm", d.death_date) for d in deaths if d.animal is not None]
 
     rows: list[HerdExitRead] = []
