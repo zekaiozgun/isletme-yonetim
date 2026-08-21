@@ -517,6 +517,19 @@ class AnimalValuationRead(BaseModel):
     as_of_date: date
 
 
+class GeneticCompositionRead(BaseModel):
+    """bkz. reports/service.py list_genetic_composition. composition_text,
+    soy agacindan turetilen irk yuzdelerini tek bir okunur metinde
+    birlestirir (orn. "Angus %25, Hereford %25, Şarole %50, Belirsiz
+    %25") - reason_breakdown gibi diger raporlardaki metin-ozet
+    sutunlariyla ayni desen."""
+
+    animal_id: uuid.UUID
+    tag_number: str
+    birth_date: date | None = None
+    composition_text: str
+
+
 class DashboardSummaryRead(BaseModel):
     active_animal_count: int
     breeding_candidate_count: int

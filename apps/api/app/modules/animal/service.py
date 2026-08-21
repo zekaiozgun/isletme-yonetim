@@ -14,7 +14,7 @@ from app.core.lookup_helpers import get_lookup_by_code
 from app.core.validators import require_date_order
 from app.modules.animal.lookups import AnimalStatus
 from app.modules.animal.models import Animal
-from app.modules.animal.schemas import AnimalCreate, CrossbreedRatioEstimateRead, PedigreeNodeRead
+from app.modules.animal.schemas import AnimalCreate, PedigreeNodeRead
 from app.modules.auth.schemas import Role
 from app.modules.death.models import Death
 from app.modules.genetic_resource.models import Sire
@@ -137,7 +137,6 @@ def _known_ancestor_node(registry_no: str | None, name: str | None) -> PedigreeN
         tag_number=registry_no,
         name=name,
         breed_name=None,
-        crossbreed_ratio=None,
         is_external=True,
         mother=None,
         father=None,
@@ -157,7 +156,6 @@ def _pedigree_node_from_sire(sire: Sire, remaining_generations: int) -> Pedigree
         tag_number=sire.registry_no,
         name=sire.name,
         breed_name=sire.breed.name if sire.breed else None,
-        crossbreed_ratio=None,
         is_external=True,
         mother=mother_node,
         father=father_node,
@@ -199,7 +197,6 @@ def _build_pedigree_node(db: Session, animal: Animal, remaining_generations: int
         tag_number=animal.tag_number,
         name=animal.name,
         breed_name=animal.breed.name if animal.breed else None,
-        crossbreed_ratio=animal.crossbreed_ratio,
         is_external=False,
         mother=mother_node,
         father=father_node,
@@ -260,75 +257,69 @@ def find_common_ancestors(tree_a: PedigreeNodeRead, tree_b: PedigreeNodeRead) ->
     return sorted({keys_a[k] for k in common_keys})
 
 
-# --- Melez Orani Tahmini (soy agaci Faz 3) ---
+# --- Genetik Karma (soy agaci Faz 6) ---
 #
-# Kural seti (kullanici ile uzerinde mutabik kalinan): her ebeveyn icin
-# HEDEF irktan (breed_id) payi uc degerden biridir - BILINEN bir yuzde
-# (kendi irki hedefle ayniysa kendi crossbreed_ratio'su), %0 (kendi irki
-# FARKLI ama bilinen baska bir irksa - kanitlanmayan bir pay sayilmaz,
-# Anayasa m.4) ya da BILINMIYOR (Belirsiz Melez: breed_id=hedef VE
-# crossbreed_ratio=None, ya da kendi irki hic bilinmiyor). Iki ebeveynin
-# payi da biliniyorsa ortalamalari (bu, hem ilk melezlemeyi/F1'i HEM
-# kan temizleme/backcross zincirini AYNI formulle dogru sonuclandirir -
-# bkz. kullanici ile yapilan tartisma); sadece biri biliniyorsa onun
-# yarisi (ihtiyatli bir ALT SINIR - digeri gercekte daha yuksek olabilir
-# ama kanitlanamadigi icin sayilmaz); ikisi de bilinmiyorsa None
-# (yavru da Belirsiz Melez kalir, hicbir sayi uydurulmaz).
+# crossbreed_ratio artik elle girilen bir alan DEGIL (Faz 3'un aksine -
+# bkz. kullanici geri bildirimi: bu, Anayasa m.4/m.5'e aykiriydi, bir
+# fact degil bir turetimdi). Bunun yerine soy agacindaki (mother_id/
+# father_sire_id zinciri) HER atanin breed_id'si - zaten girilen gercek
+# bir fact - nesil derinligine gore agirliklandirilip toplanir: ebeveyn
+# %50, buyukanne/dede %25, ... Zincir nerede biterse (ebeveyn bilinmiyor
+# ya da DEFAULT_PEDIGREE_GENERATIONS derinligine ulasildi) o dugumun
+# KENDI breed_id'si (varsa) o andaki tam agirlikla sayilir; breed_id de
+# bilinmiyorsa o pay sozlukte hic gorunmez - cagiran taraf (bkz.
+# reports/service.py list_genetic_composition) bilinen paylarin
+# toplamini 100'den cikarip "Belirsiz" kismini bulur, hicbir sayi
+# uydurulmaz.
 
 
-def _animal_breed_share(animal: Animal, target_breed_id: int) -> Decimal | None:
-    if animal.breed_id is None:
-        return None
-    if animal.breed_id == target_breed_id:
-        return animal.crossbreed_ratio  # None ise (Belirsiz Melez) None olarak kalir
-    return Decimal("0")
-
-
-def _father_breed_share(db: Session, father_sire_id: int | None, target_breed_id: int) -> Decimal | None:
-    """Baba tarafinin hedef irktan payi. Suruye ait bir boga ise
-    (Sire.animal_id dolu) kendi Animal kaydindaki gercek pay kullanilir;
-    dis kaynakli bir boga ise (Sire'da ayri bir oran alani YOK) kendi
-    breed_id'si HER ZAMAN taniml/bilinen kabul edilir - yani hedefle
-    ayniysa %100, farkliysa %0 (Belirsiz Melez durumu dis boga icin
-    gecerli degildir, Sire.breed_id zaten zorunlu bir alandir)."""
+def _sire_breed_composition(
+    db: Session, father_sire_id: int | None, weight: Decimal, remaining_generations: int
+) -> dict[int, Decimal]:
     if father_sire_id is None:
-        return None
+        return {}
     sire = db.get(Sire, father_sire_id)
     if sire is None:
-        return None
+        return {}
     if sire.animal_id is not None:
-        father_animal = db.get(Animal, sire.animal_id)
-        if father_animal is not None:
-            return _animal_breed_share(father_animal, target_breed_id)
-    return Decimal("100") if sire.breed_id == target_breed_id else Decimal("0")
+        return _animal_breed_composition(db, sire.animal_id, weight, remaining_generations)
+    # Dis kaynakli boga: kendi ebeveyni suruye ait degil, known_sire_*/
+    # known_dam_* alanlari da sadece KIMLIK tasir (irk tasimaz) - zincir
+    # burada biter, boganin kendi (zorunlu) breed_id'si tam agirlikla sayilir.
+    return {sire.breed_id: weight} if sire.breed_id is not None else {}
 
 
-def estimate_crossbreed_ratio(
-    db: Session, mother_id: uuid.UUID | None, father_sire_id: int | None, breed_id: int
-) -> CrossbreedRatioEstimateRead:
-    """Yeni bir yavrunun, secilen breed_id irkindan tahmini yuzdesini
-    dondurur - bkz. modul basindaki kural seti. Hicbir yerde SAKLANMAZ,
-    sadece formda ONERI olarak gosterilir; kullanici degistirebilir."""
-    mother_share: Decimal | None = None
-    if mother_id is not None:
-        mother = db.get(Animal, mother_id)
-        if mother is not None:
-            mother_share = _animal_breed_share(mother, breed_id)
-    father_share = _father_breed_share(db, father_sire_id, breed_id)
+def _animal_breed_composition(
+    db: Session, animal_id: uuid.UUID | None, weight: Decimal, remaining_generations: int
+) -> dict[int, Decimal]:
+    """Bir hayvanin agirlikli irk dagilimi - {breed_id: pay} sozlugu,
+    toplami eksik soy nedeniyle 100'den KUCUK olabilir (bkz. modul basi
+    aciklamasi). remaining_generations, get_pedigree_tree ile AYNI sabit
+    derinlik sinirini (DEFAULT_PEDIGREE_GENERATIONS) kullanir - kotu
+    veride (kazara dongu) bile sonsuz ozyinelemeyi imkansiz kilar."""
+    if animal_id is None:
+        return {}
+    animal = db.get(Animal, animal_id)
+    if animal is None:
+        return {}
+    has_known_parent = remaining_generations > 0 and (animal.mother_id is not None or animal.father_sire_id is not None)
+    if not has_known_parent:
+        return {animal.breed_id: weight} if animal.breed_id is not None else {}
 
-    if mother_share is not None and father_share is not None:
-        ratio = (mother_share + father_share) / 2
-        return CrossbreedRatioEstimateRead(
-            ratio=ratio, basis="both_known", note="İki ebeveynin de bu ırktan payı biliniyor - ortalaması alındı."
-        )
-    known_share = mother_share if mother_share is not None else father_share
-    if known_share is not None:
-        ratio = known_share / 2
-        return CrossbreedRatioEstimateRead(
-            ratio=ratio,
-            basis="one_known_lower_bound",
-            note="Sadece bir ebeveynin bu ırktan payı biliniyor - diğeri Belirsiz Melez olduğundan bu, kanıtlanan alt sınırdır (gerçek oran daha yüksek olabilir).",
-        )
-    return CrossbreedRatioEstimateRead(
-        ratio=None, basis="unknown", note="İki ebeveynin de bu ırktan payı bilinmiyor - yavru da Belirsiz Melez kalmalı."
-    )
+    result: dict[int, Decimal] = {}
+    half = weight / 2
+    for source in (
+        _animal_breed_composition(db, animal.mother_id, half, remaining_generations - 1),
+        _sire_breed_composition(db, animal.father_sire_id, half, remaining_generations - 1),
+    ):
+        for breed_id, share in source.items():
+            result[breed_id] = result.get(breed_id, Decimal("0")) + share
+    return result
+
+
+def get_animal_genetic_composition(db: Session, animal_id: uuid.UUID) -> dict[int, Decimal]:
+    """Bir hayvanin soy agacindaki (en fazla DEFAULT_PEDIGREE_GENERATIONS
+    nesil geriye) HER irkin toplam payini dondurur - bkz. modul basi
+    aciklamasi. Hicbir yerde SAKLANMAZ, istek aninda turetilir (Anayasa
+    m.4/m.5)."""
+    return _animal_breed_composition(db, animal_id, Decimal("100"), DEFAULT_PEDIGREE_GENERATIONS)

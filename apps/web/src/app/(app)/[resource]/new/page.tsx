@@ -7,7 +7,6 @@ import { getResource, getRelatedLookups } from '@/lib/resources';
 import { ResourceForm } from '@/components/ResourceForm';
 import { HealthEventForm } from '@/components/HealthEventForm';
 import { RelatedLookupsBar } from '@/components/RelatedLookupsBar';
-import { CrossbreedRatioCalculator } from '@/components/CrossbreedRatioCalculator';
 import { InbreedingCheckWidget } from '@/components/InbreedingCheckWidget';
 
 interface MeResponse {
@@ -88,13 +87,6 @@ export default async function NewResourcePage({ params }: { params: Promise<{ re
         <p className="mb-4 max-w-xl rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           Bu kayıt, onayladıktan sonra sizin tarafınızdan değiştirilemez veya silinemez. Bilgileri dikkatle girin.
         </p>
-      )}
-      {slug === 'animals' && (
-        <CrossbreedRatioCalculator
-          animals={options['/animals'] ?? []}
-          sires={options['/genetic-resource/sires'] ?? []}
-          breeds={options['/animals/breeds'] ?? []}
-        />
       )}
       {slug === 'breeding-events' && (
         <InbreedingCheckWidget

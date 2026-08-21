@@ -498,12 +498,6 @@ export async function deletePenRationAction(
   return { success: true };
 }
 
-export interface CrossbreedRatioEstimate {
-  ratio: number | null;
-  basis: string;
-  note: string;
-}
-
 export interface InbreedingCheckResult {
   hasCommonAncestor: boolean;
   commonAncestorNames: string[];
@@ -528,25 +522,5 @@ export async function checkInbreedingAction(
     return { data: { hasCommonAncestor: data.has_common_ancestor, commonAncestorNames: data.common_ancestor_names } };
   } catch {
     return { error: 'Kontrol başarısız oldu.' };
-  }
-}
-
-/** Yeni Hayvan formundaki "Melez Oranı Hesapla" yardımcı aracı için (bkz.
- * components/CrossbreedRatioCalculator.tsx) - apiGet cookie/next-headers
- * kullandığından sadece sunucu tarafında çağrılabilir, bu yüzden Client
- * Component'ten doğrudan değil bu Server Action üzerinden erişilir. */
-export async function estimateCrossbreedRatioAction(
-  breedId: number,
-  motherId: string | null,
-  fatherSireId: number | null
-): Promise<{ data?: CrossbreedRatioEstimate; error?: string }> {
-  const query = new URLSearchParams({ breed_id: String(breedId) });
-  if (motherId) query.set('mother_id', motherId);
-  if (fatherSireId) query.set('father_sire_id', String(fatherSireId));
-  try {
-    const data = await apiGet<CrossbreedRatioEstimate>(`/animals/crossbreed-ratio-estimate?${query.toString()}`);
-    return { data };
-  } catch {
-    return { error: 'Hesaplama başarısız oldu.' };
   }
 }

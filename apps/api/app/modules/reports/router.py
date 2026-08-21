@@ -28,6 +28,7 @@ from app.modules.reports.schemas import (
     FeedConsumptionRead,
     FeedStockRunwayRead,
     FeedStockStatusRead,
+    GeneticCompositionRead,
     HealthEventReportRead,
     HerdCostSummaryRead,
     HerdExitRead,
@@ -241,6 +242,11 @@ def herd_inventory(db: Session = Depends(get_db)) -> HerdInventoryRead:
 @router.get("/herd-status-summary", response_model=list[HerdStatusSummaryRead])
 def herd_status_summary(db: Session = Depends(get_db)) -> list[HerdStatusSummaryRead]:
     return service.list_herd_status_summary(db)
+
+
+@router.get("/genetic-composition", response_model=list[GeneticCompositionRead])
+def genetic_composition(db: Session = Depends(get_db)) -> list[GeneticCompositionRead]:
+    return service.list_genetic_composition(db)
 
 
 @router.get("/dashboard-summary", response_model=DashboardSummaryRead)

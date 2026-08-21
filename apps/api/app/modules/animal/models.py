@@ -42,8 +42,6 @@ class Animal(TimestampMixin, Base):
     # acmaya gerek yok.
     father_sire_id: Mapped[int | None] = mapped_column(ForeignKey("sires.id"), nullable=True, index=True)
     breed_id: Mapped[int | None] = mapped_column(ForeignKey("breeds.id"), nullable=True, index=True)
-    # Melez Orani: kayitli soy sertifikasindan girilen saf kan yuzdesi (orn. 87.50). Sistem hesaplamaz, fact olarak girilir.
-    crossbreed_ratio: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
 
     # --- Fiziksel ---
     gender_id: Mapped[int] = mapped_column(ForeignKey("genders.id"), nullable=False)

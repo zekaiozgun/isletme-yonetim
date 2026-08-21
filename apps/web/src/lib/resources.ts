@@ -178,7 +178,6 @@ const mainResources: ResourceConfig[] = [
       { name: 'mother_id', label: 'Anne', type: 'select', options: animals },
       { name: 'father_sire_id', label: 'Baba (Boğa)', type: 'select', options: sires },
       { name: 'breed_id', label: 'Irk', type: 'select', options: breeds },
-      { name: 'crossbreed_ratio', label: 'Melez Oranı (%)', type: 'decimal' },
       { name: 'gender_id', label: 'Cinsiyet', type: 'select', options: genders, required: true },
       { name: 'horn_status_id', label: 'Boynuz Durumu', type: 'select', options: hornStatuses },
       { name: 'entry_date', label: 'İşletmeye Giriş Tarihi', type: 'date', required: true },

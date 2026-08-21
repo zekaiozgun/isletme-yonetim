@@ -28,7 +28,8 @@ from sqlalchemy.orm import Session, aliased, joinedload
 from app.core.date_utils import add_months, full_months_between
 from app.core.exceptions import NotFoundError
 from app.core.lookup_helpers import get_lookup_by_code
-from app.modules.animal.lookups import AnimalStatus, EntrySource, Gender
+from app.modules.animal import service as animal_service
+from app.modules.animal.lookups import AnimalStatus, Breed, EntrySource, Gender
 from app.modules.animal.models import Animal
 from app.modules.breeding.lookups import PregnancyResult
 from app.modules.breeding.models import BreedingEvent, PregnancyCheck
@@ -62,6 +63,7 @@ from app.modules.reports.schemas import (
     FeedConsumptionRead,
     FeedStockRunwayRead,
     FeedStockStatusRead,
+    GeneticCompositionRead,
     HealthEventReportRead,
     HerdCostSummaryRead,
     HerdExitRead,
@@ -1847,6 +1849,48 @@ def _to_young_animal_read(animal: Animal, age_months: int, today: date) -> Young
         father_sire_name=animal.father_sire.name if animal.father_sire else None,
         note=animal.note,
     )
+
+
+def _format_percent_share(value: Decimal) -> str:
+    """"25.00" -> "25", "12.50" -> "12.5" - DEFAULT_PEDIGREE_GENERATIONS
+    derinliginde her pay hep 2 ondalikta TAM ifade edilebilir (100'un
+    art arda 2'ye bolunmesi - 6.25'ten daha ince kesir cikmaz), o yuzden
+    burada yuvarlama degil sadece gereksiz sifirlarin temizlenmesi var."""
+    text = f"{value:.2f}".rstrip("0").rstrip(".")
+    return text
+
+
+def list_genetic_composition(db: Session) -> list[GeneticCompositionRead]:
+    """Aktif surudeki her hayvanin soy agacindan (bkz. animal/service.py
+    get_animal_genetic_composition) turetilen irk karmasini tek bir
+    okunur metin sutununda ozetler - orn. "Angus %25, Hereford %25,
+    Şarole %50, Belirsiz %25". crossbreed_ratio gibi elle girilen/
+    saklanan bir alan YOKTUR (bkz. kullanici geri bildirimi) - hepsi
+    istek aninda mother_id/father_sire_id zincirinden hesaplanir
+    (Anayasa m.4/m.5)."""
+    active_id = get_lookup_by_code(db, AnimalStatus, ACTIVE_STATUS_CODE).id
+    animals = db.scalars(
+        select(Animal).where(Animal.status_id == active_id).order_by(Animal.birth_date, Animal.tag_number)
+    ).all()
+    breed_names = {breed.id: breed.name for breed in db.scalars(select(Breed)).all()}
+
+    rows: list[GeneticCompositionRead] = []
+    for animal in animals:
+        composition = animal_service.get_animal_genetic_composition(db, animal.id)
+        known_total = sum(composition.values(), Decimal("0"))
+        parts = sorted(composition.items(), key=lambda item: -item[1])
+        text_parts = [f"{breed_names.get(breed_id, '?')} %{_format_percent_share(share)}" for breed_id, share in parts]
+        if known_total < Decimal("100"):
+            text_parts.append(f"Belirsiz %{_format_percent_share(Decimal('100') - known_total)}")
+        rows.append(
+            GeneticCompositionRead(
+                animal_id=animal.id,
+                tag_number=animal.tag_number,
+                birth_date=animal.birth_date,
+                composition_text=", ".join(text_parts),
+            )
+        )
+    return rows
 
 
 def list_pen_occupancy(db: Session) -> list[PenOccupancyRead]:

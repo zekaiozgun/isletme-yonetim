@@ -55,7 +55,6 @@ export interface PedigreeTableRow {
   tagNumber: string;
   name: string;
   breedName: string;
-  ratio: string;
 }
 
 /** Soy Kütüğü Belgesi (PDF) için - ağacı, mevcut genel amaçlı tablo PDF
@@ -76,10 +75,6 @@ export function flattenPedigreeTree(node: ApiRecord | null): PedigreeTableRow[] 
       tagNumber: current.tag_number ? String(current.tag_number) : '—',
       name: current.name ? String(current.name) : '—',
       breedName: current.breed_name ? String(current.breed_name) : '—',
-      ratio:
-        current.crossbreed_ratio !== null && current.crossbreed_ratio !== undefined
-          ? `%${String(current.crossbreed_ratio)}`
-          : '—',
     });
     visit((current.mother as ApiRecord | null) ?? null, generation + 1, [...relationPath, 'Anne']);
     visit((current.father as ApiRecord | null) ?? null, generation + 1, [...relationPath, 'Baba']);

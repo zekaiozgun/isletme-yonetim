@@ -24,7 +24,6 @@ from app.modules.animal.schemas import (
     AnimalCancelEntry,
     AnimalCreate,
     AnimalRead,
-    CrossbreedRatioEstimateRead,
     PedigreeNodeRead,
 )
 
@@ -64,18 +63,6 @@ lookup_routers = [
 ]
 for lookup_router in lookup_routers:
     router.include_router(lookup_router)
-
-
-@router.get("/crossbreed-ratio-estimate", response_model=CrossbreedRatioEstimateRead)
-def get_crossbreed_ratio_estimate(
-    breed_id: int,
-    mother_id: uuid.UUID | None = None,
-    father_sire_id: int | None = None,
-    db: Session = Depends(get_db),
-) -> CrossbreedRatioEstimateRead:
-    """Anayasa m.4/m.5: hicbir yerde saklanmaz, sadece Yeni Hayvan formunda
-    ONERI olarak gosterilir (bkz. service.estimate_crossbreed_ratio)."""
-    return service.estimate_crossbreed_ratio(db, mother_id, father_sire_id, breed_id)
 
 
 @router.get("/{animal_id}", response_model=AnimalRead)

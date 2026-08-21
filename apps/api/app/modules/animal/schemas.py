@@ -29,7 +29,6 @@ class AnimalBase(BaseModel):
     mother_id: uuid.UUID | None = None
     father_sire_id: int | None = None
     breed_id: int | None = None
-    crossbreed_ratio: Decimal | None = None
 
     gender_id: int
     horn_status_id: int | None = None
@@ -76,21 +75,9 @@ class PedigreeNodeRead(BaseModel):
     tag_number: str | None = None
     name: str | None = None
     breed_name: str | None = None
-    crossbreed_ratio: Decimal | None = None
     is_external: bool = False
     mother: "PedigreeNodeRead | None" = None
     father: "PedigreeNodeRead | None" = None
 
 
 PedigreeNodeRead.model_rebuild()
-
-
-class CrossbreedRatioEstimateRead(BaseModel):
-    """bkz. animal/service.py estimate_crossbreed_ratio. ratio None ise
-    (her iki ebeveynin de hedef irktan payi bilinmiyor) hicbir sayi
-    uretilmez - kullanici Belirsiz Melez olarak birakir."""
-
-    ratio: Decimal | None = None
-    # 'both_known' | 'one_known_lower_bound' | 'unknown'
-    basis: str
-    note: str

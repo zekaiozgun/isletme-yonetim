@@ -186,7 +186,6 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
                     { label: 'Küpe No / Kimlik', width: 'narrow' },
                     { label: 'Ad', width: 'narrow' },
                     { label: 'Irk', width: 'narrow' },
-                    { label: 'Melez Oranı', width: 'narrow' },
                   ]}
                   rows={pedigreeRows.map((r) => [
                     String(r.generation),
@@ -194,7 +193,6 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
                     r.tagNumber,
                     r.name,
                     r.breedName,
-                    r.ratio,
                   ])}
                   filename={`${String(animal.tag_number)}-soy-kutugu.pdf`}
                 />

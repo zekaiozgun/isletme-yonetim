@@ -73,4 +73,17 @@ export const herdReports: ReportConfig[] = [
       { key: 'count', label: 'Sayı', width: 'narrow', cellClassName: herdStatusRowClass },
     ],
   },
+  {
+    slug: 'genetic-composition',
+    title: 'Genetik Karma Raporu',
+    description:
+      'Aktif sürüdeki her hayvanın ırk karması, soy ağacından (anne/baba/büyükanne-dede zinciri) türetilir - elle girilen bir melez oranı YOKTUR, her nesil %50 ağırlıkla katkı verir. Soy bilgisi eksik olduğu kadarı "Belirsiz" olarak gösterilir, hiçbir oran uydurulmaz.',
+    endpoint: '/reports/genetic-composition',
+    group: 'Sürü Listeleri',
+    columns: [
+      { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
+      { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate, width: 'narrow' },
+      { key: 'composition_text', label: 'Genetik Karma', format: formatPlain, width: 'wide' },
+    ],
+  },
 ];
