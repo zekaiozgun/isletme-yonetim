@@ -264,11 +264,13 @@ def find_common_ancestors(tree_a: PedigreeNodeRead, tree_b: PedigreeNodeRead) ->
 # fact degil bir turetimdi). Bunun yerine soy agacindaki (mother_id/
 # father_sire_id zinciri) HER atanin breed_id'si - zaten girilen gercek
 # bir fact - nesil derinligine gore agirliklandirilip toplanir: ebeveyn
-# %50, buyukanne/dede %25, ... Zincir nerede biterse (ebeveyn bilinmiyor
-# ya da DEFAULT_PEDIGREE_GENERATIONS derinligine ulasildi) o dugumun
-# KENDI breed_id'si (varsa) o andaki tam agirlikla sayilir; breed_id de
-# bilinmiyorsa o pay sozlukte hic gorunmez - cagiran taraf (bkz.
-# reports/service.py list_genetic_composition) bilinen paylarin
+# %50, buyukanne/dede %25, ... Zincir nerede biterse (bir ebeveyn TARAFI
+# bilinmiyor ya da DEFAULT_PEDIGREE_GENERATIONS derinligine ulasildi) o
+# TARAFA dusen pay, o hayvanin KENDI breed_id'si (varsa) ile doldurulur -
+# satin alinan (anne/babasi hic bilinmeyen) hayvanlar icin bu, satin
+# alirken kaydedilen Irk'in zaten gercek bir fact oldugu varsayimina
+# dayanir. breed_id de yoksa o pay sozlukte hic gorunmez - cagiran taraf
+# (bkz. reports/service.py list_genetic_composition) bilinen paylarin
 # toplamini 100'den cikarip "Belirsiz" kismini bulur, hicbir sayi
 # uydurulmaz.
 
@@ -302,16 +304,24 @@ def _animal_breed_composition(
     animal = db.get(Animal, animal_id)
     if animal is None:
         return {}
-    has_known_parent = remaining_generations > 0 and (animal.mother_id is not None or animal.father_sire_id is not None)
-    if not has_known_parent:
-        return {animal.breed_id: weight} if animal.breed_id is not None else {}
+    own_breed = {animal.breed_id: weight} if animal.breed_id is not None else {}
+    if remaining_generations <= 0 or (animal.mother_id is None and animal.father_sire_id is None):
+        return own_breed
 
-    result: dict[int, Decimal] = {}
     half = weight / 2
-    for source in (
-        _animal_breed_composition(db, animal.mother_id, half, remaining_generations - 1),
-        _sire_breed_composition(db, animal.father_sire_id, half, remaining_generations - 1),
-    ):
+    own_half = {animal.breed_id: half} if animal.breed_id is not None else {}
+    mother_share = (
+        _animal_breed_composition(db, animal.mother_id, half, remaining_generations - 1)
+        if animal.mother_id is not None
+        else own_half
+    )
+    father_share = (
+        _sire_breed_composition(db, animal.father_sire_id, half, remaining_generations - 1)
+        if animal.father_sire_id is not None
+        else own_half
+    )
+    result: dict[int, Decimal] = {}
+    for source in (mother_share, father_share):
         for breed_id, share in source.items():
             result[breed_id] = result.get(breed_id, Decimal("0")) + share
     return result
