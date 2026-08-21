@@ -197,6 +197,7 @@ const mainResources: ResourceConfig[] = [
       { slug: 'offspring-by-mother', title: 'Anne Bazında Yavru Listesi' },
       { slug: 'offspring-by-sire', title: 'Baba Bazında Yavru Listesi' },
       { slug: 'parent-performance', title: 'Anne ve Baba Bazında Verimlilik Sıralaması' },
+      { slug: 'genetic-composition', title: 'Genetik Karma Raporu' },
     ],
   },
   {
