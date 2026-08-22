@@ -73,6 +73,11 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
     { label: 'Durum', width: 'narrow' as const },
     { label: 'Kaynak', width: 'narrow' as const },
   ];
+  // PDF'te ekran tablosundaki tfoot TOPLAM satırıyla aynı bilgiyi taşıyan
+  // bir son satır - CSV ham veri listesi olarak kalsın diye sadece PDF
+  // satırlarına eklenir (bkz. asagida pdfRows).
+  const pdfTotalRow = ['TOPLAM (' + rows.length + ' hayvan)', '', '', formatCurrency(grandTotal.try_), formatUsd(grandTotal.usd), '', ''];
+  const pdfRows = [...csvRows, pdfTotalRow];
 
   return (
     <div className="space-y-3">
@@ -95,7 +100,8 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
             <PdfExportButton
               title="Sürü Hayvan Listesi - Tahmini Piyasa Değeri"
               columns={pdfColumns}
-              rows={csvRows}
+              rows={pdfRows}
+              highlightedRows={[pdfRows.length - 1]}
               filename="herd-animal-market-values.pdf"
             />
             <CsvExportButton headers={csvHeaders} rows={csvRows} filename="herd-animal-market-values.csv" />
