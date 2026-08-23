@@ -1,0 +1,21 @@
+name: UptimeRobot - Gece Sonu Baslat (04:00 TRT)
+
+# Turkiye UTC+3'te sabit (DST yok) - 04:00 TRT = 01:00 UTC (ayni gun).
+on:
+  schedule:
+    - cron: '0 1 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  resume:
+    runs-on: ubuntu-latest
+    steps:
+      - name: UptimeRobot monitorunu yeniden baslat
+        run: |
+          response=$(curl -s -X POST https://api.uptimerobot.com/v2/editMonitor \
+            -d "api_key=${{ secrets.UPTIMEROBOT_API_KEY }}" \
+            -d "id=${{ secrets.UPTIMEROBOT_MONITOR_ID }}" \
+            -d "status=1" \
+            -d "format=json")
+          echo "$response"
+          echo "$response" | grep -q '"stat":"ok"' || (echo "UptimeRobot API basarisiz oldu" && exit 1)
