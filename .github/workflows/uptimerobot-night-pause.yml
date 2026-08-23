@@ -9,6 +9,10 @@ on:
 jobs:
   pause:
     runs-on: ubuntu-latest
+    # Secret'lar repo-level degil, "a" environment'ina bagli eklendi -
+    # GitHub Actions environment-scoped secret'lari sadece bunu ACIKCA
+    # belirten job'lara acar.
+    environment: a
     steps:
       - name: UptimeRobot monitorunu duraklat
         run: |
