@@ -1,0 +1,16 @@
+name: UptimeRobot - Monitorleri Listele (gecici teshis)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    environment: a
+    steps:
+      - name: Monitorleri listele
+        run: |
+          curl -s -X POST https://api.uptimerobot.com/v2/getMonitors \
+            -d "api_key=${{ secrets.UPTIMEROBOT_API_KEY }}" \
+            -d "format=json" \
+          | python3 -c "import sys, json; d = json.load(sys.stdin); print(d) if d.get('stat') != 'ok' else [print(f\"id={m['id']}  url={m['url']}  ad={m['friendly_name']}\") for m in d['monitors']]"
