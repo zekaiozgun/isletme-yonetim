@@ -30,6 +30,22 @@ export const financialReports: ReportConfig[] = [
     rowHighlight: (row) => typeof row.profit_try === 'number' && row.profit_try < 0,
   },
   {
+    slug: 'herd-profit-loss',
+    title: 'Sürü Kâr/Zarar Raporu',
+    description:
+      'Seçilen dönemde sürünün özkaynak değişimini iki katmanda özetler: Ekonomik Sonuç (satış geliri, satın alma bedeli, yem/sağlık maliyeti ve piyasa değeri hareketinin birleşimi - tek bir "sermaye büyüdü mü küçüldü mü" cevabı) ve altında açılan Piyasa Değer Köprüsü (doğum, satın alma, ölüm, satış ve mevcut sürünün değer değişimiyle dönem başından sonuna kalem kalem geçiş). Doğumla giren değerin ne kadarının annenin gebelik dönemi yem maliyeti, ne kadarının gerçek doğum kârı olduğu ayrıca gösterilir. Varsayılan aralık 1 yıl - daha kısa geriye veri yoksa mevcut veriyle sınırlı kalır.',
+    endpoint: '/reports/herd-profit-loss',
+    group: 'Mali',
+    dateRange: true,
+    defaultRangeDays: 365,
+    columns: [
+      { key: 'start_date', label: 'Başlangıç', format: formatDate, width: 'narrow' },
+      { key: 'end_date', label: 'Bitiş', format: formatDate, width: 'narrow' },
+      { key: 'net_result_try', label: 'Net Kâr/Zarar (TL)', format: formatCurrency, width: 'narrow' },
+      { key: 'net_result_usd', label: 'Net Kâr/Zarar ($)', format: formatUsd, width: 'narrow' },
+    ],
+  },
+  {
     slug: 'herd-cost-summary',
     title: 'Sürü Genel Maliyet-Gelir Özeti',
     description:

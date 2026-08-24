@@ -69,6 +69,7 @@ from app.modules.reports.schemas import (
     HerdExitRead,
     HerdFlowReportRead,
     HerdInventoryRead,
+    HerdProfitLossRead,
     HerdStatusSummaryRead,
     MixerBatchRead,
     MotherPerformanceRead,
@@ -2321,6 +2322,40 @@ def _feed_cost_share_for_animal_ctx(
     return total_try, total_usd
 
 
+def _feed_cost_share_for_animal_in_range_ctx(
+    db: Session, ctx: _CostContext, animal: Animal, range_start: date, range_end: date
+) -> tuple[Decimal, Decimal]:
+    """_feed_cost_share_for_animal_ctx ile AYNI mantik, tek farkla: hayvanin
+    TUM gecmisi yerine [range_start, range_end] ile SINIRLI bir pencerede
+    yedigi yemin maliyetini dondurur - Doğum Kârı hesabinda annenin GEBELIK
+    penceresindeki (tohumlama -> dogum) yem payini izole etmek icin (bkz.
+    get_herd_profit_loss)."""
+    total_try = Decimal("0")
+    total_usd = Decimal("0")
+    for assignment in ctx.assignments_by_animal.get(animal.id, []):
+        window_start = max(assignment.assigned_date, range_start)
+        window_end = min(assignment.removed_date or range_end, range_end)
+        if window_start > window_end:
+            continue
+        for ration in ctx.rations_by_pen.get(assignment.pen_id, []):
+            overlap_start = max(window_start, ration.start_date)
+            overlap_end = min(window_end, ration.end_date or window_end)
+            if overlap_end < overlap_start:
+                continue
+            for item in ration.items:
+                days = _scoped_days(overlap_start, overlap_end, item.scope.code, animal.birth_date)
+                if days <= 0:
+                    continue
+                kg = Decimal(str(_to_kg(item.daily_quantity_per_animal, item.unit.code) * days))
+                avg_cost = _feed_avg_cost_per_kg_ctx(ctx, item.feed_item_id, range_end)
+                if avg_cost is None:
+                    continue
+                cost_try = kg * avg_cost
+                total_try += cost_try
+                total_usd += _try_to_usd(db, cost_try, range_end)
+    return total_try, total_usd
+
+
 def _accumulated_cost_try_usd_ctx(
     db: Session, ctx: _CostContext, animal: Animal, as_of_date: date, convert_usd: bool = True
 ) -> tuple[Decimal, Decimal]:
@@ -2422,12 +2457,11 @@ def list_animal_profitability(db: Session, start_date: date, end_date: date) -> 
     return rows
 
 
-def list_herd_cost_summary(db: Session, start_date: date, end_date: date) -> list[HerdCostSummaryRead]:
-    """Belirtilen tarih araliginda GERCEKLESEN (dagitilan/kaydedilen/satilan)
-    tum maliyet ve gelir kalemlerini TL ve USD olarak ozetler - donemsel
-    genel bakis/planlama icindir (Hayvan Kârlılık Raporu'ndaki 'yasam boyu'
-    eslestirmesinden farkli olarak, burada sadece SECILEN DONEMDE olusan
-    tutarlar toplanir)."""
+def _feed_cost_for_period(db: Session, start_date: date, end_date: date) -> tuple[Decimal, Decimal]:
+    """SURUDEKI TUM hayvanlarin, [start_date, end_date] araliginda dagitilan
+    rasyonlara gore TOPLAM yem maliyeti (TL, USD - end_date'teki TCMB
+    kuruyla). list_herd_cost_summary ve get_herd_profit_loss arasinda
+    ORTAK - tek bir yerde tanimli."""
     feed_try = feed_usd = Decimal("0")
     rations = _rations_overlapping(db, start_date, end_date)
     assignments_by_pen_for_cost = _assignments_by_pen(db, {r.pen_id for r in rations})
@@ -2448,7 +2482,12 @@ def list_herd_cost_summary(db: Session, start_date: date, end_date: date) -> lis
             cost_try = Decimal(str(total_kg)) * avg_cost
             feed_try += cost_try
             feed_usd += _try_to_usd(db, cost_try, end_date)
+    return feed_try, feed_usd
 
+
+def _health_cost_for_period(db: Session, start_date: date, end_date: date) -> tuple[Decimal, Decimal]:
+    """SURUDEKI TUM hayvanlarin [start_date, end_date] araliginda kayitli
+    saglik/tedavi maliyeti (TL, USD - her olayin kendi tarihindeki kurla)."""
     health_try = health_usd = Decimal("0")
     health_stmt = select(HealthEvent).where(
         HealthEvent.event_date >= start_date, HealthEvent.event_date <= end_date, HealthEvent.cost.isnot(None)
@@ -2456,6 +2495,17 @@ def list_herd_cost_summary(db: Session, start_date: date, end_date: date) -> lis
     for he in db.scalars(health_stmt).all():
         health_try += he.cost
         health_usd += _try_to_usd(db, he.cost, he.event_date)
+    return health_try, health_usd
+
+
+def list_herd_cost_summary(db: Session, start_date: date, end_date: date) -> list[HerdCostSummaryRead]:
+    """Belirtilen tarih araliginda GERCEKLESEN (dagitilan/kaydedilen/satilan)
+    tum maliyet ve gelir kalemlerini TL ve USD olarak ozetler - donemsel
+    genel bakis/planlama icindir (Hayvan Kârlılık Raporu'ndaki 'yasam boyu'
+    eslestirmesinden farkli olarak, burada sadece SECILEN DONEMDE olusan
+    tutarlar toplanir)."""
+    feed_try, feed_usd = _feed_cost_for_period(db, start_date, end_date)
+    health_try, health_usd = _health_cost_for_period(db, start_date, end_date)
 
     entry_value_try = entry_value_usd = Decimal("0")
     entry_value_stmt = select(Animal).where(
@@ -2929,6 +2979,199 @@ def list_herd_animal_market_values(db: Session, as_of_date: date) -> list[Animal
             )
         )
     return rows
+
+
+def get_herd_profit_loss(db: Session, start_date: date, end_date: date) -> HerdProfitLossRead:
+    """'Sürü Kâr/Zarar Raporu': [start_date, end_date] araliginda surunun
+    OZKAYNAK degisimini iki katmanda ozetler.
+
+    1) Piyasa Degeri Koprusu (tamami PIYASA DEGERI ile): Donem Basi ->
+       +Dogumla Giren +Satin Alimla Giren ±Mevcut Hayvanlarin Deger
+       Degisimi -Olum Kaybi -Satilan Hayvanlarin Degeri -> Donem Sonu.
+       Matematiksel olarak KAPANIR: Donem Sonu - Donem Basi = butun ara
+       kalemlerin toplami (bkz. asagidaki hesap, revaluation_try/usd HER
+       end_date'te YASAYAN hayvan icin kendi REFERANS noktasindan -
+       hayatta kalanlarda donem basi degeri, donem icinde girenlerde giris
+       degeri - bugune kadarki degisimi topluyor, bu yuzden girenlerin
+       KENDI buyume/degisimi de dogru sekilde bu satira dahil oluyor).
+
+    2) Ekonomik Sonuc (KARISIK bazlar): +Satis Geliri -Satin Alma Bedeli
+       -Yem Maliyeti -Sağlık Maliyeti ±(1)'in net degisimi = Net Ekonomik
+       Kar/Zarar - nakit akislarini piyasa degeri koprusuyle birlestirip
+       TEK bir "sermaye degisti mi" cevabi verir.
+
+    Dogum Kari kirilimi: her DOGUM girisi icin, dogan hayvanin PIYASA
+    (giris) degeri ile annesinin GEBELIK penceresindeki (dogum -
+    GESTATION_DAYS -> dogum) yem payi (ikiz ise esit bolunmus) arasindaki
+    fark - "ucuz girdiyi (yem) degerli cikitya (buzagi) cevirmenin"
+    olcusu. Bu, births_value_try/usd toplaminin bir ALT KIRILIMIDIR,
+    AYRICA cikarilan bir maliyet DEGILDIR (cift sayimdan kacinmak icin -
+    annenin yem maliyeti zaten genel Yem Maliyeti toplaminin icinde)."""
+    growth_checkpoints_by_gender, mature_checkpoints_by_gender = _checkpoint_maps(db)
+    cost_ctx = _build_cost_context(db)
+    asset_ctx = _build_asset_context(db)
+    start_rate = fx_service.get_usd_try_rate(db, start_date)
+    end_rate = fx_service.get_usd_try_rate(db, end_date)
+
+    def market_value(animal: Animal, as_of: date, rate: Decimal | None) -> tuple[Decimal, Decimal]:
+        try_amount, usd_amount, _ = _estimated_market_value_usd_try_ctx(
+            db, cost_ctx, asset_ctx, animal, as_of, growth_checkpoints_by_gender, mature_checkpoints_by_gender, rate
+        )
+        return try_amount, usd_amount
+
+    animals_start = {a.id: a for a in _animals_alive_at(db, start_date)}
+    animals_end = {a.id: a for a in _animals_alive_at(db, end_date)}
+
+    opening_try = opening_usd = Decimal("0")
+    start_value_by_id: dict[uuid.UUID, tuple[Decimal, Decimal]] = {}
+    for animal in animals_start.values():
+        v = market_value(animal, start_date, start_rate)
+        start_value_by_id[animal.id] = v
+        opening_try += v[0]
+        opening_usd += v[1]
+
+    closing_try = closing_usd = Decimal("0")
+    end_value_by_id: dict[uuid.UUID, tuple[Decimal, Decimal]] = {}
+    for animal in animals_end.values():
+        v = market_value(animal, end_date, end_rate)
+        end_value_by_id[animal.id] = v
+        closing_try += v[0]
+        closing_usd += v[1]
+
+    entrants_stmt = (
+        select(Animal)
+        .options(joinedload(Animal.entry_source), joinedload(Animal.gender))
+        .where(Animal.entry_date > start_date, Animal.entry_date <= end_date)
+    )
+    entrants = list(db.scalars(entrants_stmt).all())
+    births = [a for a in entrants if a.entry_source.code != PURCHASE_ENTRY_SOURCE_CODE]
+    purchases = [a for a in entrants if a.entry_source.code == PURCHASE_ENTRY_SOURCE_CODE]
+    entry_reference_by_id: dict[uuid.UUID, tuple[Decimal, Decimal]] = {}
+
+    births_value_try = births_value_usd = Decimal("0")
+    births_cost_try = births_cost_usd = Decimal("0")
+    # Ikiz/uclu doguma iliskin anne yem payini esit bolebilmek icin, ayni
+    # anne+dogum tarihine sahip dogumlari onceden grupluyoruz.
+    litter_size_by_mother_birth: dict[tuple[uuid.UUID, date], int] = {}
+    for a in births:
+        if a.mother_id is not None and a.birth_date is not None:
+            key = (a.mother_id, a.birth_date)
+            litter_size_by_mother_birth[key] = litter_size_by_mother_birth.get(key, 0) + 1
+    for a in births:
+        if a.entry_value is None:
+            continue
+        entry_usd = _try_to_usd(db, a.entry_value, a.entry_date)
+        entry_reference_by_id[a.id] = (a.entry_value, entry_usd)
+        births_value_try += a.entry_value
+        births_value_usd += entry_usd
+        if a.mother_id is not None and a.birth_date is not None:
+            mother = db.get(Animal, a.mother_id)
+            if mother is not None:
+                gestation_start = a.birth_date - timedelta(days=GESTATION_DAYS)
+                cost_try, cost_usd = _feed_cost_share_for_animal_in_range_ctx(
+                    db, cost_ctx, mother, gestation_start, a.birth_date
+                )
+                litter_size = litter_size_by_mother_birth[(a.mother_id, a.birth_date)]
+                births_cost_try += cost_try / litter_size
+                births_cost_usd += cost_usd / litter_size
+
+    purchases_value_try = purchases_value_usd = Decimal("0")
+    for a in purchases:
+        if a.entry_value is None:
+            continue
+        entry_usd = _try_to_usd(db, a.entry_value, a.entry_date)
+        entry_reference_by_id[a.id] = (a.entry_value, entry_usd)
+        purchases_value_try += a.entry_value
+        purchases_value_usd += entry_usd
+
+    # Mevcut hayvanlarin (donem sonunda yasayan) deger degisimi: hayatta
+    # kalanlarda "donem basi -> donem sonu", donem icinde girenlerde
+    # "giris -> donem sonu" - boylece Donem Sonu = Donem Basi + Girenler +
+    # bu satir - Cikanlar denklemi HER ZAMAN kapanir.
+    revaluation_try = revaluation_usd = Decimal("0")
+    for animal_id, end_value in end_value_by_id.items():
+        reference = start_value_by_id.get(animal_id) or entry_reference_by_id.get(animal_id)
+        if reference is None:
+            continue
+        revaluation_try += end_value[0] - reference[0]
+        revaluation_usd += end_value[1] - reference[1]
+
+    death_loss_try = death_loss_usd = Decimal("0")
+    death_stmt = select(Death).where(Death.death_date > start_date, Death.death_date <= end_date)
+    death_count = 0
+    for death in db.scalars(death_stmt).all():
+        animal = db.get(Animal, death.animal_id)
+        if animal is None:
+            continue
+        death_count += 1
+        death_rate = fx_service.get_usd_try_rate(db, death.death_date)
+        v = market_value(animal, death.death_date, death_rate)
+        death_loss_try += v[0]
+        death_loss_usd += v[1]
+
+    sold_value_try = sold_value_usd = Decimal("0")
+    sale_revenue_try = sale_revenue_usd = Decimal("0")
+    sale_stmt = select(Sale).where(Sale.sale_date > start_date, Sale.sale_date <= end_date)
+    sold_count = 0
+    for sale in db.scalars(sale_stmt).all():
+        sale_revenue_try += sale.total_amount
+        sale_revenue_usd += _try_to_usd(db, sale.total_amount, sale.sale_date)
+        animal = db.get(Animal, sale.animal_id)
+        if animal is None:
+            continue
+        sold_count += 1
+        sale_rate = fx_service.get_usd_try_rate(db, sale.sale_date)
+        v = market_value(animal, sale.sale_date, sale_rate)
+        sold_value_try += v[0]
+        sold_value_usd += v[1]
+
+    feed_try, feed_usd = _feed_cost_for_period(db, start_date, end_date)
+    health_try, health_usd = _health_cost_for_period(db, start_date, end_date)
+
+    value_bridge_net_try = closing_try - opening_try
+    value_bridge_net_usd = closing_usd - opening_usd
+
+    net_result_try = sale_revenue_try - purchases_value_try - feed_try - health_try + value_bridge_net_try
+    net_result_usd = sale_revenue_usd - purchases_value_usd - feed_usd - health_usd + value_bridge_net_usd
+
+    return HerdProfitLossRead(
+        start_date=start_date,
+        end_date=end_date,
+        opening_value_try=_round_money(opening_try),
+        opening_value_usd=_round_money(opening_usd),
+        births_value_try=_round_money(births_value_try),
+        births_value_usd=_round_money(births_value_usd),
+        births_cost_try=_round_money(births_cost_try),
+        births_cost_usd=_round_money(births_cost_usd),
+        births_profit_try=_round_money(births_value_try - births_cost_try),
+        births_profit_usd=_round_money(births_value_usd - births_cost_usd),
+        births_count=len(births),
+        purchases_value_try=_round_money(purchases_value_try),
+        purchases_value_usd=_round_money(purchases_value_usd),
+        purchases_count=len(purchases),
+        revaluation_try=_round_money(revaluation_try),
+        revaluation_usd=_round_money(revaluation_usd),
+        death_loss_try=_round_money(death_loss_try),
+        death_loss_usd=_round_money(death_loss_usd),
+        death_count=death_count,
+        sold_value_try=_round_money(sold_value_try),
+        sold_value_usd=_round_money(sold_value_usd),
+        sold_count=sold_count,
+        closing_value_try=_round_money(closing_try),
+        closing_value_usd=_round_money(closing_usd),
+        value_bridge_net_try=_round_money(value_bridge_net_try),
+        value_bridge_net_usd=_round_money(value_bridge_net_usd),
+        sale_revenue_try=_round_money(sale_revenue_try),
+        sale_revenue_usd=_round_money(sale_revenue_usd),
+        purchase_cost_try=_round_money(purchases_value_try),
+        purchase_cost_usd=_round_money(purchases_value_usd),
+        feed_cost_try=_round_money(feed_try),
+        feed_cost_usd=_round_money(feed_usd),
+        health_cost_try=_round_money(health_try),
+        health_cost_usd=_round_money(health_usd),
+        net_result_try=_round_money(net_result_try),
+        net_result_usd=_round_money(net_result_usd),
+    )
 
 
 def get_animal_valuation(db: Session, animal_id: uuid.UUID, as_of_date: date | None = None) -> AnimalValuationRead | None:

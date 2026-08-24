@@ -4,6 +4,7 @@ import { apiGetSafe, type ApiRecord } from '@/lib/api';
 import { getReport } from '@/lib/reports';
 import { ReportTable } from '@/components/ReportTable';
 import { HerdAnimalValueTable } from '@/components/HerdAnimalValueTable';
+import { HerdProfitLossSection } from '@/components/HerdProfitLossSection';
 import { ParentPerformanceSection } from '@/components/ParentPerformanceSection';
 import { DailyFeedCostSection } from '@/components/DailyFeedCostSection';
 import { GroupedOffspringList } from '@/components/GroupedOffspringList';
@@ -127,6 +128,8 @@ export default async function ReportPage({
       )}
       {report.slug === 'herd-animal-market-values' ? (
         <HerdAnimalValueTable rows={rows} asOfDate={asOfDate} />
+      ) : report.slug === 'herd-profit-loss' ? (
+        rows[0] ? <HerdProfitLossSection data={rows[0]} /> : <p className="text-sm text-slate-500">Bu tarih aralığında veri bulunamadı.</p>
       ) : report.slug === 'parent-performance' ? (
         <ParentPerformanceSection motherRows={rows} sireRows={sireRows} />
       ) : report.slug === 'feed-daily-cost' ? (

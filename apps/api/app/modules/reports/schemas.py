@@ -522,6 +522,71 @@ class AnimalValuationRead(BaseModel):
     current_value_usd: Decimal
     current_value_source_code: str
     current_value_status_code: str
+
+
+class HerdProfitLossRead(BaseModel):
+    """'Sürü Kâr/Zarar Raporu' - [start_date, end_date] için sürünün
+    özkaynak değişimini iki katmanda özetler (bkz. reports/service.py
+    get_herd_profit_loss docstring'i, tam hesap mantığı için).
+
+    1) Piyasa Değeri Köprüsü (opening_value_* ... closing_value_*):
+    tamamı PİYASA DEĞERİ ile, Dönem Başı'ndan Dönem Sonu'na kalem kalem
+    geçiş - births/purchases/revaluation/death_loss/sold_value.
+
+    2) Ekonomik Sonuç (net_result_*): KARIŞIK bazlar - sale_revenue/
+    purchase_cost NAKİT, feed_cost/health_cost MALİYET, geri kalanı (1)'in
+    net değişimi (value_bridge_net_*) - hepsi birleşip TEK bir "sermaye
+    büyüdü mü küçüldü mü" cevabı verir."""
+
+    start_date: date
+    end_date: date
+
+    # --- Piyasa Değeri Köprüsü (tamamı piyasa değeri) ---
+    opening_value_try: Decimal
+    opening_value_usd: Decimal
+    births_value_try: Decimal
+    births_value_usd: Decimal
+    # Doğum Kârı kırılımı: births_cost = annenin gebelik penceresindeki
+    # yem payı (MALİYET), births_profit = births_value - births_cost.
+    # births_value'nun bir ALT KIRILIMIDIR, ayrıca çıkarılan bir maliyet
+    # DEĞİLDİR (bkz. service.py docstring - çift sayım uyarısı).
+    births_cost_try: Decimal
+    births_cost_usd: Decimal
+    births_profit_try: Decimal
+    births_profit_usd: Decimal
+    births_count: int
+    purchases_value_try: Decimal
+    purchases_value_usd: Decimal
+    purchases_count: int
+    # Dönem sonunda yaşayan hayvanların, kendi referans noktasından (hayatta
+    # kalanlarda dönem başı değeri, dönem içinde girenlerde giriş değeri)
+    # bugüne değer değişimi - büyüme/olgunlaşma/durum geçişi (GEBE->BOŞ vb.)
+    # dahil, tek bir net kalemde.
+    revaluation_try: Decimal
+    revaluation_usd: Decimal
+    death_loss_try: Decimal
+    death_loss_usd: Decimal
+    death_count: int
+    sold_value_try: Decimal
+    sold_value_usd: Decimal
+    sold_count: int
+    closing_value_try: Decimal
+    closing_value_usd: Decimal
+    # = closing - opening (yukarıdaki ara kalemlerin toplamı ile eşleşir).
+    value_bridge_net_try: Decimal
+    value_bridge_net_usd: Decimal
+
+    # --- Ekonomik Sonuç (karışık bazlar) ---
+    sale_revenue_try: Decimal
+    sale_revenue_usd: Decimal
+    purchase_cost_try: Decimal
+    purchase_cost_usd: Decimal
+    feed_cost_try: Decimal
+    feed_cost_usd: Decimal
+    health_cost_try: Decimal
+    health_cost_usd: Decimal
+    net_result_try: Decimal
+    net_result_usd: Decimal
     as_of_date: date
 
 

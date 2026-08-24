@@ -34,6 +34,7 @@ from app.modules.reports.schemas import (
     HerdExitRead,
     HerdFlowReportRead,
     HerdInventoryRead,
+    HerdProfitLossRead,
     HerdStatusSummaryRead,
     MixerBatchRead,
     MotherPerformanceRead,
@@ -279,6 +280,18 @@ def herd_cost_summary(
     db: Session = Depends(get_db),
 ) -> list[HerdCostSummaryRead]:
     return service.list_herd_cost_summary(db, start_date, end_date)
+
+
+@router.get("/herd-profit-loss", response_model=list[HerdProfitLossRead])
+def herd_profit_loss(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    db: Session = Depends(get_db),
+) -> list[HerdProfitLossRead]:
+    # Tek nesnelik sonucu liste icinde dondurur - frontend'in diger tum
+    # rapor endpoint'leriyle AYNI ApiRecord[] fetch deseniyle calismasi
+    # icin (bkz. apps/web/src/app/(app)/reports/[report]/page.tsx).
+    return [service.get_herd_profit_loss(db, start_date, end_date)]
 
 
 @router.get("/herd-animal-market-values", response_model=list[AnimalMarketValueRead])
