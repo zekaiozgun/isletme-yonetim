@@ -2904,6 +2904,14 @@ def list_herd_animal_market_values(db: Session, as_of_date: date) -> list[Animal
         status_code = _valuation_status_code_ctx(asset_ctx, animal, as_of_date, growth_checkpoints_by_gender)
         age_months = full_months_between(animal.birth_date, as_of_date) if animal.birth_date else None
         age_days = (as_of_date - animal.birth_date).days if animal.birth_date else None
+        # AnimalValuationRead.entry_value_usd ile AYNI mantik (bkz.
+        # get_animal_valuation) - GUNCEL degil, animal.entry_date'teki
+        # TCMB kuruyla sabit bir referans noktasi.
+        entry_value_usd = (
+            _round_money(_try_to_usd(db, animal.entry_value, animal.entry_date))
+            if animal.entry_value is not None
+            else None
+        )
         rows.append(
             AnimalMarketValueRead(
                 animal_id=animal.id,
@@ -2914,6 +2922,8 @@ def list_herd_animal_market_values(db: Session, as_of_date: date) -> list[Animal
                 age_days=age_days,
                 amount_try=amount_try,
                 amount_usd=amount_usd,
+                entry_value_try=animal.entry_value,
+                entry_value_usd=entry_value_usd,
                 source_code=source_code,
                 status_code=status_code,
             )

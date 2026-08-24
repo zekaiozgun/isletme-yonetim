@@ -126,7 +126,7 @@ export default async function ReportPage({
         report.dateRange && rangeStart && rangeEnd && <DateRangeFilter start={rangeStart} end={rangeEnd} />
       )}
       {report.slug === 'herd-animal-market-values' ? (
-        <HerdAnimalValueTable rows={rows} />
+        <HerdAnimalValueTable rows={rows} asOfDate={asOfDate} />
       ) : report.slug === 'parent-performance' ? (
         <ParentPerformanceSection motherRows={rows} sireRows={sireRows} />
       ) : report.slug === 'feed-daily-cost' ? (

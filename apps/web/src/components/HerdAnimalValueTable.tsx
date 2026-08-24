@@ -3,12 +3,12 @@
 import { useMemo, useState } from 'react';
 import type { ApiRecord } from '@/lib/api';
 import { formatAgeMixed, formatGenderShort, formatSourceCode, formatValuationStatus } from '@/lib/reports';
-import { formatCurrencyTRY as formatCurrency, formatUsdValue as formatUsd } from '@/lib/format';
+import { formatCurrencyTRY as formatCurrency, formatUsdValue as formatUsd, formatNumberTR, formatDateDMY } from '@/lib/format';
 import { TableSearch } from '@/components/TableSearch';
 import { CsvExportButton } from '@/components/CsvExportButton';
 import { PdfExportButton } from '@/components/PdfExportButton';
 
-export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
+export function HerdAnimalValueTable({ rows, asOfDate }: { rows: ApiRecord[]; asOfDate?: string }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const totals = useMemo(() => {
@@ -30,12 +30,24 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
   const grandTotal = useMemo(() => {
     let try_ = 0;
     let usd = 0;
+    // Edinme değeri her hayvanın KENDİ giriş tarihindeki kuruyla gelir
+    // (bkz. reports/service.py entry_value_usd) - entry_value hiç
+    // girilmemiş satırlar (eski/eksik kayıt) toplamdan sessizce dışlanır,
+    // hem TL hem USD tarafında tutarlı kalsın diye.
+    let entryTry = 0;
+    let entryUsd = 0;
     for (const row of rows) {
       try_ += Number(row.amount_try ?? 0);
       usd += Number(row.amount_usd ?? 0);
+      if (row.entry_value_try !== null && row.entry_value_try !== undefined) {
+        entryTry += Number(row.entry_value_try);
+        entryUsd += Number(row.entry_value_usd ?? 0);
+      }
     }
-    return { try_, usd };
+    return { try_, usd, entryTry, entryUsd };
   }, [rows]);
+
+  const deltaPercent = grandTotal.entryUsd > 0 ? ((grandTotal.usd - grandTotal.entryUsd) / grandTotal.entryUsd) * 100 : null;
 
   if (rows.length === 0) {
     return <p className="text-sm text-slate-500">Bu tarihte yaşayan hayvan bulunamadı.</p>;
@@ -81,10 +93,33 @@ export function HerdAnimalValueTable({ rows }: { rows: ApiRecord[] }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-3 rounded border border-slate-300 bg-slate-100 px-3 py-2 text-sm">
-        <span className="font-medium text-slate-700">Sürü Toplamı ({rows.length} hayvan):</span>
-        <span className="font-semibold text-slate-900">{formatCurrency(grandTotal.try_)}</span>
-        <span className="font-semibold text-slate-900">{formatUsd(grandTotal.usd)}</span>
+      <div className="rounded border border-slate-300 bg-slate-100 px-4 py-3.5">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="mb-0.5 text-xs font-medium text-slate-500">Toplam Edinme Değeri</p>
+            <p className="text-[22px] font-semibold leading-tight text-slate-900">{formatUsd(grandTotal.entryUsd)}</p>
+            <p className="mt-0.5 text-xs text-slate-400">{formatCurrency(grandTotal.entryTry)} · her hayvanın kendi kuru</p>
+          </div>
+          <div className="border-l border-slate-300 pl-4">
+            <p className="mb-0.5 text-xs font-medium text-slate-500">Toplam Tahmini Piyasa Değeri</p>
+            <div className="flex items-baseline gap-2">
+              <p className="text-[22px] font-semibold leading-tight text-slate-900">{formatUsd(grandTotal.usd)}</p>
+              {deltaPercent !== null && (
+                <span
+                  className={`rounded-full px-2 py-0.5 text-sm font-semibold ${
+                    deltaPercent < 0 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-700'
+                  }`}
+                >
+                  {deltaPercent > 0 ? '+' : deltaPercent < 0 ? '-' : ''}%{formatNumberTR(Math.abs(deltaPercent), 1)}
+                </span>
+              )}
+            </div>
+            <p className="mt-0.5 text-xs text-slate-400">{formatCurrency(grandTotal.try_)} · {formatDateDMY(asOfDate)} kuru</p>
+          </div>
+        </div>
+        <p className="mt-2.5 border-t border-slate-200 pt-2 text-[11px] text-slate-400">
+          {rows.length} hayvan · dolar bazlı edinme ve güncel değer farkı
+        </p>
       </div>
       {selected.size > 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded border border-slate-300 bg-slate-50 px-3 py-2 text-sm">

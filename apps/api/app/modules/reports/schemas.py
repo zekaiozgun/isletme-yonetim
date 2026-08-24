@@ -487,6 +487,14 @@ class AnimalMarketValueRead(BaseModel):
     age_days: int | None = None
     amount_try: Decimal
     amount_usd: Decimal
+    # Girişteki (alım/doğum) değer - AnimalValuationRead.entry_value_* ile
+    # AYNI mantık (bkz. o sınıfın docstring'i): USD karşılığı GÜNCEL değil,
+    # o hayvanın kendi giriş tarihindeki TCMB kuruyla sabit bir referans
+    # noktası olarak türetilir. Sürü özet kutusunda "Toplam Edinme Değeri"
+    # ile "Toplam Tahmini Piyasa Değeri"ni karşılaştırmak için (client-side
+    # toplanır, bkz. HerdAnimalValueTable.tsx).
+    entry_value_try: Decimal | None = None
+    entry_value_usd: Decimal | None = None
     # "market_estimate" (büyüme çıpalarından interpolasyon) | "cost_basis"
     # (maliyet-bazlı defter değeri) - hangi rakamın gerçek piyasa gözlemine
     # mi yoksa harcama kaydına mı dayandığını gizlemeden gösterir.
