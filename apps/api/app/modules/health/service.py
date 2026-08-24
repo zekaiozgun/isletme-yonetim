@@ -17,6 +17,7 @@ from app.core.exceptions import ConflictError, NotFoundError
 from app.core.validators import require_date_order
 from app.modules.animal.models import Animal
 from app.modules.animal.service import get_animal_exit_date
+from app.modules.fx import service as fx_service
 from app.modules.health.models import HealthEvent, HealthEventMedication, Medication
 from app.modules.health.schemas import HealthEventCreate, MedicationCreate
 
@@ -76,6 +77,10 @@ def create_health_event(db: Session, data: HealthEventCreate) -> HealthEvent:
     db.add(event)
     db.commit()
     db.refresh(event)
+    # Sadece maliyetli olaylarda anlamli (raporlarin USD'ye cevirdigi tek
+    # alan bu) - bu tarihi simdiden onbellege isitir, bkz. fx/service.py.
+    if event.cost is not None:
+        fx_service.warm_rate_on_entry(db, event.event_date)
     return event
 
 
@@ -97,6 +102,8 @@ def update_health_event(db: Session, event_id: int, data: HealthEventCreate) -> 
     _validate_health_event_date(db, event)
     db.commit()
     db.refresh(event)
+    if event.cost is not None:
+        fx_service.warm_rate_on_entry(db, event.event_date)
     return event
 
 

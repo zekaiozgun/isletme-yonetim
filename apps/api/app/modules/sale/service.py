@@ -19,6 +19,7 @@ from app.modules.animal.lookups import AnimalStatus
 from app.modules.animal.models import Animal
 from app.modules.animal.service import ACTIVE_STATUS_CODE
 from app.modules.death.models import Death
+from app.modules.fx import service as fx_service
 from app.modules.sale.models import Buyer, Sale
 from app.modules.sale.schemas import BuyerCreate, SaleCreate
 
@@ -85,6 +86,11 @@ def create_sale(db: Session, data: SaleCreate) -> Sale:
 
     db.commit()
     db.refresh(sale)
+    # Bu tarihin kurunu simdiden onbellege isitir - raporlar (Suru Kar/
+    # Zarar, Hayvan Karliligi) bu tarihi daha sonra CANLI cekmeye
+    # calismadan (bkz. fx/service.py get_cached_usd_try_rate) dogrudan
+    # onbellekten bulsun diye.
+    fx_service.warm_rate_on_entry(db, sale.sale_date)
     return sale
 
 
@@ -110,6 +116,7 @@ def update_sale(db: Session, sale_id: int, data: SaleCreate) -> Sale:
 
     db.commit()
     db.refresh(sale)
+    fx_service.warm_rate_on_entry(db, sale.sale_date)
     return sale
 
 

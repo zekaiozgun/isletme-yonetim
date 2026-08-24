@@ -17,6 +17,7 @@ from app.modules.animal.models import Animal
 from app.modules.animal.schemas import AnimalCreate, PedigreeNodeRead
 from app.modules.auth.schemas import Role
 from app.modules.death.models import Death
+from app.modules.fx import service as fx_service
 from app.modules.genetic_resource.models import Sire
 from app.modules.sale.models import Sale
 
@@ -61,6 +62,10 @@ def create_animal(db: Session, data: AnimalCreate, created_by_role: Role) -> Ani
     db.add(animal)
     db.commit()
     db.refresh(animal)
+    # Sadece giris degeri girilmisse anlamli (raporlarin USD'ye cevirdigi
+    # tek alan bu) - bu tarihi simdiden onbellege isitir, bkz. fx/service.py.
+    if animal.entry_value is not None:
+        fx_service.warm_rate_on_entry(db, animal.entry_date)
     return animal
 
 
@@ -89,6 +94,8 @@ def update_animal(db: Session, animal_id: uuid.UUID, data: AnimalCreate, request
     _validate_animal_dates(db, animal)
     db.commit()
     db.refresh(animal)
+    if animal.entry_value is not None:
+        fx_service.warm_rate_on_entry(db, animal.entry_date)
     return animal
 
 

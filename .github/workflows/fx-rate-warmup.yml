@@ -1,0 +1,28 @@
+name: Kur Onbellegini Isit (18:00 TRT)
+
+# Turkiye UTC+3'te sabit (DST yok) - 18:00 TRT = 15:00 UTC. TCMB gunluk
+# bulteni genelde 15:30 TRT civarinda yayinlanir; bu saatte hem "dun"un
+# (bir onceki is gunu) kuru kesinlesmis olur hem de gun icinde Sale/
+# Death/Health/Animal kayitlariyla veri girisi aninda isitilmamis eski
+# tarihler kademeli olarak geriye doner doldurulur (bkz. app/modules/fx/
+# service.py warm_cache - Suru Kar/Zarar raporunun raporlama sirasinda
+# CANLI TCMB istegi atip zaman asimina ugramasinin kalici cozumu).
+on:
+  schedule:
+    - cron: '0 15 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  warm-cache:
+    runs-on: ubuntu-latest
+    steps:
+      - name: /fx/warm-cache uc noktasini cagir
+        run: |
+          response=$(curl -s -o /tmp/body.json -w "%{http_code}" --max-time 60 \
+            "https://isletme-yonetim.onrender.com/fx/warm-cache")
+          echo "HTTP $response"
+          cat /tmp/body.json
+          if [ "$response" != "200" ]; then
+            echo "Kur onbellegi isitma istegi basarisiz oldu"
+            exit 1
+          fi

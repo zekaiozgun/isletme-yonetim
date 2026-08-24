@@ -2,9 +2,11 @@ import sentry_sdk
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
 
 from app.core import audit  # noqa: F401 - import kaydi tetikler (mapper event listener'lari)
 from app.core.config import get_settings
+from app.core.database import get_db
 from app.core.exceptions import ConflictError, DomainError, NotFoundError
 from app.core.request_context import current_user_id
 from app.modules.animal.router import router as animal_router
@@ -16,6 +18,7 @@ from app.modules.breeding.router import router as breeding_router
 from app.modules.death.router import router as death_router
 from app.modules.evaluation.router import router as evaluation_router
 from app.modules.feed.router import router as feed_router
+from app.modules.fx import service as fx_service
 from app.modules.genetic_resource.router import router as genetic_resource_router
 from app.modules.health.router import router as health_router
 from app.modules.pdf_export.router import router as pdf_export_router
@@ -108,3 +111,13 @@ def handle_domain_error(request: Request, exc: DomainError) -> JSONResponse:
 @app.head("/health", operation_id="health_head")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+# /health gibi girissiz - gunluk GitHub Actions is akisi (fx-rate-warmup.yml)
+# tarafindan tetiklenir. Kur onbellegini isitir (bkz. fx/service.py
+# warm_cache) - Suru Kar/Zarar gibi raporlarin ilk calistirmada onlarca
+# tarih icin CANLI TCMB istegi atip zaman asimina ugramasini onlemenin
+# kalici cozumunun bir parcasi (raporlar artik SADECE onbellegi okur).
+@app.get("/fx/warm-cache")
+def fx_warm_cache(db: Session = Depends(get_db)) -> dict[str, float | int]:
+    return fx_service.warm_cache(db)

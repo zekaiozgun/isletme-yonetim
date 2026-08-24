@@ -2094,7 +2094,7 @@ def _round_money(value: Decimal) -> Decimal:
 def _try_to_usd(db: Session, try_amount: Decimal, on_date: date) -> Decimal:
     if try_amount == 0:
         return Decimal("0")
-    rate = fx_service.get_usd_try_rate(db, on_date)
+    rate = fx_service.get_cached_usd_try_rate(db, on_date)
     if not rate:
         return Decimal("0")
     return try_amount / rate
@@ -2685,7 +2685,7 @@ def _asset_book_value_ctx(
     ayri sorgu atmaz (N+1 sorgu deseninden kacinir, bkz. _CostContext/
     _AssetContext)."""
     if as_of_rate is None:
-        as_of_rate = fx_service.get_usd_try_rate(db, as_of_date)
+        as_of_rate = fx_service.get_cached_usd_try_rate(db, as_of_date)
 
     transition_date = _asset_transition_date_ctx(asset_ctx, animal, growth_checkpoints_by_gender)
     if transition_date is None or as_of_date < transition_date:
@@ -2694,7 +2694,7 @@ def _asset_book_value_ctx(
         return _round_money(total_try), _round_money(total_usd), "Malzeme"
 
     acquisition_try, _ = _accumulated_cost_try_usd_ctx(db, cost_ctx, animal, transition_date, convert_usd=False)
-    transition_rate = fx_service.get_usd_try_rate(db, transition_date)
+    transition_rate = fx_service.get_cached_usd_try_rate(db, transition_date)
     acquisition_usd = acquisition_try / transition_rate if transition_rate else Decimal("0")
 
     residual_usd = acquisition_usd * DEPRECIATION_RESIDUAL_RATIO
@@ -2901,7 +2901,7 @@ def _estimated_market_value_usd_try_ctx(
     halde mevcut maliyet-bazlı _asset_book_value_ctx'i kullanır -
     source_code hangisinin kullanıldığını açıkça belirtir."""
     if as_of_rate is None:
-        as_of_rate = fx_service.get_usd_try_rate(db, as_of_date)
+        as_of_rate = fx_service.get_cached_usd_try_rate(db, as_of_date)
 
     market_try = _market_value_estimate_try_ctx(
         asset_ctx, animal, as_of_date, growth_checkpoints_by_gender, mature_checkpoints_by_gender
@@ -2930,7 +2930,7 @@ def list_herd_animal_market_values(db: Session, as_of_date: date) -> list[Animal
     yüklenir (bkz. _CostContext/_AssetContext) - N+1 sorgu deseninden
     kaçınır, sürü büyüdükçe rapor süresi orantısız artmaz."""
     growth_checkpoints_by_gender, mature_checkpoints_by_gender = _checkpoint_maps(db)
-    rate = fx_service.get_usd_try_rate(db, as_of_date)
+    rate = fx_service.get_cached_usd_try_rate(db, as_of_date)
     cost_ctx = _build_cost_context(db)
     asset_ctx = _build_asset_context(db)
     # _animals_alive_at hicbir siraya gore donmez (bkz. tanimi) - "Yas (ay)"
@@ -3010,8 +3010,8 @@ def get_herd_profit_loss(db: Session, start_date: date, end_date: date) -> HerdP
     growth_checkpoints_by_gender, mature_checkpoints_by_gender = _checkpoint_maps(db)
     cost_ctx = _build_cost_context(db)
     asset_ctx = _build_asset_context(db)
-    start_rate = fx_service.get_usd_try_rate(db, start_date)
-    end_rate = fx_service.get_usd_try_rate(db, end_date)
+    start_rate = fx_service.get_cached_usd_try_rate(db, start_date)
+    end_rate = fx_service.get_cached_usd_try_rate(db, end_date)
 
     def market_value(animal: Animal, as_of: date, rate: Decimal | None) -> tuple[Decimal, Decimal]:
         try_amount, usd_amount, _ = _estimated_market_value_usd_try_ctx(
@@ -3104,7 +3104,7 @@ def get_herd_profit_loss(db: Session, start_date: date, end_date: date) -> HerdP
         if animal is None:
             continue
         death_count += 1
-        death_rate = fx_service.get_usd_try_rate(db, death.death_date)
+        death_rate = fx_service.get_cached_usd_try_rate(db, death.death_date)
         v = market_value(animal, death.death_date, death_rate)
         death_loss_try += v[0]
         death_loss_usd += v[1]
@@ -3120,7 +3120,7 @@ def get_herd_profit_loss(db: Session, start_date: date, end_date: date) -> HerdP
         if animal is None:
             continue
         sold_count += 1
-        sale_rate = fx_service.get_usd_try_rate(db, sale.sale_date)
+        sale_rate = fx_service.get_cached_usd_try_rate(db, sale.sale_date)
         v = market_value(animal, sale.sale_date, sale_rate)
         sold_value_try += v[0]
         sold_value_usd += v[1]
@@ -3197,7 +3197,7 @@ def get_animal_valuation(db: Session, animal_id: uuid.UUID, as_of_date: date | N
     )
 
     growth_checkpoints_by_gender, mature_checkpoints_by_gender = _checkpoint_maps(db)
-    rate = fx_service.get_usd_try_rate(db, as_of_date)
+    rate = fx_service.get_cached_usd_try_rate(db, as_of_date)
     cost_ctx = _build_cost_context(db)
     asset_ctx = _build_asset_context(db)
     current_try, current_usd, source_code = _estimated_market_value_usd_try_ctx(

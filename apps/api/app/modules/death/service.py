@@ -18,6 +18,7 @@ from app.modules.animal.models import Animal
 from app.modules.animal.service import ACTIVE_STATUS_CODE
 from app.modules.death.models import Death
 from app.modules.death.schemas import DeathCreate
+from app.modules.fx import service as fx_service
 from app.modules.sale.models import Sale
 
 DEAD_STATUS_CODE = "OLDU"
@@ -46,6 +47,9 @@ def create_death(db: Session, data: DeathCreate) -> Death:
 
     db.commit()
     db.refresh(death)
+    # Suru Kar/Zarar gibi raporlar bu tarihi CANLI cekmeye calismadan
+    # dogrudan onbellekten bulsun diye (bkz. fx/service.py).
+    fx_service.warm_rate_on_entry(db, death.death_date)
     return death
 
 
@@ -72,6 +76,7 @@ def update_death(db: Session, death_id: int, data: DeathCreate) -> Death:
 
     db.commit()
     db.refresh(death)
+    fx_service.warm_rate_on_entry(db, death.death_date)
     return death
 
 
