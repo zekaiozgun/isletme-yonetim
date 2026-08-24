@@ -587,7 +587,6 @@ class HerdProfitLossRead(BaseModel):
     health_cost_usd: Decimal
     net_result_try: Decimal
     net_result_usd: Decimal
-    as_of_date: date
 
 
 class GeneticCompositionRead(BaseModel):

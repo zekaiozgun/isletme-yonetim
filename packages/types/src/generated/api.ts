@@ -2608,6 +2608,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports/herd-profit-loss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Herd Profit Loss */
+        get: operations["herd_profit_loss_reports_herd_profit_loss_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reports/herd-animal-market-values": {
         parameters: {
             query?: never;
@@ -2726,6 +2743,23 @@ export interface paths {
         options?: never;
         /** Health */
         head: operations["health_head"];
+        patch?: never;
+        trace?: never;
+    };
+    "/fx/warm-cache": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fx Warm Cache */
+        get: operations["fx_warm_cache_fx_warm_cache_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -2879,6 +2913,10 @@ export interface components {
             amount_try: string;
             /** Amount Usd */
             amount_usd: string;
+            /** Entry Value Try */
+            entry_value_try?: string | null;
+            /** Entry Value Usd */
+            entry_value_usd?: string | null;
             /** Source Code */
             source_code: string;
             /** Status Code */
@@ -3010,11 +3048,6 @@ export interface components {
             current_value_source_code: string;
             /** Current Value Status Code */
             current_value_status_code: string;
-            /**
-             * As Of Date
-             * Format: date
-             */
-            as_of_date: string;
         };
         /** AuditLogRead */
         AuditLogRead: {
@@ -3905,6 +3938,101 @@ export interface components {
             breeding_age_female_count: number;
             /** Adult Male Count */
             adult_male_count: number;
+        };
+        /**
+         * HerdProfitLossRead
+         * @description 'Sürü Kâr/Zarar Raporu' - [start_date, end_date] için sürünün
+         *     özkaynak değişimini iki katmanda özetler (bkz. reports/service.py
+         *     get_herd_profit_loss docstring'i, tam hesap mantığı için).
+         *
+         *     1) Piyasa Değeri Köprüsü (opening_value_* ... closing_value_*):
+         *     tamamı PİYASA DEĞERİ ile, Dönem Başı'ndan Dönem Sonu'na kalem kalem
+         *     geçiş - births/purchases/revaluation/death_loss/sold_value.
+         *
+         *     2) Ekonomik Sonuç (net_result_*): KARIŞIK bazlar - sale_revenue/
+         *     purchase_cost NAKİT, feed_cost/health_cost MALİYET, geri kalanı (1)'in
+         *     net değişimi (value_bridge_net_*) - hepsi birleşip TEK bir "sermaye
+         *     büyüdü mü küçüldü mü" cevabı verir.
+         */
+        HerdProfitLossRead: {
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /**
+             * End Date
+             * Format: date
+             */
+            end_date: string;
+            /** Opening Value Try */
+            opening_value_try: string;
+            /** Opening Value Usd */
+            opening_value_usd: string;
+            /** Births Value Try */
+            births_value_try: string;
+            /** Births Value Usd */
+            births_value_usd: string;
+            /** Births Cost Try */
+            births_cost_try: string;
+            /** Births Cost Usd */
+            births_cost_usd: string;
+            /** Births Profit Try */
+            births_profit_try: string;
+            /** Births Profit Usd */
+            births_profit_usd: string;
+            /** Births Count */
+            births_count: number;
+            /** Purchases Value Try */
+            purchases_value_try: string;
+            /** Purchases Value Usd */
+            purchases_value_usd: string;
+            /** Purchases Count */
+            purchases_count: number;
+            /** Revaluation Try */
+            revaluation_try: string;
+            /** Revaluation Usd */
+            revaluation_usd: string;
+            /** Death Loss Try */
+            death_loss_try: string;
+            /** Death Loss Usd */
+            death_loss_usd: string;
+            /** Death Count */
+            death_count: number;
+            /** Sold Value Try */
+            sold_value_try: string;
+            /** Sold Value Usd */
+            sold_value_usd: string;
+            /** Sold Count */
+            sold_count: number;
+            /** Closing Value Try */
+            closing_value_try: string;
+            /** Closing Value Usd */
+            closing_value_usd: string;
+            /** Value Bridge Net Try */
+            value_bridge_net_try: string;
+            /** Value Bridge Net Usd */
+            value_bridge_net_usd: string;
+            /** Sale Revenue Try */
+            sale_revenue_try: string;
+            /** Sale Revenue Usd */
+            sale_revenue_usd: string;
+            /** Purchase Cost Try */
+            purchase_cost_try: string;
+            /** Purchase Cost Usd */
+            purchase_cost_usd: string;
+            /** Feed Cost Try */
+            feed_cost_try: string;
+            /** Feed Cost Usd */
+            feed_cost_usd: string;
+            /** Health Cost Try */
+            health_cost_try: string;
+            /** Health Cost Usd */
+            health_cost_usd: string;
+            /** Net Result Try */
+            net_result_try: string;
+            /** Net Result Usd */
+            net_result_usd: string;
         };
         /** HerdStatusSummaryRead */
         HerdStatusSummaryRead: {
@@ -13436,6 +13564,38 @@ export interface operations {
             };
         };
     };
+    herd_profit_loss_reports_herd_profit_loss_get: {
+        parameters: {
+            query: {
+                start_date: string;
+                end_date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HerdProfitLossRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     herd_animal_market_values_reports_herd_animal_market_values_get: {
         parameters: {
             query: {
@@ -13676,6 +13836,28 @@ export interface operations {
                 content: {
                     "application/json": {
                         [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
+    fx_warm_cache_fx_warm_cache_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
                     };
                 };
             };
