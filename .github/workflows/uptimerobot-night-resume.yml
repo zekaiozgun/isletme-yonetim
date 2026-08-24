@@ -23,3 +23,54 @@ jobs:
             -d "format=json")
           echo "$response"
           echo "$response" | grep -q '"stat":"ok"' || (echo "UptimeRobot API basarisiz oldu" && exit 1)
+
+      - name: Servisin ayaga kalktigini dogrula, kalkmadiysa Render'dan restart tetikle
+        run: |
+          # Render'in ucretsiz instance'lari hibernate'ten uyanirken bazen
+          # "hibernate-wake-error" ile takilip kalabiliyor - bu durumda pinglerin
+          # devam etmesi yetmiyor, servis elle restart edilene kadar ayaga kalkmiyor
+          # (bkz. 2026-08-24 olayi: ~4.5 saat surdu, UptimeRobot'un ayni anda birden
+          # fazla bolgeden gelen kontrolleri tetikleyici olmus olabilir). Bu adim
+          # normal cold-start'a (Render'a gore 50sn+) yeterince zaman taniyip, o
+          # sureden sonra hala saglik kontrolu gecmiyorsa Render API'siyle restart
+          # dener ve sonucu tekrar dogrular.
+          URL="https://isletme-yonetim.onrender.com/health"
+          SERVICE_ID="srv-d9f5kggk1i2s73bfsgtg"
+
+          wait_healthy() {
+            local attempts="$1"
+            local i
+            for i in $(seq 1 "$attempts"); do
+              status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$URL" || echo "000")
+              echo "Deneme $i/$attempts: HTTP $status"
+              if [ "$status" = "200" ]; then
+                return 0
+              fi
+              sleep 30
+            done
+            return 1
+          }
+
+          if wait_healthy 12; then
+            echo "Servis saglikli, ek islem gerekmiyor."
+            exit 0
+          fi
+
+          echo "Servis ~6 dakika icinde ayaga kalkmadi, Render uzerinden restart tetikleniyor."
+          restart_status=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            "https://api.render.com/v1/services/${SERVICE_ID}/restart" \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}")
+          echo "Render restart istegi HTTP $restart_status dondu"
+
+          if [ "$restart_status" -ge 300 ]; then
+            echo "Render restart istegi basarisiz oldu"
+            exit 1
+          fi
+
+          if wait_healthy 10; then
+            echo "Restart sonrasi servis saglikli."
+            exit 0
+          fi
+
+          echo "Restart sonrasinda da servis ayaga kalkmadi - manuel mudahale gerekiyor."
+          exit 1
