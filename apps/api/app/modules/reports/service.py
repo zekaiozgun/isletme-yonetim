@@ -109,29 +109,116 @@ def _to_kg(quantity: Decimal, unit_code: str) -> float:
     return float(quantity)
 
 
-def _feed_avg_cost_per_kg(db: Session, feed_item_id: int, as_of_date: date) -> Decimal | None:
-    """Bir yem kaleminin as_of_date'e kadarki (dahil) TUM alimlarindan
-    turetilen agirlikli ortalama birim maliyeti (TL/kg) - hicbir yerde
-    saklanmaz; hem rasyon/tuketim maliyetinde hem stok degerinde kullanilir
-    (Anayasa m.4: birim fiyat elle girilmez, fatura tutarindan turetilir).
-    Maliyetli hic alim yoksa None doner."""
-    purchases = db.scalars(
-        select(FeedPurchase)
-        .options(joinedload(FeedPurchase.unit))
-        .where(
-            FeedPurchase.feed_item_id == feed_item_id,
-            FeedPurchase.purchase_date <= as_of_date,
-            FeedPurchase.total_cost.isnot(None),
-        )
-    ).all()
-    total_cost = Decimal("0")
-    total_kg = Decimal("0")
-    for purchase in purchases:
-        total_cost += purchase.total_cost
-        total_kg += Decimal(str(_to_kg(purchase.quantity, purchase.unit.code)))
-    if total_kg == 0:
+def _blend_feed_moving_average(
+    purchases: list[tuple[date, Decimal, Decimal]],
+    consumed_before_purchase: list[Decimal],
+) -> Decimal | None:
+    """SAF hesaplama (DB erisimi yok, bkz. tests/test_feed_moving_average.py):
+    purchases KRONOLOJIK sirali (tarih, kg, toplam_maliyet) uclulerinden
+    HAREKETLI (perpetual) agirlikli ortalama birim maliyeti (TL/kg) dondurur.
+    Iki alim arasindaki tuketim SADECE stok miktarini azaltir, o anki
+    ortalamayi DEGISTIRMEZ - ortalama SADECE yeni bir alim geldiginde, o an
+    STOKTA KALAN miktarla yeni alimin karistirilmasiyla guncellenir. Onceki
+    (basit) 'tum-zamanlarin toplami' yontemi, TUKENMIS eski (orn. enflasyon
+    oncesi ucuz) alimlari SONSUZA KADAR ortalamaya dahil ediyordu; bu artik
+    SADECE o anda fiilen stokta olabilecek alimlarin agirligini tasir.
+
+    consumed_before_purchase[i]: purchases[i]'den ONCE (bir onceki alimdan
+    bu alima kadar) tuketilen kg - purchases ile AYNI uzunlukta olmali (ilk
+    eleman genelde 0, ilk alimdan once tuketilecek stok yoktur).
+
+    Stok bir alimdan once sifira/altina duserse (gec girilen alim/kotu
+    veri), o alim KENDI fiyatiyla ortalamayi SIFIRDAN baslatir - karisacak
+    gercek bir stok kalmamistir, eski (tukenmis) fiyatla karistirmak yanlis
+    olur."""
+    if not purchases:
         return None
-    return total_cost / total_kg
+    stock_kg = Decimal("0")
+    avg_cost = Decimal("0")
+    for index, (_purchase_date, kg, total_cost) in enumerate(purchases):
+        consumed = consumed_before_purchase[index] if index < len(consumed_before_purchase) else Decimal("0")
+        stock_kg = max(Decimal("0"), stock_kg - consumed)
+        unit_cost = total_cost / kg if kg > 0 else Decimal("0")
+        avg_cost = unit_cost if stock_kg <= 0 else (stock_kg * avg_cost + kg * unit_cost) / (stock_kg + kg)
+        stock_kg += kg
+    return avg_cost
+
+
+def _feed_consumed_kg_between(db: Session, feed_item_id: int, start_exclusive: date, end_inclusive: date) -> Decimal:
+    """(start_exclusive, end_inclusive] araligindaki (start_exclusive'in
+    KENDISI HARIC - o gun bir onceki araliga zaten dahil edilmisti) gunlerde,
+    bu yem kaleminin TUM padoklardaki toplam tuketimini kg olarak dondurur -
+    bkz. list_feed_stock_status'teki ayni desenin ARALIKLI (start/end ikisi
+    birden) hali."""
+    if start_exclusive >= end_inclusive:
+        return Decimal("0")
+    range_start = start_exclusive + timedelta(days=1)
+    ration_items = (
+        db.scalars(
+            select(RationItem)
+            .join(PenRation)
+            .options(joinedload(RationItem.unit), joinedload(RationItem.scope), joinedload(RationItem.ration))
+            .where(
+                RationItem.feed_item_id == feed_item_id,
+                PenRation.start_date <= end_inclusive,
+                or_(PenRation.end_date.is_(None), PenRation.end_date >= range_start),
+            )
+        )
+        .unique()
+        .all()
+    )
+    total_kg = 0.0
+    pens_seen: dict[int, list[PenAssignment]] = {}
+    for item in ration_items:
+        ration = item.ration
+        overlap_start = max(ration.start_date, range_start)
+        overlap_end = min(ration.end_date or end_inclusive, end_inclusive)
+        if overlap_start > overlap_end:
+            continue
+        if ration.pen_id not in pens_seen:
+            pens_seen.update(_assignments_by_pen(db, {ration.pen_id}))
+        headcounts = _daily_headcounts_scoped(pens_seen[ration.pen_id], overlap_start, overlap_end, item.scope.code)
+        per_animal_kg = _to_kg(item.daily_quantity_per_animal, item.unit.code)
+        total_kg += sum(per_animal_kg * count for count in headcounts.values())
+    return Decimal(str(total_kg))
+
+
+def _feed_avg_cost_per_kg(db: Session, feed_item_id: int, as_of_date: date) -> Decimal | None:
+    """Bir yem kaleminin as_of_date itibariyla HAREKETLI (perpetual)
+    agirlikli ortalama birim maliyeti (TL/kg) - hicbir yerde saklanmaz, HER
+    cagride alim gecmisi + iki alim arasindaki tuketim yeniden gezilerek
+    turetilir (bkz. _blend_feed_moving_average). Hem rasyon/tuketim
+    maliyetinde hem stok degerinde kullanilir (Anayasa m.4: birim fiyat elle
+    girilmez, fatura tutarindan turetilir). Maliyetli hic alim yoksa None
+    doner. NOT: son alimdan as_of_date'e kadarki tuketim burada HESAPLANMAZ
+    - tuketim sadece MIKTARI azaltir, birim FIYATI degistirmez (bir sonraki
+    alima kadar fiyat sabit kalir), miktar zaten ayri yerde (bkz.
+    list_feed_stock_status) hesaplaniyor."""
+    purchases = sorted(
+        db.scalars(
+            select(FeedPurchase)
+            .options(joinedload(FeedPurchase.unit))
+            .where(
+                FeedPurchase.feed_item_id == feed_item_id,
+                FeedPurchase.purchase_date <= as_of_date,
+                FeedPurchase.total_cost.isnot(None),
+            )
+        ).all(),
+        key=lambda p: p.purchase_date,
+    )
+    if not purchases:
+        return None
+    purchase_tuples = [
+        (p.purchase_date, Decimal(str(_to_kg(p.quantity, p.unit.code))), p.total_cost) for p in purchases
+    ]
+    consumed_before: list[Decimal] = []
+    prev_date: date | None = None
+    for purchase_date, _kg, _cost in purchase_tuples:
+        consumed_before.append(
+            Decimal("0") if prev_date is None else _feed_consumed_kg_between(db, feed_item_id, prev_date, purchase_date)
+        )
+        prev_date = purchase_date
+    return _blend_feed_moving_average(purchase_tuples, consumed_before)
 
 
 def _daily_headcounts(assignments: list[PenAssignment], start: date, end: date) -> dict[date, int]:
@@ -2213,6 +2300,15 @@ class _CostContext:
     assignments_by_animal: dict[uuid.UUID, list[PenAssignment]]
     rations_by_pen: dict[int, list[PenRation]]
     purchases_by_feed_item: dict[int, list[FeedPurchase]]
+    # _daily_headcounts_scoped icin - assignments_by_animal'dan FARKLI bir
+    # gruplama (padok bazli), bkz. _feed_consumed_kg_between_ctx.
+    assignments_by_pen: dict[int, list[PenAssignment]] = field(default_factory=dict)
+    # SADECE bu context'in (yani TEK bir rapor isteginin) omru boyunca
+    # yasayan bir onbellek - Anayasa m.4/m.5'i ihlal etmez (kalici
+    # saklanmaz), _feed_avg_cost_per_kg_ctx'in ayni (feed_item_id,
+    # as_of_date) cifti icin COK hayvan/tarih gezen raporlarda tekrar tekrar
+    # cagrilmasi durumunda hareketli ortalamayi yeniden hesaplamamak icin.
+    feed_avg_cost_cache: dict[tuple[int, date], Decimal | None] = field(default_factory=dict)
 
 
 def _build_cost_context(db: Session) -> _CostContext:
@@ -2245,20 +2341,72 @@ def _build_cost_context(db: Session) -> _CostContext:
     for purchase in purchases:
         purchases_by_feed_item.setdefault(purchase.feed_item_id, []).append(purchase)
 
-    return _CostContext(health_events_by_animal, assignments_by_animal, rations_by_pen, purchases_by_feed_item)
+    assignments_by_pen = _assignments_by_pen(db, set(rations_by_pen.keys()))
+
+    return _CostContext(
+        health_events_by_animal, assignments_by_animal, rations_by_pen, purchases_by_feed_item, assignments_by_pen
+    )
+
+
+def _feed_consumed_kg_between_ctx(
+    ctx: _CostContext, feed_item_id: int, start_exclusive: date, end_inclusive: date
+) -> Decimal:
+    """_feed_consumed_kg_between ile ayni hesap, sadece ctx'teki onceden
+    yuklenmis rations_by_pen/assignments_by_pen'den okur (DB sorgusu yok)."""
+    if start_exclusive >= end_inclusive:
+        return Decimal("0")
+    range_start = start_exclusive + timedelta(days=1)
+    total_kg = 0.0
+    for pen_id, rations in ctx.rations_by_pen.items():
+        assignments = ctx.assignments_by_pen.get(pen_id, [])
+        for ration in rations:
+            overlap_start = max(ration.start_date, range_start)
+            overlap_end = min(ration.end_date or end_inclusive, end_inclusive)
+            if overlap_start > overlap_end:
+                continue
+            for item in ration.items:
+                if item.feed_item_id != feed_item_id:
+                    continue
+                headcounts = _daily_headcounts_scoped(assignments, overlap_start, overlap_end, item.scope.code)
+                per_animal_kg = _to_kg(item.daily_quantity_per_animal, item.unit.code)
+                total_kg += sum(per_animal_kg * count for count in headcounts.values())
+    return Decimal(str(total_kg))
 
 
 def _feed_avg_cost_per_kg_ctx(ctx: _CostContext, feed_item_id: int, as_of_date: date) -> Decimal | None:
-    total_cost = Decimal("0")
-    total_kg = Decimal("0")
-    for purchase in ctx.purchases_by_feed_item.get(feed_item_id, []):
-        if purchase.purchase_date > as_of_date:
-            continue
-        total_cost += purchase.total_cost
-        total_kg += Decimal(str(_to_kg(purchase.quantity, purchase.unit.code)))
-    if total_kg == 0:
+    """_feed_avg_cost_per_kg ile MATEMATIKSEL OLARAK AYNI (hareketli
+    agirlikli ortalama, bkz. _blend_feed_moving_average) - sadece onceden
+    yuklenmis _CostContext'ten okur (N+1 sorgu deseninden kacinir) ve ayni
+    (feed_item_id, as_of_date) cifti tekrar istenirse (Hayvan Kârlılık
+    Raporu gibi COK hayvan/tarih gezen raporlarda sik rastlanir) sonucu
+    ctx.feed_avg_cost_cache'ten dondurur, yeniden hesaplamaz."""
+    cache_key = (feed_item_id, as_of_date)
+    if cache_key in ctx.feed_avg_cost_cache:
+        return ctx.feed_avg_cost_cache[cache_key]
+
+    purchases = sorted(
+        (p for p in ctx.purchases_by_feed_item.get(feed_item_id, []) if p.purchase_date <= as_of_date),
+        key=lambda p: p.purchase_date,
+    )
+    if not purchases:
+        ctx.feed_avg_cost_cache[cache_key] = None
         return None
-    return total_cost / total_kg
+
+    purchase_tuples = [
+        (p.purchase_date, Decimal(str(_to_kg(p.quantity, p.unit.code))), p.total_cost) for p in purchases
+    ]
+    consumed_before: list[Decimal] = []
+    prev_date: date | None = None
+    for purchase_date, _kg, _cost in purchase_tuples:
+        consumed_before.append(
+            Decimal("0")
+            if prev_date is None
+            else _feed_consumed_kg_between_ctx(ctx, feed_item_id, prev_date, purchase_date)
+        )
+        prev_date = purchase_date
+    result = _blend_feed_moving_average(purchase_tuples, consumed_before)
+    ctx.feed_avg_cost_cache[cache_key] = result
+    return result
 
 
 def _health_cost_try_usd_ctx(
