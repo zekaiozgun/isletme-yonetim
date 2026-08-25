@@ -495,6 +495,16 @@ class AnimalMarketValueRead(BaseModel):
     # toplanır, bkz. HerdAnimalValueTable.tsx).
     entry_value_try: Decimal | None = None
     entry_value_usd: Decimal | None = None
+    # True: Satin Alma (gercek nakit odendi, entry_value_* bir MALIYET).
+    # False: Dogum (hicbir nakit odenmedi, entry_value_* organik bir
+    # baslangic degerlendirmesi). Sürü özet kutusundaki "Toplam Edinme
+    # Değeri" SADECE is_purchase=True satirlari toplar (bkz.
+    # HerdAnimalValueTable.tsx) - dogan bir buzagi icin "giris degerine
+    # gore ne kadar buyudu" sormak anlamsizdir, cunku netlenecek gercek
+    # bir maliyet yoktur; buzaginin TAMAMI "Toplam Tahmini Piyasa
+    # Degeri"nde (is_purchase filtresi olmadan, TÜM hayvanlar) zaten var,
+    # bu da farki dogru sekilde saf kazanc olarak yansitir.
+    is_purchase: bool
     # "market_estimate" (büyüme çıpalarından interpolasyon) | "cost_basis"
     # (maliyet-bazlı defter değeri) - hangi rakamın gerçek piyasa gözlemine
     # mi yoksa harcama kaydına mı dayandığını gizlemeden gösterir.

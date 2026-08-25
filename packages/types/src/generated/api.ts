@@ -2917,6 +2917,8 @@ export interface components {
             entry_value_try?: string | null;
             /** Entry Value Usd */
             entry_value_usd?: string | null;
+            /** Is Purchase */
+            is_purchase: boolean;
             /** Source Code */
             source_code: string;
             /** Status Code */

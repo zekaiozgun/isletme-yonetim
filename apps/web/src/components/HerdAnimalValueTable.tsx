@@ -30,16 +30,20 @@ export function HerdAnimalValueTable({ rows, asOfDate }: { rows: ApiRecord[]; as
   const grandTotal = useMemo(() => {
     let try_ = 0;
     let usd = 0;
-    // Edinme değeri her hayvanın KENDİ giriş tarihindeki kuruyla gelir
-    // (bkz. reports/service.py entry_value_usd) - entry_value hiç
-    // girilmemiş satırlar (eski/eksik kayıt) toplamdan sessizce dışlanır,
-    // hem TL hem USD tarafında tutarlı kalsın diye.
+    // Edinme değeri SADECE Satın Alma ile giren hayvanları toplar (gerçek
+    // nakit ödendi, entry_value bir MALİYET) - Doğum ile giren bir buzağı
+    // için "kendi giriş anına göre ne kadar büyüdü" sormak anlamsız, çünkü
+    // netlenecek gerçek bir maliyet yok. Buzağının TAMAMI zaten `usd`/`try_`
+    // toplamında (tüm hayvanlar, filtre yok) var - bu da farkı doğru
+    // şekilde saf kazanç olarak yansıtır (bkz. is_purchase, reports/
+    // service.py list_herd_animal_market_values). entry_value hiç
+    // girilmemiş satırlar (eski/eksik kayıt) toplamdan sessizce dışlanır.
     let entryTry = 0;
     let entryUsd = 0;
     for (const row of rows) {
       try_ += Number(row.amount_try ?? 0);
       usd += Number(row.amount_usd ?? 0);
-      if (row.entry_value_try !== null && row.entry_value_try !== undefined) {
+      if (row.is_purchase === true && row.entry_value_try !== null && row.entry_value_try !== undefined) {
         entryTry += Number(row.entry_value_try);
         entryUsd += Number(row.entry_value_usd ?? 0);
       }
@@ -96,9 +100,9 @@ export function HerdAnimalValueTable({ rows, asOfDate }: { rows: ApiRecord[]; as
       <div className="rounded border border-slate-300 bg-slate-100 px-4 py-3.5">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="mb-0.5 text-xs font-medium text-slate-500">Toplam Edinme Değeri</p>
+            <p className="mb-0.5 text-xs font-medium text-slate-500">Toplam Edinme Değeri (Satın Alınanlar)</p>
             <p className="text-[22px] font-semibold leading-tight text-slate-900">{formatUsd(grandTotal.entryUsd)}</p>
-            <p className="mt-0.5 text-xs text-slate-400">{formatCurrency(grandTotal.entryTry)} · her hayvanın kendi kuru</p>
+            <p className="mt-0.5 text-xs text-slate-400">{formatCurrency(grandTotal.entryTry)} · sadece satın alınanlar, kendi kuruyla</p>
           </div>
           <div className="border-l border-slate-300 pl-4">
             <p className="mb-0.5 text-xs font-medium text-slate-500">Toplam Tahmini Piyasa Değeri</p>
@@ -118,7 +122,7 @@ export function HerdAnimalValueTable({ rows, asOfDate }: { rows: ApiRecord[]; as
           </div>
         </div>
         <p className="mt-2.5 border-t border-slate-200 pt-2 text-[11px] text-slate-400">
-          {rows.length} hayvan · dolar bazlı edinme ve güncel değer farkı
+          {rows.length} hayvan · doğan buzağılar Edinme Değeri'ne dahil değil (nakit ödenmedi), tam değerleriyle sadece Güncel değere katkı sağlıyor
         </p>
       </div>
       {selected.size > 0 && (

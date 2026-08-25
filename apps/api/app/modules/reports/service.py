@@ -2974,6 +2974,7 @@ def list_herd_animal_market_values(db: Session, as_of_date: date) -> list[Animal
                 amount_usd=amount_usd,
                 entry_value_try=animal.entry_value,
                 entry_value_usd=entry_value_usd,
+                is_purchase=animal.entry_source.code == PURCHASE_ENTRY_SOURCE_CODE,
                 source_code=source_code,
                 status_code=status_code,
             )
