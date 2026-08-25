@@ -6,7 +6,7 @@ import { formatAgeMixed, formatGenderShort, formatSourceCode, formatValuationSta
 import { formatCurrencyTRY as formatCurrency, formatUsdValue as formatUsd, formatNumberTR, formatDateDMY } from '@/lib/format';
 import { TableSearch } from '@/components/TableSearch';
 import { CsvExportButton } from '@/components/CsvExportButton';
-import { PdfExportButton } from '@/components/PdfExportButton';
+import { PdfExportButton, type PdfSummaryBox } from '@/components/PdfExportButton';
 
 export function HerdAnimalValueTable({ rows, asOfDate }: { rows: ApiRecord[]; asOfDate?: string }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -94,6 +94,25 @@ export function HerdAnimalValueTable({ rows, asOfDate }: { rows: ApiRecord[]; as
   // satırlarına eklenir (bkz. asagida pdfRows).
   const pdfTotalRow = ['TOPLAM (' + rows.length + ' hayvan)', '', '', formatCurrency(grandTotal.try_), formatUsd(grandTotal.usd), '', ''];
   const pdfRows = [...csvRows, pdfTotalRow];
+  // Ekranın üstündeki iki özet kutusuyla BİREBİR AYNI metinler - ayrı bir
+  // hesaplama yapılmaz, sadece PDF'in kendi kutu bileşenine aktarılır.
+  const pdfSummaryBoxes: PdfSummaryBox[] = [
+    {
+      label: 'Toplam Edinme Değeri (Satın Alınanlar)',
+      value: formatUsd(grandTotal.entryUsd),
+      sublabel: `${formatCurrency(grandTotal.entryTry)} · sadece satın alınanlar, kendi kuruyla`,
+    },
+    {
+      label: 'Toplam Tahmini Piyasa Değeri',
+      value: formatUsd(grandTotal.usd),
+      sublabel: `${formatCurrency(grandTotal.try_)} · ${formatDateDMY(asOfDate)} kuru`,
+      badge:
+        deltaPercent !== null
+          ? `${deltaPercent > 0 ? '+' : deltaPercent < 0 ? '-' : ''}%${formatNumberTR(Math.abs(deltaPercent), 1)}`
+          : undefined,
+      badgeNegative: deltaPercent !== null && deltaPercent < 0,
+    },
+  ];
 
   return (
     <div className="space-y-3">
@@ -138,6 +157,7 @@ export function HerdAnimalValueTable({ rows, asOfDate }: { rows: ApiRecord[]; as
           <>
             <PdfExportButton
               title="Sürü Hayvan Listesi - Tahmini Piyasa Değeri"
+              summaryBoxes={pdfSummaryBoxes}
               columns={pdfColumns}
               rows={pdfRows}
               highlightedRows={[pdfRows.length - 1]}

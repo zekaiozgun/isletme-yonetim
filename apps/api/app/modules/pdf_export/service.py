@@ -30,7 +30,7 @@ import html
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from app.modules.pdf_export.schemas import PdfTableRequest
+from app.modules.pdf_export.schemas import PdfSummaryBox, PdfTableRequest
 
 _ISTANBUL = ZoneInfo("Europe/Istanbul")
 
@@ -50,7 +50,32 @@ tbody tr.even { background: #f8fafc; }
 tbody tr.highlight td { background: #fffbeb; color: #78350f; font-weight: 600; }
 td.narrow, th.narrow { white-space: nowrap; padding-left: 2px; padding-right: 2px; }
 td.wide, th.wide { word-wrap: break-word; overflow-wrap: break-word; }
+div.summary-boxes { display: flex; gap: 12px; margin: 8px 0 12px 0; }
+div.summary-box { flex: 1; border: 1px solid #cbd5e1; background: #f1f5f9; border-radius: 4px;
+  padding: 8px 12px; }
+p.summary-label { font-size: 8pt; color: #64748b; margin: 0 0 2px 0; }
+p.summary-value { font-size: 14pt; font-weight: 600; color: #0f172a; margin: 0; display: inline; }
+span.summary-badge { font-size: 8.5pt; font-weight: 600; margin-left: 6px; padding: 1px 6px;
+  border-radius: 999px; }
+span.badge-positive { background: #ecfdf5; color: #047857; }
+span.badge-negative { background: #fef2f2; color: #dc2626; }
+p.summary-sublabel { font-size: 8pt; color: #94a3b8; margin: 2px 0 0 0; }
 """
+
+
+def _summary_box_html(box: PdfSummaryBox) -> str:
+    badge_html = ""
+    if box.badge:
+        badge_class = "badge-negative" if box.badge_negative else "badge-positive"
+        badge_html = f'<span class="summary-badge {badge_class}">{_escape(box.badge)}</span>'
+    sublabel_html = f'<p class="summary-sublabel">{_escape(box.sublabel)}</p>' if box.sublabel else ""
+    return (
+        '<div class="summary-box">'
+        f'<p class="summary-label">{_escape(box.label)}</p>'
+        f'<p class="summary-value">{_escape(box.value)}</p>'
+        f"{badge_html}{sublabel_html}"
+        "</div>"
+    )
 
 
 def _escape(value: object) -> str:
@@ -79,6 +104,11 @@ def render_table_pdf(data: PdfTableRequest) -> bytes:
         body_rows.append(f'<tr class="{" ".join(row_classes)}">{cells}</tr>')
 
     description_html = f'<p class="description">{_escape(data.description)}</p>' if data.description else ""
+    summary_boxes_html = (
+        f'<div class="summary-boxes">{"".join(_summary_box_html(box) for box in data.summary_boxes)}</div>'
+        if data.summary_boxes
+        else ""
+    )
     generated_at = datetime.now(_ISTANBUL).strftime("%d/%m/%Y %H:%M")
     table_class = "full-width" if any(col.width == "wide" for col in data.columns) else ""
 
@@ -90,6 +120,7 @@ def render_table_pdf(data: PdfTableRequest) -> bytes:
         f'<span class="generated-at">Oluşturulma: {generated_at}</span>'
         "</div>"
         f"{description_html}"
+        f"{summary_boxes_html}"
         f'<table class="{table_class}"><thead><tr>{header_cells}</tr></thead>'
         f"<tbody>{''.join(body_rows)}</tbody></table>"
         "</body></html>"

@@ -7,9 +7,22 @@ interface PdfColumn {
   width?: 'narrow' | 'wide';
 }
 
+/** Başlığın altında, tablodan önce gösterilen vurgulu bir özet kutusu (örn.
+ * "Toplam Edinme Değeri") - ekrandaki özet kutularıyla aynı bilgiyi taşır,
+ * değerler zaten formatlanmış metin olarak gelir (PDF'te yeniden hesaplama
+ * yapılmaz). */
+export interface PdfSummaryBox {
+  label: string;
+  value: string;
+  sublabel?: string;
+  badge?: string;
+  badgeNegative?: boolean;
+}
+
 interface PdfExportButtonProps {
   title: string;
   description?: string;
+  summaryBoxes?: PdfSummaryBox[];
   columns: PdfColumn[];
   rows: string[][];
   /** Vurgulanacak (rowHighlight=true olan) satırların 0-tabanlı indeksleri. */
@@ -24,7 +37,7 @@ interface PdfExportButtonProps {
  * /api/render-pdf üzerinden bir istek atar, bu yüzden CSV'nin aksine
  * asenkron bir "Hazırlanıyor…" durumu vardır.
  */
-export function PdfExportButton({ title, description, columns, rows, highlightedRows, filename }: PdfExportButtonProps) {
+export function PdfExportButton({ title, description, summaryBoxes, columns, rows, highlightedRows, filename }: PdfExportButtonProps) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,7 +48,20 @@ export function PdfExportButton({ title, description, columns, rows, highlighted
       const res = await fetch('/api/render-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description, columns, rows, highlighted_rows: highlightedRows ?? [] }),
+        body: JSON.stringify({
+          title,
+          description,
+          summary_boxes: (summaryBoxes ?? []).map((box) => ({
+            label: box.label,
+            value: box.value,
+            sublabel: box.sublabel,
+            badge: box.badge,
+            badge_negative: box.badgeNegative ?? false,
+          })),
+          columns,
+          rows,
+          highlighted_rows: highlightedRows ?? [],
+        }),
       });
       if (!res.ok) {
         setError('PDF oluşturulamadı.');

@@ -4260,12 +4260,39 @@ export interface components {
             /** Width */
             width?: ("narrow" | "wide") | null;
         };
+        /**
+         * PdfSummaryBox
+         * @description Basliğin altinda, tablodan once gosterilen vurgulu bir ozet kutusu
+         *     (orn. 'Toplam Edinme Degeri' / 'Toplam Tahmini Piyasa Degeri') - ekran
+         *     ici HerdAnimalValueTable.tsx ile ayni bilgiyi tasir, PDF'e ozel yeniden
+         *     hesaplama YAPILMAZ, deger zaten formatlanmis metin olarak gelir.
+         */
+        PdfSummaryBox: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
+            /** Sublabel */
+            sublabel?: string | null;
+            /** Badge */
+            badge?: string | null;
+            /**
+             * Badge Negative
+             * @default false
+             */
+            badge_negative: boolean;
+        };
         /** PdfTableRequest */
         PdfTableRequest: {
             /** Title */
             title: string;
             /** Description */
             description?: string | null;
+            /**
+             * Summary Boxes
+             * @default []
+             */
+            summary_boxes: components["schemas"]["PdfSummaryBox"][];
             /** Columns */
             columns: components["schemas"]["PdfColumnSpec"][];
             /** Rows */
