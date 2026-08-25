@@ -73,6 +73,7 @@ export const financialReports: ReportConfig[] = [
     endpoint: '/reports/herd-cost-summary',
     group: 'Mali',
     dateRange: true,
+    defaultRangeDays: 365,
     columns: [
       { key: 'category', label: 'Kalem', width: 'narrow' },
       { key: 'amount_try', label: 'Tutar (TL)', format: formatCurrency, width: 'narrow' },
