@@ -2661,7 +2661,19 @@ def list_herd_cost_summary(db: Session, start_date: date, end_date: date) -> lis
     bkz. financial.ts). Dogumun suru degerine kattigi gercek katki, bu
     raporun degil Suru Kar/Zarar Raporu'nun (piyasa degeri koprusu,
     births_value) isidir - ikisini karistirmamak icin burada TAMAMEN
-    disaridadir (ne maliyet ne gelir olarak sayilir)."""
+    disaridadir (ne maliyet ne gelir olarak sayilir).
+
+    "Net" (satin alma dahil) yaninda ayrica "Operasyonel Net" de doner:
+    satin alma bir SERMAYE/demirbas hareketidir (bkz. kullanici geri
+    bildirimi + proje karari: sigir icin amortisman uygulanmiyor, suru
+    surekli yenileniyor) - yem/saglik gibi TEKRARLANAN bir isletme gideri
+    degildir, ozellikle suru artik kurulduktan sonraki donemlerde disaridan
+    alim ya HIC olmayacak ya da cok az olacaktir. "Net", satin alma dahil
+    TAM resmi korur; "Operasyonel Net" ise sadece TEKRARLANAN nakit
+    kalemlerini (satis geliri - yem - saglik) kiyaslayarak donemler arasi
+    KARSILASTIRILABILIR bir gosterge sunar - bir donemde buyuk bir suru
+    alimi olmasi, o donemin operasyonel performansini yapay sekilde
+    kotu gostermesin diye."""
     feed_try, feed_usd = _feed_cost_for_period(db, start_date, end_date)
     health_try, health_usd = _health_cost_for_period(db, start_date, end_date)
 
@@ -2692,6 +2704,9 @@ def list_herd_cost_summary(db: Session, start_date: date, end_date: date) -> lis
             amount_usd=_round_money(usd_amount),
         )
 
+    operational_cost_try = feed_try + health_try
+    operational_cost_usd = feed_usd + health_usd
+
     return [
         row("Yem Maliyeti", "FEED", feed_try, feed_usd),
         row("Sağlık/Tedavi Maliyeti", "HEALTH", health_try, health_usd),
@@ -2699,6 +2714,12 @@ def list_herd_cost_summary(db: Session, start_date: date, end_date: date) -> lis
         row("Toplam Maliyet", "TOTAL_COST", total_cost_try, total_cost_usd),
         row("Satış Geliri", "REVENUE", revenue_try, revenue_usd),
         row("Net (Gelir - Maliyet)", "NET", revenue_try - total_cost_try, revenue_usd - total_cost_usd),
+        row(
+            "Operasyonel Net (Satın Alma Hariç)",
+            "OPERATIONAL_NET",
+            revenue_try - operational_cost_try,
+            revenue_usd - operational_cost_usd,
+        ),
     ]
 
 

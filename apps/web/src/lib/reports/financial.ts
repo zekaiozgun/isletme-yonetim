@@ -69,7 +69,7 @@ export const financialReports: ReportConfig[] = [
     slug: 'herd-cost-summary',
     title: 'Sürü Genel Maliyet-Gelir Özeti',
     description:
-      'Aralıkta gerçekleşen yem, sağlık ve alım maliyeti ile satış gelirinin TL ve USD (her kalemin kendi tarihindeki TCMB kuruyla) genel özeti - planlama için.',
+      'Aralıkta gerçekleşen yem, sağlık ve alım maliyeti ile satış gelirinin TL ve USD (her kalemin kendi tarihindeki TCMB kuruyla) genel özeti - planlama için. Satın alma bir sermaye/demirbaş hareketidir, yem/sağlık gibi tekrarlanan bir işletme gideri değildir - "Net" satın alma dahil tam resmi korurken, "Operasyonel Net" sadece tekrarlanan kalemleri (satış geliri − yem − sağlık) kıyaslayarak dönemler arası karşılaştırılabilir bir gösterge sunar.',
     endpoint: '/reports/herd-cost-summary',
     group: 'Mali',
     dateRange: true,
@@ -78,7 +78,7 @@ export const financialReports: ReportConfig[] = [
       { key: 'amount_try', label: 'Tutar (TL)', format: formatCurrency, width: 'narrow' },
       { key: 'amount_usd', label: 'Tutar ($)', format: formatUsd, width: 'narrow' },
     ],
-    rowHighlight: (row) => row.category_code === 'NET',
+    rowHighlight: (row) => row.category_code === 'NET' || row.category_code === 'OPERATIONAL_NET',
   },
   {
     slug: 'herd-animal-market-values',
