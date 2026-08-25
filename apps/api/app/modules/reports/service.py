@@ -2648,18 +2648,30 @@ def _health_cost_for_period(db: Session, start_date: date, end_date: date) -> tu
 
 def list_herd_cost_summary(db: Session, start_date: date, end_date: date) -> list[HerdCostSummaryRead]:
     """Belirtilen tarih araliginda GERCEKLESEN (dagitilan/kaydedilen/satilan)
-    tum maliyet ve gelir kalemlerini TL ve USD olarak ozetler - donemsel
-    genel bakis/planlama icindir (Hayvan Kârlılık Raporu'ndaki 'yasam boyu'
-    eslestirmesinden farkli olarak, burada sadece SECILEN DONEMDE olusan
-    tutarlar toplanir)."""
+    tum NAKIT maliyet ve gelir kalemlerini TL ve USD olarak ozetler -
+    donemsel genel bakis/planlama icindir (Hayvan Kârlılık Raporu'ndaki
+    'yasam boyu' eslestirmesinden farkli olarak, burada sadece SECILEN
+    DONEMDE olusan tutarlar toplanir).
+
+    "Giriş Değeri" SADECE Satın Alma ile giren hayvanlari kapsar - bir
+    buzaginin dogumda kaydedilen degeri gercek bir NAKIT cikisi degildir,
+    maliyete yazilirsa (bkz. eski hali) her basarili dogum "Net" rakamini
+    hicbir karsilik olmadan asagi ceker (bu raporun kendi aciklamasi -
+    "yem, saglik VE ALIM maliyeti" - zaten hep sadece alimi kastediyordu,
+    bkz. financial.ts). Dogumun suru degerine kattigi gercek katki, bu
+    raporun degil Suru Kar/Zarar Raporu'nun (piyasa degeri koprusu,
+    births_value) isidir - ikisini karistirmamak icin burada TAMAMEN
+    disaridadir (ne maliyet ne gelir olarak sayilir)."""
     feed_try, feed_usd = _feed_cost_for_period(db, start_date, end_date)
     health_try, health_usd = _health_cost_for_period(db, start_date, end_date)
 
     entry_value_try = entry_value_usd = Decimal("0")
-    entry_value_stmt = select(Animal).where(
+    entry_value_stmt = select(Animal).options(joinedload(Animal.entry_source)).where(
         Animal.entry_date >= start_date, Animal.entry_date <= end_date, Animal.entry_value.isnot(None)
     )
     for animal in db.scalars(entry_value_stmt).all():
+        if animal.entry_source.code != PURCHASE_ENTRY_SOURCE_CODE:
+            continue
         entry_value_try += animal.entry_value
         entry_value_usd += _try_to_usd(db, animal.entry_value, animal.entry_date)
 
@@ -2683,7 +2695,7 @@ def list_herd_cost_summary(db: Session, start_date: date, end_date: date) -> lis
     return [
         row("Yem Maliyeti", "FEED", feed_try, feed_usd),
         row("Sağlık/Tedavi Maliyeti", "HEALTH", health_try, health_usd),
-        row("Giriş Değeri (Alım/Doğum)", "ENTRY_VALUE", entry_value_try, entry_value_usd),
+        row("Giriş Değeri (Satın Alma)", "ENTRY_VALUE", entry_value_try, entry_value_usd),
         row("Toplam Maliyet", "TOTAL_COST", total_cost_try, total_cost_usd),
         row("Satış Geliri", "REVENUE", revenue_try, revenue_usd),
         row("Net (Gelir - Maliyet)", "NET", revenue_try - total_cost_try, revenue_usd - total_cost_usd),
