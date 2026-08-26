@@ -1948,6 +1948,32 @@ def _format_percent_share(value: Decimal) -> str:
     return text
 
 
+def _genetic_composition_text(db: Session, animal_id: uuid.UUID, breed_names: dict[int, str]) -> str:
+    """Bir hayvanin soy agacindan (bkz. animal/service.py
+    get_animal_genetic_composition) turetilen irk karmasini tek bir
+    okunur metinde ozetler - orn. "Angus %25, Hereford %25, Şarole %50,
+    Belirsiz %25". list_genetic_composition (tum suru) ve hayvan profili
+    PDF'i (tek hayvan) arasinda ORTAK - tek bir yerde tanimli."""
+    composition = animal_service.get_animal_genetic_composition(db, animal_id)
+    known_total = sum(composition.values(), Decimal("0"))
+    parts = sorted(composition.items(), key=lambda item: -item[1])
+    text_parts = [f"{breed_names.get(breed_id, '?')} %{_format_percent_share(share)}" for breed_id, share in parts]
+    if known_total < Decimal("100"):
+        text_parts.append(f"Belirsiz %{_format_percent_share(Decimal('100') - known_total)}")
+    return ", ".join(text_parts)
+
+
+def get_animal_genetic_composition_text(db: Session, animal_id: uuid.UUID) -> str | None:
+    """Tek bir hayvan icin _genetic_composition_text - Hayvan Profili gibi
+    tek-hayvanlik sayfalar/PDF'ler icin (bkz. reports/router.py). Hayvan
+    yoksa None doner."""
+    animal = db.get(Animal, animal_id)
+    if animal is None:
+        return None
+    breed_names = {breed.id: breed.name for breed in db.scalars(select(Breed)).all()}
+    return _genetic_composition_text(db, animal_id, breed_names)
+
+
 def list_genetic_composition(db: Session) -> list[GeneticCompositionRead]:
     """Aktif surudeki her hayvanin soy agacindan (bkz. animal/service.py
     get_animal_genetic_composition) turetilen irk karmasini tek bir
@@ -1964,18 +1990,12 @@ def list_genetic_composition(db: Session) -> list[GeneticCompositionRead]:
 
     rows: list[GeneticCompositionRead] = []
     for animal in animals:
-        composition = animal_service.get_animal_genetic_composition(db, animal.id)
-        known_total = sum(composition.values(), Decimal("0"))
-        parts = sorted(composition.items(), key=lambda item: -item[1])
-        text_parts = [f"{breed_names.get(breed_id, '?')} %{_format_percent_share(share)}" for breed_id, share in parts]
-        if known_total < Decimal("100"):
-            text_parts.append(f"Belirsiz %{_format_percent_share(Decimal('100') - known_total)}")
         rows.append(
             GeneticCompositionRead(
                 animal_id=animal.id,
                 tag_number=animal.tag_number,
                 birth_date=animal.birth_date,
-                composition_text=", ".join(text_parts),
+                composition_text=_genetic_composition_text(db, animal.id, breed_names),
             )
         )
     return rows

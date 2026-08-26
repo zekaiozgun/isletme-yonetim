@@ -6,6 +6,12 @@ import { formatValuationStatus, formatSourceCode } from '@/lib/reports';
 import { TrendLineChart, type TrendPoint } from '@/components/TrendLineChart';
 import { PedigreeTree, flattenPedigreeTree } from '@/components/PedigreeTree';
 import { PdfExportButton } from '@/components/PdfExportButton';
+import {
+  AnimalProfilePdfButton,
+  type AnimalProfilePdfData,
+  type PdfKeyValueBox,
+  type PdfSimpleTableData,
+} from '@/components/AnimalProfilePdfButton';
 
 function findName(list: ApiRecord[], id: unknown): string | null {
   const item = list.find((i) => String(i.id) === String(id));
@@ -50,6 +56,7 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
     evaluationReasons,
     evaluationPriorities,
     valuation,
+    geneticComposition,
   ] = await Promise.all([
     apiGetSafe<ApiRecord[]>('/animals/genders', []),
     apiGetSafe<ApiRecord[]>('/animals/breeds', []),
@@ -69,6 +76,7 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
     apiGetSafe<ApiRecord[]>('/evaluations/reasons', []),
     apiGetSafe<ApiRecord[]>('/evaluations/priorities', []),
     apiGetSafe<ApiRecord | null>(`/reports/animal-valuation/${id}`, null),
+    apiGetSafe<{ composition_text: string | null }>(`/animals/${id}/genetic-composition`, { composition_text: null }),
   ]);
 
   // Soy ağacı (3 nesil: anne/baba + anneanne/dede vb.) - tek uç noktadan,
@@ -106,6 +114,134 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
       ? ((Number(valuation.current_value_try) - Number(valuation.entry_value_try)) / Number(valuation.entry_value_try)) * 100
       : null;
 
+  // Sayfadaki verilerin PDF Profili için yeniden şekillendirilmesi -
+  // ekranda gösterilenle AYNI veriler, backend'in genel-amaçlı çok-tablolu
+  // renderer'ının beklediği düz (flat) biçimde (bkz. AnimalProfilePdfButton).
+  const subtitleParts = [genderName, breedName, statusName, formatAgeMixed(animal.age_months, animal)];
+  const metaLineParts = [
+    animal.birth_date ? `Doğum ${formatDateDMY(animal.birth_date)}` : null,
+    `Giriş ${formatDateDMY(animal.entry_date)}`,
+    entrySourceName,
+  ].filter((p): p is string => Boolean(p));
+
+  const pdfInfoBoxes: PdfKeyValueBox[] = [
+    {
+      label: 'Edinme Değeri',
+      value:
+        valuation && valuation.entry_value_try !== null && valuation.entry_value_try !== undefined
+          ? formatCurrencyTRY(valuation.entry_value_try)
+          : '—',
+      sublabel: [
+        valuation && valuation.entry_value_usd !== null && valuation.entry_value_usd !== undefined
+          ? `≈ ${formatUsdValue(valuation.entry_value_usd)}`
+          : null,
+        animal.entry_date ? `${formatDateDMY(animal.entry_date)} kuru` : null,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+    },
+    {
+      label: 'Güncel Tahmini Değer',
+      value: valuation ? formatCurrencyTRY(valuation.current_value_try) : '—',
+      sublabel: [
+        valuation ? `≈ ${formatUsdValue(valuation.current_value_usd)}` : null,
+        valuation
+          ? `${formatValuationStatus(valuation.current_value_status_code)} · ${formatSourceCode(valuation.current_value_source_code)}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      badge:
+        deltaPercent !== null
+          ? `${deltaPercent > 0 ? '+' : deltaPercent < 0 ? '-' : ''}%${formatNumberTR(Math.abs(deltaPercent), 1)}`
+          : undefined,
+      badgeNegative: deltaPercent !== null ? deltaPercent < 0 : false,
+    },
+  ];
+
+  const pdfPedigreeTable: PdfSimpleTableData | null =
+    pedigreeRows.length > 1
+      ? {
+          title: 'Soy Kütüğü',
+          columns: ['Nesil', 'İlişki', 'Küpe No / Kimlik', 'Ad', 'Irk'],
+          rows: pedigreeRows.map((r) => [String(r.generation), r.relation, r.tagNumber, r.name, r.breedName]),
+        }
+      : null;
+
+  const pdfTables: PdfSimpleTableData[] = [];
+  if (damBreedingEvents.length > 0) {
+    pdfTables.push({
+      title: 'Üreme Geçmişi',
+      columns: ['Tohumlama Tarihi', 'Yöntem'],
+      rows: damBreedingEvents
+        .slice()
+        .sort((a, b) => String(b.service_date).localeCompare(String(a.service_date)))
+        .map((b) => [formatDateDMY(b.service_date), findName(serviceMethods, b.service_method_id) ?? '—']),
+    });
+  }
+  pdfTables.push({
+    title: 'Padok Geçmişi',
+    columns: ['Padok', 'Başlangıç', 'Bitiş'],
+    rows: penAssignments
+      .slice()
+      .sort((a, b) => String(b.assigned_date).localeCompare(String(a.assigned_date)))
+      .map((a) => [
+        penMap.get(String(a.pen_id)) ?? `#${String(a.pen_id)}`,
+        formatDateDMY(a.assigned_date),
+        a.removed_date ? formatDateDMY(a.removed_date) : 'Halen',
+      ]),
+  });
+  pdfTables.push({
+    title: 'Sağlık Geçmişi',
+    columns: ['Tarih', 'Olay Tipi', 'Hastalık/Tanı', 'İlaçlar'],
+    rows: healthEvents
+      .slice()
+      .sort((a, b) => String(b.event_date).localeCompare(String(a.event_date)))
+      .map((h) => {
+        const meds = Array.isArray(h.medications) ? (h.medications as ApiRecord[]) : [];
+        const medsText =
+          meds.length === 0
+            ? '—'
+            : meds
+                .map((m) =>
+                  m.dosage_amount !== null && m.dosage_amount !== undefined
+                    ? `${String(m.medication_name)} (${String(m.dosage_amount)}${m.dosage_unit_name ? ' ' + String(m.dosage_unit_name) : ''})`
+                    : String(m.medication_name)
+                )
+                .join(', ');
+        return [
+          formatDateDMY(h.event_date),
+          findName(healthEventTypes, h.event_type_id) ?? '—',
+          findName(diseases, h.disease_id) ?? '—',
+          medsText,
+        ];
+      }),
+  });
+  pdfTables.push({
+    title: 'Değerlendirme Geçmişi',
+    columns: ['Tarih', 'Neden', 'Öncelik', 'Not'],
+    rows: evaluations
+      .slice()
+      .sort((a, b) => String(b.evaluation_date).localeCompare(String(a.evaluation_date)))
+      .map((e) => [
+        formatDateDMY(e.evaluation_date),
+        findName(evaluationReasons, e.reason_id) ?? '—',
+        findName(evaluationPriorities, e.priority_id) ?? '—',
+        e.note ? String(e.note) : '—',
+      ]),
+  });
+
+  const pdfData: AnimalProfilePdfData = {
+    title: `${String(animal.tag_number)}${animal.name ? ` — ${String(animal.name)}` : ''}`,
+    subtitle: subtitleParts.join(' · '),
+    metaLine: metaLineParts.join(' · '),
+    geneticComposition: geneticComposition.composition_text,
+    infoBoxes: pdfInfoBoxes,
+    pedigreeTable: pdfPedigreeTable,
+    weightPoints,
+    tables: pdfTables,
+  };
+
   return (
     <div>
       <div className="mb-4 flex items-center gap-3">
@@ -118,12 +254,15 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
           {String(animal.tag_number)}
           {animal.name ? ` — ${String(animal.name)}` : ''}
         </h1>
-        <Link
-          href={`/animals/${id}`}
-          className="rounded border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          Kaydı Düzenle
-        </Link>
+        <div className="flex items-center gap-2 print:hidden">
+          <AnimalProfilePdfButton data={pdfData} filename={`${String(animal.tag_number)}-profil.pdf`} />
+          <Link
+            href={`/animals/${id}`}
+            className="rounded border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Kaydı Düzenle
+          </Link>
+        </div>
       </div>
 
       <div className="mb-2 flex flex-wrap gap-1.5">

@@ -577,6 +577,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/animals/{animal_id}/genetic-composition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Animal Genetic Composition
+         * @description Anayasa m.4/m.5: irk karmasi hicbir yerde saklanmaz, soy agacindan
+         *     istek aninda turetilir (bkz. reports/service.py
+         *     get_animal_genetic_composition_text) - orn. "Angus %75, Belirsiz %25".
+         */
+        get: operations["get_animal_genetic_composition_animals__animal_id__genetic_composition_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/animals/{animal_id}/cancel-entry": {
         parameters: {
             query?: never;
@@ -2728,6 +2750,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pdf-export/animal-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Export Animal Profile Pdf */
+        post: operations["export_animal_profile_pdf_pdf_export_animal_profile_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -2923,6 +2962,42 @@ export interface components {
             source_code: string;
             /** Status Code */
             status_code: string;
+        };
+        /**
+         * AnimalProfilePdfRequest
+         * @description Tek bir hayvanin TAM profilini (kimlik + degerleme + genetik +
+         *     soy kutugu + kilo trendi + saglik/ureme/padok/degerlendirme gecmisi)
+         *     tek bir PDF belgesinde toplar - HerdAnimalValueTable.tsx'teki
+         *     ozet-kutusu deseniyle AYNI felsefe: butun degerler zaten frontend'de
+         *     formatlanmis metin olarak gelir, PDF tarafinda yeniden hesaplama
+         *     YAPILMAZ (istisna: kilo grafiginin kendisi, gercek sayisal
+         *     koordinatlar gerektirir, bkz. weight_points).
+         */
+        AnimalProfilePdfRequest: {
+            /** Title */
+            title: string;
+            /** Subtitle */
+            subtitle: string;
+            /** Meta Line */
+            meta_line: string;
+            /** Genetic Composition */
+            genetic_composition?: string | null;
+            /**
+             * Info Boxes
+             * @default []
+             */
+            info_boxes: components["schemas"]["PdfSummaryBox"][];
+            pedigree_table?: components["schemas"]["PdfSimpleTable"] | null;
+            /**
+             * Weight Points
+             * @default []
+             */
+            weight_points: components["schemas"]["PdfWeightPoint"][];
+            /**
+             * Tables
+             * @default []
+             */
+            tables: components["schemas"]["PdfSimpleTable"][];
         };
         /** AnimalProfitabilityRead */
         AnimalProfitabilityRead: {
@@ -4261,6 +4336,20 @@ export interface components {
             width?: ("narrow" | "wide") | null;
         };
         /**
+         * PdfSimpleTable
+         * @description Hayvan Profili PDF'indeki kucuk alt tablolardan biri (orn. Saglik
+         *     Gecmisi) - baslik + sutun basliklari + satirlar, PdfTableRequest'in
+         *     kucultulmus hali (ozet kutusu/vurgu yok).
+         */
+        PdfSimpleTable: {
+            /** Title */
+            title: string;
+            /** Columns */
+            columns: string[];
+            /** Rows */
+            rows: string[][];
+        };
+        /**
          * PdfSummaryBox
          * @description Basliğin altinda, tablodan once gosterilen vurgulu bir ozet kutusu
          *     (orn. 'Toplam Edinme Degeri' / 'Toplam Tahmini Piyasa Degeri') - ekran
@@ -4302,6 +4391,18 @@ export interface components {
              * @default []
              */
             highlighted_rows: number[];
+        };
+        /**
+         * PdfWeightPoint
+         * @description Kilo Trend grafiginin TEK bir noktasi - date ISO formatinda (grafik
+         *     x-eksenini tarihe GORE ORANTILI kurmak icin, bkz.
+         *     components/TrendLineChart.tsx ile ayni mantik), value kg cinsinden.
+         */
+        PdfWeightPoint: {
+            /** Date */
+            date: string;
+            /** Value */
+            value: number;
         };
         /**
          * PedigreeNodeRead
@@ -6968,6 +7069,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PedigreeNodeRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_animal_genetic_composition_animals__animal_id__genetic_composition_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                animal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string | null;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -13803,6 +13937,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["PdfTableRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_animal_profile_pdf_pdf_export_animal_profile_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnimalProfilePdfRequest"];
             };
         };
         responses: {

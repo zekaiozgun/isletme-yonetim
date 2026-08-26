@@ -7,6 +7,7 @@ from app.core.database import get_db
 from app.core.exceptions import NotFoundError
 from app.core.lookup_router import build_lookup_router
 from app.modules.animal import service
+from app.modules.reports import service as reports_service
 from app.modules.auth.dependencies import get_current_user, require_admin
 from app.modules.auth.models import User
 from app.modules.animal.lookups import (
@@ -95,6 +96,17 @@ def get_animal_pedigree(
         return service.get_pedigree_tree(db, animal_id, generations)
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/{animal_id}/genetic-composition")
+def get_animal_genetic_composition(animal_id: uuid.UUID, db: Session = Depends(get_db)) -> dict[str, str | None]:
+    """Anayasa m.4/m.5: irk karmasi hicbir yerde saklanmaz, soy agacindan
+    istek aninda turetilir (bkz. reports/service.py
+    get_animal_genetic_composition_text) - orn. "Angus %75, Belirsiz %25"."""
+    text = reports_service.get_animal_genetic_composition_text(db, animal_id)
+    if text is None:
+        raise HTTPException(status_code=404, detail=f"Animal bulunamadi: {animal_id}")
+    return {"composition_text": text}
 
 
 @router.put("/{animal_id}", response_model=AnimalRead)

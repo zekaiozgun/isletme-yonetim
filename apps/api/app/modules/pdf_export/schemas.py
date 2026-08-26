@@ -35,3 +35,41 @@ class PdfTableRequest(BaseModel):
     rows: list[list[str]]
     # Vurgulanacak (rowHighlight=true olan) satirlarin 0-tabanli indeksleri.
     highlighted_rows: list[int] = []
+
+
+class PdfWeightPoint(BaseModel):
+    """Kilo Trend grafiginin TEK bir noktasi - date ISO formatinda (grafik
+    x-eksenini tarihe GORE ORANTILI kurmak icin, bkz.
+    components/TrendLineChart.tsx ile ayni mantik), value kg cinsinden."""
+
+    date: str
+    value: float
+
+
+class PdfSimpleTable(BaseModel):
+    """Hayvan Profili PDF'indeki kucuk alt tablolardan biri (orn. Saglik
+    Gecmisi) - baslik + sutun basliklari + satirlar, PdfTableRequest'in
+    kucultulmus hali (ozet kutusu/vurgu yok)."""
+
+    title: str
+    columns: list[str]
+    rows: list[list[str]]
+
+
+class AnimalProfilePdfRequest(BaseModel):
+    """Tek bir hayvanin TAM profilini (kimlik + degerleme + genetik +
+    soy kutugu + kilo trendi + saglik/ureme/padok/degerlendirme gecmisi)
+    tek bir PDF belgesinde toplar - HerdAnimalValueTable.tsx'teki
+    ozet-kutusu deseniyle AYNI felsefe: butun degerler zaten frontend'de
+    formatlanmis metin olarak gelir, PDF tarafinda yeniden hesaplama
+    YAPILMAZ (istisna: kilo grafiginin kendisi, gercek sayisal
+    koordinatlar gerektirir, bkz. weight_points)."""
+
+    title: str
+    subtitle: str
+    meta_line: str
+    genetic_composition: str | None = None
+    info_boxes: list[PdfSummaryBox] = []
+    pedigree_table: PdfSimpleTable | None = None
+    weight_points: list[PdfWeightPoint] = []
+    tables: list[PdfSimpleTable] = []
