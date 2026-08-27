@@ -15,13 +15,6 @@ export function formatDays(value: unknown): string {
   return `${String(value)} gün`;
 }
 
-/** Birim artık sütun başlığında ("Yaş (ay)") olduğu için hücre sadece
- * sayıyı gösterir. */
-export function formatMonths(value: unknown): string {
-  if (value === null || value === undefined) return '—';
-  return String(value);
-}
-
 export function formatGenderShort(value: unknown): string {
   if (value === 'Dişi') return 'D';
   if (value === 'Erkek') return 'E';

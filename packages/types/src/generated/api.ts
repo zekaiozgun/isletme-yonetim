@@ -2948,6 +2948,8 @@ export interface components {
             age_months?: number | null;
             /** Age Days */
             age_days?: number | null;
+            /** Age Remainder Days */
+            age_remainder_days?: number | null;
             /** Amount Try */
             amount_try: string;
             /** Amount Usd */
@@ -3090,6 +3092,8 @@ export interface components {
             age_months?: number | null;
             /** Age Days */
             age_days?: number | null;
+            /** Age Remainder Days */
+            age_remainder_days?: number | null;
             /** Is Locked */
             is_locked: boolean;
             /**
@@ -3207,6 +3211,10 @@ export interface components {
             birth_date?: string | null;
             /** Age Months */
             age_months?: number | null;
+            /** Age Days */
+            age_days?: number | null;
+            /** Age Remainder Days */
+            age_remainder_days?: number | null;
             /** Reason */
             reason: string;
             /** Reason Code */
@@ -3975,6 +3983,8 @@ export interface components {
             exit_age_months?: number | null;
             /** Exit Age Days */
             exit_age_days?: number | null;
+            /** Exit Age Remainder Days */
+            exit_age_remainder_days?: number | null;
             /** Herd Tenure Days */
             herd_tenure_days?: number | null;
             /** Culling Evaluation Reasons */
@@ -5109,6 +5119,8 @@ export interface components {
             age_months?: number | null;
             /** Age Days */
             age_days?: number | null;
+            /** Age Remainder Days */
+            age_remainder_days?: number | null;
             /** Mother Tag Number */
             mother_tag_number?: string | null;
             /** Father Sire Name */

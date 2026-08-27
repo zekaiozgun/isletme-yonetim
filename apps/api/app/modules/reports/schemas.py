@@ -43,6 +43,7 @@ class HerdExitRead(BaseModel):
     exit_date: date
     exit_age_months: int | None = None
     exit_age_days: int | None = None
+    exit_age_remainder_days: int | None = None
     herd_tenure_days: int | None = None
     # Bu hayvana ait, cikistan ONCE girilmis TUM "Suruden Cikarma" yonlu
     # degerlendirmeler - tarih sirasiyla tek metinde birlestirilir (bkz.
@@ -60,6 +61,8 @@ class BreedingCandidateRead(BaseModel):
     name: str | None = None
     birth_date: date | None = None
     age_months: int | None = None
+    age_days: int | None = None
+    age_remainder_days: int | None = None
     reason: str
     # Makine-okunabilir sabit deger: "candidate_new" | "candidate_postpartum"
     # | "open" - frontend'in gorunum metnine (reason) gore degil buna gore
@@ -401,6 +404,7 @@ class YoungAnimalRead(BaseModel):
     birth_date: date | None = None
     age_months: int | None = None
     age_days: int | None = None
+    age_remainder_days: int | None = None
     mother_tag_number: str | None = None
     father_sire_name: str | None = None
     note: str | None = None
@@ -485,6 +489,7 @@ class AnimalMarketValueRead(BaseModel):
     gender_name: str
     age_months: int | None = None
     age_days: int | None = None
+    age_remainder_days: int | None = None
     amount_try: Decimal
     amount_usd: Decimal
     # Girişteki (alım/doğum) değer - AnimalValuationRead.entry_value_* ile

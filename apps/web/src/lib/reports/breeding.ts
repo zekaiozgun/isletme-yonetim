@@ -1,10 +1,10 @@
 import type { ReportConfig } from './types';
 import {
+  formatAgeMixed,
   formatDate,
   formatDays,
   formatGenderShort,
   formatKg,
-  formatMonths,
   formatParentage,
   formatPercent,
   formatPlain,
@@ -179,7 +179,7 @@ export const breedingReports: ReportConfig[] = [
       'Bir hayvan doğurduğunda (buzağısı sisteme anne bilgisiyle kaydedildiğinde), o hayvan ANINDA "Gebe" statüsünden çıkar - bunun için ayrıca bir işlem yapmanıza gerek yoktur. Doğum yapan TÜM hayvanlar bu listede görünür, ama sebep sütunu ikiye ayrılır: doğumdan sonraki ilk 45 gün boyunca (toparlanma süresi) hayvan "Post Partum" olarak görünür - bu sadece bilgilendirme amaçlıdır, henüz bir aksiyon gerektirmez. 45 gün dolduğunda hayvan otomatik olarak "Tohumlanacak" sebebiyle listede görünmeye devam eder - artık tohumlanmaya hazır demektir. Dashboard\'daki "Tohumlanacak Hayvan" sayacı sadece gerçekten aksiyon gerektirenleri (Post Partum hariç) sayar.',
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
-      { key: 'age_months', label: 'Yaş (ay)', format: formatMonths, width: 'narrow' },
+      { key: 'age_months', label: 'Yaş', format: formatAgeMixed, width: 'narrow' },
       { key: 'reason', label: 'Sebep', width: 'wide' },
       { key: 'last_calving_date', label: 'Son Doğum Tarihi', format: formatDate, width: 'narrow' },
       { key: 'last_service_date', label: 'Son Tohumlama Tarihi', format: formatDate, width: 'narrow' },

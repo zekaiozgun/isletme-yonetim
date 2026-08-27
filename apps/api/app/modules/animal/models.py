@@ -13,7 +13,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
-from app.core.date_utils import full_months_between
+from app.core.date_utils import full_months_between, remaining_days_after_months
 from app.core.orm import TimestampMixin
 
 
@@ -112,3 +112,17 @@ class Animal(TimestampMixin, Base):
             return None
         reference_date = self.status_date or date.today()
         return (reference_date - self.birth_date).days
+
+    @property
+    def age_remainder_days(self) -> int | None:
+        """age_months (TAM takvim ayi) dusuldukten SONRA kalan gun sayisi -
+        "4 ay 17 gun" gibi karma bir yas gosterimi icin (bkz. kullanici
+        geri bildirimi: buzagi yasinda tek basina ay kusurati kaybediyordu).
+        age_months ile AYNI referans tarihi ve AYNI ay tanimini kullanir
+        (bkz. core/date_utils.remaining_days_after_months), boylece ay+gun
+        toplami her zaman reference_date'e tam oturur."""
+        if self.birth_date is None:
+            return None
+        reference_date = self.status_date or date.today()
+        months = full_months_between(self.birth_date, reference_date)
+        return remaining_days_after_months(self.birth_date, reference_date, months)

@@ -56,8 +56,10 @@ const AGE_MONTH_DAY_DISPLAY_THRESHOLD = 2;
  * Ay bazlı yaş küçük hayvanlarda (buzağı) her zaman tam sayıya
  * yuvarlandığından gün/ay küsuratı görünmüyordu - 2 günlük bir buzağı ile
  * 29 günlük bir buzağı ekranda ikisi de "0 ay" görünüyordu (bkz. kullanıcı
- * geri bildirimi). 2 aydan küçükse gerçek gün sayısını, değilse mevcut ay
- * değerini gösterir - olgun hayvanların görünümü değişmez.
+ * geri bildirimi). 2 aydan küçükse gerçek gün sayısını ("23 gün"), değilse
+ * ay + kalan gün küsuratını birleşik gösterir ("4a 17g") - olgun bir "X ay"
+ * gösterimi tek başına kullanılmaz, çünkü 2-6 aylık aralıkta bu kadar
+ * hassasiyet (sütten kesme/aşı takvimi gibi kararlar için) hâlâ önemli.
  *
  * Eşik BİLEREK ay üzerinden (gün üzerinden değil) kuruludur: takvim
  * ayları 28-31 gün arasında değişir (örn. Temmuz+Ağustos = 31+31 gün),
@@ -65,24 +67,30 @@ const AGE_MONTH_DAY_DISPLAY_THRESHOLD = 2;
  * gösterip yanlışlıkla "ay" formatına düşürebiliyordu (gerçek üretim
  * verisiyle görülen kullanıcı geri bildirimi - bkz. Buz-4440-Prolap).
  * age_months zaten tek doğruluk kaynağı (full_months_between) olduğundan
- * karar onun üzerinden verilir, gün sayısı sadece GÖRÜNTÜ değeridir.
+ * karar onun üzerinden verilir; kalan gün de AYNI ay tanımıyla backend'de
+ * türetilir (bkz. core/date_utils.remaining_days_after_months) - burada
+ * "% 30" gibi yaklaşık bir hesap YAPILMAZ, tam o ay uzunluklarıyla tutarlı
+ * kalır.
  */
-function formatAgeFromDaysAndMonths(days: unknown, months: unknown): string {
+function formatAgeFromDaysAndMonths(days: unknown, months: unknown, remainderDays: unknown): string {
   if (typeof months === 'number' && months < AGE_MONTH_DAY_DISPLAY_THRESHOLD && typeof days === 'number') {
     return `${days} gün`;
+  }
+  if (typeof months === 'number' && typeof remainderDays === 'number') {
+    return `${months}a ${remainderDays}g`;
   }
   if (typeof months === 'number') return `${months} ay`;
   return '—';
 }
 
-/** age_days alanı taşıyan satırlar için (bkz. YoungAnimalRead, AnimalRead, AnimalMarketValueRead). */
+/** age_days/age_remainder_days alanları taşıyan satırlar için (bkz. YoungAnimalRead, AnimalRead, AnimalMarketValueRead, BreedingCandidateRead). */
 export function formatAgeMixed(value: unknown, row: Record<string, unknown>): string {
-  return formatAgeFromDaysAndMonths(row.age_days, value);
+  return formatAgeFromDaysAndMonths(row.age_days, value, row.age_remainder_days);
 }
 
-/** exit_age_days alanı taşıyan satırlar için (bkz. HerdExitRead - Sürüden Çıkış Raporu). */
+/** exit_age_days/exit_age_remainder_days alanları taşıyan satırlar için (bkz. HerdExitRead - Sürüden Çıkış Raporu). */
 export function formatExitAgeMixed(value: unknown, row: Record<string, unknown>): string {
-  return formatAgeFromDaysAndMonths(row.exit_age_days, value);
+  return formatAgeFromDaysAndMonths(row.exit_age_days, value, row.exit_age_remainder_days);
 }
 
 /**

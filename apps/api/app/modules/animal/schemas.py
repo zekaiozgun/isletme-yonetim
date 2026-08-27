@@ -54,6 +54,7 @@ class AnimalRead(AnimalBase):
     death_reason_id: int | None = None
     age_months: int | None = None
     age_days: int | None = None
+    age_remainder_days: int | None = None
     is_locked: bool
     created_at: datetime
     updated_at: datetime

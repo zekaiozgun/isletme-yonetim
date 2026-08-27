@@ -23,3 +23,15 @@ def add_months(start: date, months: int) -> date:
     month = month_index % 12 + 1
     day = min(start.day, calendar.monthrange(year, month)[1])
     return date(year, month, day)
+
+
+def remaining_days_after_months(start: date, end: date, months: int) -> int:
+    """full_months_between(start, end) == months TAM ay dusuldukten
+    SONRA kalan gun sayisi - "N ay M gun" gibi karma bir yas gosterimi
+    icin. add_months ile AYNI takvim-ay tanimini kullanir, boylece ay+gun
+    toplami her zaman end tarihine tam oturur (28-31 gunluk ay uzunluk
+    farkliliklarindan kaynaklanan belirsizlik olusmaz - bkz. Buz-4440-
+    Prolap: sabit "30 gun = 1 ay" varsayimi yanlis sonuc vermisti)."""
+    if end < start:
+        return 0
+    return (end - add_months(start, months)).days

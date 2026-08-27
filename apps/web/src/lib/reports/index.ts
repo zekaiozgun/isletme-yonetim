@@ -12,7 +12,6 @@ export type { ReportColumn, ReportConfig } from './types';
 export {
   formatAgeMixed,
   formatGenderShort,
-  formatMonths,
   formatSireIdentity,
   formatSourceCode,
   formatValuationStatus,

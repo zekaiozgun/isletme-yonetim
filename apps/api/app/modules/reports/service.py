@@ -25,7 +25,7 @@ from decimal import Decimal
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, aliased, joinedload
 
-from app.core.date_utils import add_months, full_months_between
+from app.core.date_utils import add_months, full_months_between, remaining_days_after_months
 from app.core.exceptions import NotFoundError
 from app.core.lookup_helpers import get_lookup_by_code
 from app.modules.animal import service as animal_service
@@ -518,12 +518,19 @@ def list_breeding_candidates(db: Session, today: date | None = None) -> list[Bre
             days_open = None
 
         attempt_count = _service_attempt_count(db, animal.id, last_calving_by_dam.get(animal.id))
+        candidate_age_months = full_months_between(animal.birth_date, today) if animal.birth_date else None
         row = BreedingCandidateRead(
             animal_id=animal.id,
             tag_number=animal.tag_number,
             name=animal.name,
             birth_date=animal.birth_date,
-            age_months=full_months_between(animal.birth_date, today) if animal.birth_date else None,
+            age_months=candidate_age_months,
+            age_days=(today - animal.birth_date).days if animal.birth_date else None,
+            age_remainder_days=(
+                remaining_days_after_months(animal.birth_date, today, candidate_age_months)
+                if animal.birth_date and candidate_age_months is not None
+                else None
+            ),
             reason=_BREEDING_CANDIDATE_REASONS[classification.kind],
             reason_code=classification.kind,
             last_calving_date=classification.last_calving_date,
@@ -1895,6 +1902,11 @@ def list_animals_by_status(db: Session, status_ids: list[int] | None = None, tod
                 birth_date=animal.birth_date,
                 age_months=age_months,
                 age_days=(today - animal.birth_date).days if animal.birth_date else None,
+                age_remainder_days=(
+                    remaining_days_after_months(animal.birth_date, today, age_months)
+                    if animal.birth_date and age_months is not None
+                    else None
+                ),
                 mother_tag_number=animal.mother.tag_number if animal.mother else None,
                 father_sire_name=animal.father_sire.name if animal.father_sire else None,
                 note=animal.note,
@@ -1933,6 +1945,9 @@ def _to_young_animal_read(animal: Animal, age_months: int, today: date) -> Young
         birth_date=animal.birth_date,
         age_months=age_months,
         age_days=(today - animal.birth_date).days if animal.birth_date else None,
+        age_remainder_days=(
+            remaining_days_after_months(animal.birth_date, today, age_months) if animal.birth_date else None
+        ),
         mother_tag_number=animal.mother.tag_number if animal.mother else None,
         father_sire_name=animal.father_sire.name if animal.father_sire else None,
         note=animal.note,
@@ -3155,6 +3170,11 @@ def list_herd_animal_market_values(db: Session, as_of_date: date) -> list[Animal
         status_code = _valuation_status_code_ctx(asset_ctx, animal, as_of_date, growth_checkpoints_by_gender)
         age_months = full_months_between(animal.birth_date, as_of_date) if animal.birth_date else None
         age_days = (as_of_date - animal.birth_date).days if animal.birth_date else None
+        age_remainder_days = (
+            remaining_days_after_months(animal.birth_date, as_of_date, age_months)
+            if animal.birth_date and age_months is not None
+            else None
+        )
         # AnimalValuationRead.entry_value_usd ile AYNI mantik (bkz.
         # get_animal_valuation) - GUNCEL degil, animal.entry_date'teki
         # TCMB kuruyla sabit bir referans noktasi.
@@ -3171,6 +3191,7 @@ def list_herd_animal_market_values(db: Session, as_of_date: date) -> list[Animal
                 gender_name=animal.gender.name,
                 age_months=age_months,
                 age_days=age_days,
+                age_remainder_days=age_remainder_days,
                 amount_try=amount_try,
                 amount_usd=amount_usd,
                 entry_value_try=animal.entry_value,
@@ -3528,6 +3549,11 @@ def list_herd_exits(db: Session, start_date: date, end_date: date) -> list[HerdE
         tenure_days = (exit_date - animal.entry_date).days
         exit_age_months = full_months_between(animal.birth_date, exit_date) if animal.birth_date else None
         exit_age_days = (exit_date - animal.birth_date).days if animal.birth_date else None
+        exit_age_remainder_days = (
+            remaining_days_after_months(animal.birth_date, exit_date, exit_age_months)
+            if animal.birth_date and exit_age_months is not None
+            else None
+        )
 
         culling_evals = db.scalars(
             select(AnimalEvaluation)
@@ -3556,6 +3582,7 @@ def list_herd_exits(db: Session, start_date: date, end_date: date) -> list[HerdE
                 exit_date=exit_date,
                 exit_age_months=exit_age_months,
                 exit_age_days=exit_age_days,
+                exit_age_remainder_days=exit_age_remainder_days,
                 herd_tenure_days=tenure_days,
                 culling_evaluation_reasons=reasons_text,
                 last_evaluation_date=last_eval_date,
