@@ -50,16 +50,17 @@ export function formatUsdValue(value: unknown): string {
   return `$${num.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-const AGE_MONTH_DAY_DISPLAY_THRESHOLD = 2;
+const AGE_MONTH_DAY_DISPLAY_THRESHOLD = 1;
 
 /**
  * Ay bazlı yaş küçük hayvanlarda (buzağı) her zaman tam sayıya
  * yuvarlandığından gün/ay küsuratı görünmüyordu - 2 günlük bir buzağı ile
  * 29 günlük bir buzağı ekranda ikisi de "0 ay" görünüyordu (bkz. kullanıcı
- * geri bildirimi). 2 aydan küçükse gerçek gün sayısını ("23 gün"), değilse
- * ay + kalan gün küsuratını birleşik gösterir ("4a 17g") - olgun bir "X ay"
- * gösterimi tek başına kullanılmaz, çünkü 2-6 aylık aralıkta bu kadar
- * hassasiyet (sütten kesme/aşı takvimi gibi kararlar için) hâlâ önemli.
+ * geri bildirimi). 1 aydan küçükse gerçek gün sayısını ("23 gün"), değilse
+ * (1 ay ve üzeri) ay + kalan gün küsuratını birleşik gösterir ("4a 17g") -
+ * olgun bir "X ay" gösterimi tek başına kullanılmaz, çünkü 1-6 aylık
+ * aralıkta bu kadar hassasiyet (sütten kesme/aşı takvimi gibi kararlar
+ * için) hâlâ önemli.
  *
  * Eşik BİLEREK ay üzerinden (gün üzerinden değil) kuruludur: takvim
  * ayları 28-31 gün arasında değişir (örn. Temmuz+Ağustos = 31+31 gün),
