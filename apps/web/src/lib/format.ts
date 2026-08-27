@@ -51,16 +51,21 @@ export function formatUsdValue(value: unknown): string {
 }
 
 const AGE_MONTH_DAY_DISPLAY_THRESHOLD = 1;
+// Büyüme Değerleme Çıpası kategorileriyle (AGE_3/AGE_6/AGE_9/AGE_12 - bkz.
+// valuation/models.py) AYNI üst sınır: 12 ay, hayvanın büyüme eğrisi
+// takibinin bittiği, olgunluğa (Demirbaş) geçtiği noktadır - bu noktadan
+// sonra gün hassasiyetinin (sütten kesme/aşı takvimi gibi) pratik bir
+// kararı etkilemesi beklenmez.
+const AGE_MONTH_DAY_DISPLAY_UPPER_BOUND = 12;
 
 /**
  * Ay bazlı yaş küçük hayvanlarda (buzağı) her zaman tam sayıya
  * yuvarlandığından gün/ay küsuratı görünmüyordu - 2 günlük bir buzağı ile
  * 29 günlük bir buzağı ekranda ikisi de "0 ay" görünüyordu (bkz. kullanıcı
- * geri bildirimi). 1 aydan küçükse gerçek gün sayısını ("23 gün"), değilse
- * (1 ay ve üzeri) ay + kalan gün küsuratını birleşik gösterir ("4a 17g") -
- * olgun bir "X ay" gösterimi tek başına kullanılmaz, çünkü 1-6 aylık
- * aralıkta bu kadar hassasiyet (sütten kesme/aşı takvimi gibi kararlar
- * için) hâlâ önemli.
+ * geri bildirimi). 1 aydan küçükse gerçek gün sayısını ("23 gün"), 1-11 ay
+ * arasında ay + kalan gün küsuratını birleşik gösterir ("4a 17g"), 12 ay
+ * ve üzerinde ise küsuratsız "X ay" gösterimine döner - o noktadan sonra
+ * bu hassasiyetin pratik faydası kalmıyor.
  *
  * Eşik BİLEREK ay üzerinden (gün üzerinden değil) kuruludur: takvim
  * ayları 28-31 gün arasında değişir (örn. Temmuz+Ağustos = 31+31 gün),
@@ -77,7 +82,11 @@ function formatAgeFromDaysAndMonths(days: unknown, months: unknown, remainderDay
   if (typeof months === 'number' && months < AGE_MONTH_DAY_DISPLAY_THRESHOLD && typeof days === 'number') {
     return `${days} gün`;
   }
-  if (typeof months === 'number' && typeof remainderDays === 'number') {
+  if (
+    typeof months === 'number' &&
+    months < AGE_MONTH_DAY_DISPLAY_UPPER_BOUND &&
+    typeof remainderDays === 'number'
+  ) {
     return `${months}a ${remainderDays}g`;
   }
   if (typeof months === 'number') return `${months} ay`;
