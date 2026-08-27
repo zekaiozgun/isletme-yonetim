@@ -29,20 +29,33 @@ jobs:
           # istek sayisi/sikligi artmiyor, sadece UptimeRobot'un kendi
           # cok-bolgeli patlamasiyla cakismamasi icin sıralama degisiyor.
           URL="https://isletme-yonetim.onrender.com/health"
+          # /health web surecinin ayakta oldugunu dogrular ama veritabanina
+          # HIC dokunmaz (bkz. app/main.py) - Neon'un kendi ayri uyku/uyanma
+          # davranisi olabilecegi icin, web sureci "saglikli" dese bile ilk
+          # DB'li istek (orn. /auth/me) hala yavas/basarisiz olabilir. Bu
+          # yuzden /health'ten sonra DB'ye dokunan /fx/warm-cache'i de
+          # (zaten var olan, girissiz bir uc nokta) ayrica dogruluyoruz.
+          DB_WARMUP_URL="https://isletme-yonetim.onrender.com/fx/warm-cache"
           SERVICE_ID="srv-d9f5kggk1i2s73bfsgtg"
 
-          wait_healthy() {
-            local attempts="$1"
+          wait_ok() {
+            local check_url="$1"
+            local attempts="$2"
             local i
             for i in $(seq 1 "$attempts"); do
-              status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$URL" || echo "000")
-              echo "Deneme $i/$attempts: HTTP $status"
+              status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$check_url" || echo "000")
+              echo "Deneme $i/$attempts ($check_url): HTTP $status"
               if [ "$status" = "200" ]; then
                 return 0
               fi
               sleep 30
             done
             return 1
+          }
+
+          wait_healthy() {
+            local attempts="$1"
+            wait_ok "$URL" "$attempts" && wait_ok "$DB_WARMUP_URL" 3
           }
 
           if wait_healthy 12; then

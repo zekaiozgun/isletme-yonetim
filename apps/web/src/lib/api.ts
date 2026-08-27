@@ -21,16 +21,39 @@ export async function getAuthHeader(): Promise<Record<string, string>> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+// Render'in ucretsiz katmanda uykudan uyanma penceresi gibi GECICI
+// durumlarda backend'in dondurdugu statu kodlari - bu kodlarda kisa bir
+// bekleyip yeniden denemek, tum sayfayi (ozellikle (app)/layout.tsx'teki
+// /auth/me gibi her sayfada calisan cagrilari) cokertmek yerine sorunu
+// kullaniciya hic yansitmadan atlatabilir. Diger 4xx/5xx kodlar (401,
+// 404, 422 vb.) gercek/kalici hatalardir, yeniden denenmez.
+const TRANSIENT_STATUS_CODES = new Set([429, 502, 503, 504]);
+const RETRY_DELAYS_MS = [300, 900];
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function apiGet<T>(path: string): Promise<T> {
   const authHeader = await getAuthHeader();
-  const res = await fetch(`${API_URL}${path}`, { cache: 'no-store', headers: authHeader });
-  if (res.status === 401) {
-    redirect('/login');
+  let lastStatus = 0;
+
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+    const res = await fetch(`${API_URL}${path}`, { cache: 'no-store', headers: authHeader });
+    if (res.status === 401) {
+      redirect('/login');
+    }
+    if (res.ok) {
+      return (await res.json()) as T;
+    }
+    lastStatus = res.status;
+    if (!TRANSIENT_STATUS_CODES.has(res.status) || attempt === RETRY_DELAYS_MS.length) {
+      break;
+    }
+    await sleep(RETRY_DELAYS_MS[attempt]);
   }
-  if (!res.ok) {
-    throw new Error(`API isteği başarısız oldu: ${path} (${res.status})`);
-  }
-  return (await res.json()) as T;
+
+  throw new Error(`API isteği başarısız oldu: ${path} (${lastStatus})`);
 }
 
 /** Bir GET isteği başarısız olursa (örn. henüz seed edilmemiş bir lookup) çökmek yerine boş liste döner. */
