@@ -14,26 +14,20 @@ jobs:
     # belirten job'lara acar.
     environment: a
     steps:
-      - name: UptimeRobot monitorunu yeniden baslat
+      - name: Servisi nazikce uyandir, UptimeRobot'u aktive etmeden ONCE saglikli oldugunu dogrula
         run: |
-          response=$(curl -s -X POST https://api.uptimerobot.com/v2/editMonitor \
-            -d "api_key=${{ secrets.UPTIMEROBOT_API_KEY }}" \
-            -d "id=${{ secrets.UPTIMEROBOT_MONITOR_ID }}" \
-            -d "status=1" \
-            -d "format=json")
-          echo "$response"
-          echo "$response" | grep -q '"stat":"ok"' || (echo "UptimeRobot API basarisiz oldu" && exit 1)
-
-      - name: Servisin ayaga kalktigini dogrula, kalkmadiysa Render'dan restart tetikle
-        run: |
-          # Render'in ucretsiz instance'lari hibernate'ten uyanirken bazen
-          # "hibernate-wake-error" ile takilip kalabiliyor - bu durumda pinglerin
-          # devam etmesi yetmiyor, servis elle restart edilene kadar ayaga kalkmiyor
-          # (bkz. 2026-08-24 olayi: ~4.5 saat surdu, UptimeRobot'un ayni anda birden
-          # fazla bolgeden gelen kontrolleri tetikleyici olmus olabilir). Bu adim
-          # normal cold-start'a (Render'a gore 50sn+) yeterince zaman taniyip, o
-          # sureden sonra hala saglik kontrolu gecmiyorsa Render API'siyle restart
-          # dener ve sonucu tekrar dogrular.
+          # UptimeRobot monitoru aktive edilir edilmez genelde birden fazla
+          # bolgeden ES ZAMANLI ilk kontrolu atiyor (bkz. 2026-08-24
+          # "hibernate-wake-error" olayindaki suphe). Servis hala soguk
+          # baslangictaysa, bu patlama tam o sirada gercek bir kullanicinin
+          # attigi paralel isteklerle (bazi SSR sayfalari tek yuklemede
+          # 17+ paralel backend istegi atiyor) cakisip Render'in asiri
+          # eszamanli istegi 429 ile reddetmesine yol acabiliyor (bkz.
+          # 2026-08-27 /auth/me 429 olayi). Bu yuzden monitoru aktive
+          # etmeden ONCE, TEK kaynaktan (bu adimdan), seyrek araliklarla
+          # servisi kendimiz uyandirip saglikli oldugunu dogruluyoruz -
+          # istek sayisi/sikligi artmiyor, sadece UptimeRobot'un kendi
+          # cok-bolgeli patlamasiyla cakismamasi icin sıralama degisiyor.
           URL="https://isletme-yonetim.onrender.com/health"
           SERVICE_ID="srv-d9f5kggk1i2s73bfsgtg"
 
@@ -74,3 +68,18 @@ jobs:
 
           echo "Restart sonrasinda da servis ayaga kalkmadi - manuel mudahale gerekiyor."
           exit 1
+
+      - name: UptimeRobot monitorunu yeniden baslat
+        # Onceki adim basarisiz olsa bile (servis hic ayaga kalkmadiysa)
+        # izlemeyi/alarmlari yine de aktive edelim - is akisinin genel
+        # sonucu yine de "failure" olarak isaretlenir (onceki adim exit 1
+        # dondugu icin), sadece alarm mekanizmasi devre disi kalmaz.
+        if: always()
+        run: |
+          response=$(curl -s -X POST https://api.uptimerobot.com/v2/editMonitor \
+            -d "api_key=${{ secrets.UPTIMEROBOT_API_KEY }}" \
+            -d "id=${{ secrets.UPTIMEROBOT_MONITOR_ID }}" \
+            -d "status=1" \
+            -d "format=json")
+          echo "$response"
+          echo "$response" | grep -q '"stat":"ok"' || (echo "UptimeRobot API basarisiz oldu" && exit 1)
