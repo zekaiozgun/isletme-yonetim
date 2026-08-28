@@ -1,0 +1,76 @@
+name: Saglik Bekcisi - Gun Boyu Otomatik Kurtarma
+
+# Gece-sonu is akisi (uptimerobot-night-resume.yml) SADECE 04:00 TRT'de
+# calisiyor - gun icinde herhangi bir saatte backend VEYA frontend
+# "hibernate-wake-error" turu bir takilmaya girerse (normal soguk
+# baslangictan farkli: kendiliginden duzelmiyor - bkz. 2026-08-24 ~4.5
+# saat, 2026-08-28 ~2-3 saat olaylari) hicbir otomasyon fark etmiyordu,
+# sadece bir kullanicinin fark edip beklemesi/elle restart etmesi
+# gerekiyordu. Bu is akisi, gun boyunca duzenli araliklarla HEM backend
+# HEM frontend'i kontrol edip, gercekten takili kaldiklarini tespit
+# ederse (normal ~60sn'lik soguk baslangictan uzun suren bir
+# basarisizlik) otomatik Render restart tetikler.
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    # Secret'lar repo-level degil, "a" environment'ina bagli eklendi -
+    # GitHub Actions environment-scoped secret'lari sadece bunu ACIKCA
+    # belirten job'lara acar.
+    environment: a
+    steps:
+      - name: Gece duraklama penceresinde atla (uptimerobot-night-pause/resume ile AYNI pencere)
+        id: window
+        run: |
+          # 22:00 UTC (01:00 TRT) - 01:00 UTC (04:00 TRT) arasi, backend
+          # UptimeRobot monitoru zaten duraklatilmis durumda (bkz.
+          # uptimerobot-night-pause.yml). Bu bekci de o pencerede ping
+          # atmaya devam ederse, hem backend'i hem frontend'i suni olarak
+          # uyanik tutup gece-uykusuyla hedeflenen saat tasarrufunu
+          # bosa cikarir - o yuzden bu pencerede TAMAMEN atlanir.
+          hour=$(date -u +%H)
+          if [ "$hour" -ge 22 ] || [ "$hour" -lt 1 ]; then
+            echo "Gece duraklama penceresindeyiz (UTC saat: $hour), bekci atlaniyor."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Backend ve frontend saglik durumunu kontrol et, gercekten takiliysa restart tetikle
+        if: steps.window.outputs.skip != 'true'
+        run: |
+          check_and_heal() {
+            local name="$1"
+            local url="$2"
+            local service_id="$3"
+
+            # Tek basarisiz denemeyle restart TETIKLENMEZ - normal soguk
+            # baslangic da (Render'a gore 50sn+) kisa sureli basarisizlik
+            # uretebilir. 3 deneme, 20sn arayla (~1 dakika toplam) normal
+            # bir soguk baslangici, gercek bir takilmadan ayirt etmeye
+            # yeter (normal baslangic bu sure icinde biter).
+            local attempts=3
+            local i
+            for i in $(seq 1 "$attempts"); do
+              status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$url" || echo "000")
+              echo "[$name] Deneme $i/$attempts: HTTP $status"
+              if [ "$status" = "200" ]; then
+                echo "[$name] saglikli."
+                return 0
+              fi
+              sleep 20
+            done
+
+            echo "[$name] $attempts denemede de saglikli degil (~1 dakikadir erisilemiyor) - Render restart tetikleniyor."
+            restart_status=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+              "https://api.render.com/v1/services/${service_id}/restart" \
+              -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}")
+            echo "[$name] Render restart istegi HTTP $restart_status dondu"
+          }
+
+          check_and_heal "backend" "https://isletme-yonetim.onrender.com/health" "srv-d9f5kggk1i2s73bfsgtg"
+          check_and_heal "frontend" "https://isletme-yonetim-web.onrender.com/login" "srv-d9fmq2f41pts73ei1ol0"
