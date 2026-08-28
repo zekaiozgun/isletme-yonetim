@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { apiGetSafe, type ApiRecord } from '@/lib/api';
+import { apiGet, apiGetSafe, type ApiRecord } from '@/lib/api';
 import { getReport } from '@/lib/reports';
 import { ReportTable } from '@/components/ReportTable';
 import { HerdAnimalValueTable } from '@/components/HerdAnimalValueTable';
@@ -79,7 +79,12 @@ export default async function ReportPage({
   for (const id of selectedStatusIds) query.append('status_ids', String(id));
   if (searchQuery) query.set('q', searchQuery);
   const separator = report.endpoint.includes('?') ? '&' : '?';
-  const rows = await apiGetSafe<ApiRecord[]>(`${report.endpoint}${separator}${query.toString()}`, []);
+  // Bilerek apiGetSafe DEĞİL, apiGet: rapor verisi çekilemezse (backend'e
+  // ulaşılamıyor) bunu "veri bulunamadı" gibi göstermek yanıltıcı olurdu -
+  // hata (app/error.tsx) sınırına düşüp gerçek durumu ("Sunucuya şu anda
+  // ulaşılamıyor") göstersin (bkz. kullanıcı geri bildirimi - 2026-08-28
+  // olayı: bağlantı sorunu boş veriyle karıştırılmıştı).
+  const rows = await apiGet<ApiRecord[]>(`${report.endpoint}${separator}${query.toString()}`);
   const sireRows =
     report.slug === 'parent-performance' ? await apiGetSafe<ApiRecord[]>('/reports/sire-performance', []) : [];
   const feedStockRunwayRows =

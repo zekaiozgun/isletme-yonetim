@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { apiGetSafe, type ApiRecord } from '@/lib/api';
+import { apiGet, apiGetSafe, type ApiRecord } from '@/lib/api';
 import { formatDateDMY } from '@/lib/format';
 import { getResource } from '@/lib/resources';
 import { ResourceTable } from '@/components/ResourceTable';
@@ -30,7 +30,11 @@ export default async function ResourceListPage({
   const query = animalId
     ? `${separator}include_inactive=true&animal_id=${encodeURIComponent(animalId)}`
     : `${separator}include_inactive=true`;
-  const rows = await apiGetSafe<ApiRecord[]>(`${resource.listEndpoint}${query}`, []);
+  // Bilerek apiGetSafe DEGIL, apiGet: liste cekilemezse (backend'e
+  // ulasilamiyor) bunu "kayit yok" gibi gostermek yaniltici olurdu - hata
+  // (app/error.tsx) sinirina dusup gercek durumu gostersin (bkz. reports/
+  // [report]/page.tsx'teki AYNI karar, 2026-08-28 kullanici geri bildirimi).
+  const rows = await apiGet<ApiRecord[]>(`${resource.listEndpoint}${query}`);
 
   // Tartilar listesi tek bir hayvana daraltilmissa (bkz. WeightAnimalFilter),
   // o hayvanin kilo trend grafigini listenin ustunde goster - kullanici
