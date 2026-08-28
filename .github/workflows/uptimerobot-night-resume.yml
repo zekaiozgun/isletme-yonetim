@@ -1,9 +1,13 @@
-name: UptimeRobot - Gece Sonu Baslat (04:00 TRT)
+name: UptimeRobot - Gece Sonu Baslat (06:00 TRT)
 
-# Turkiye UTC+3'te sabit (DST yok) - 04:00 TRT = 01:00 UTC (ayni gun).
+# Turkiye UTC+3'te sabit (DST yok) - 06:00 TRT = 03:00 UTC (ayni gun).
+# 2026-08-28: pencere 01:00-04:00 TRT'den 20:00-06:00 TRT'ye genisletildi
+# (bkz. uptimerobot-night-pause.yml'deki ayni tarihli aciklama - eski
+# pencere TEK BASINA 750 saatlik limite carpip servisleri askiya
+# aldirmisti).
 on:
   schedule:
-    - cron: '0 1 * * *'
+    - cron: '0 3 * * *'
   workflow_dispatch: {}
 
 jobs:

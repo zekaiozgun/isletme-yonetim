@@ -1,9 +1,16 @@
-name: UptimeRobot - Gece Duraklat (01:00 TRT)
+name: UptimeRobot - Gece Duraklat (20:00 TRT)
 
-# Turkiye UTC+3'te sabit (DST yok) - 01:00 TRT = 22:00 UTC (bir onceki gun).
+# Turkiye UTC+3'te sabit (DST yok) - 20:00 TRT = 17:00 UTC (ayni gun).
+# 2026-08-28: pencere 01:00-04:00 TRT'den 20:00-06:00 TRT'ye genisletildi
+# - eski (04:00-01:00 TRT = gunde 21 saat) pencere TEK BASINA 750 saatlik
+# paylasimli ucretsiz katman limitine (~750/30=25 saat/gun butce) ay
+# sonunda carpip servisleri askiya aldirmisti (bkz. o gunku olay). Yeni
+# pencere (06:00-20:00 TRT = gunde 14 saat) ayda ~420 saat tutuyor,
+# guvenli bir marj birakiyor (bkz. health-watchdog.yml - frontend artik
+# AYNI pencerede surekli degil, saatte bir kontrol ediliyor).
 on:
   schedule:
-    - cron: '0 22 * * *'
+    - cron: '0 17 * * *'
   workflow_dispatch: {}
 
 jobs:
