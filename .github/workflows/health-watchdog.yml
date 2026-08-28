@@ -7,7 +7,7 @@ name: Saglik Bekcisi - Gun Boyu Otomatik Kurtarma
 # saat, 2026-08-28 ~2-3 saat olaylari) hicbir otomasyon fark etmiyordu,
 # sadece bir kullanicinin fark edip beklemesi/elle restart etmesi
 # gerekiyordu. Bu is akisi, gun boyunca duzenli araliklarla backend'i
-# (her calismada) ve frontend'i (SAATTE BIR - asagiya bkz.) kontrol
+# (her calismada) ve frontend'i (30 DAKIKADA BIR - asagiya bkz.) kontrol
 # edip, gercekten takili kaldiklarini tespit ederse (normal ~60sn'lik
 # soguk baslangictan uzun suren bir basarisizlik) otomatik Render
 # restart tetikler.
@@ -16,13 +16,14 @@ name: Saglik Bekcisi - Gun Boyu Otomatik Kurtarma
 # ETKINLESTIRILDI, iki onemli degisiklikle: (1) atlama penceresi, yeni
 # 20:00-06:00 TRT gece-duraklama penceresiyle eslesecek sekilde
 # guncellendi; (2) frontend kontrolu artik HER 15 DAKIKADA BIR degil,
-# SAATTE BIR calisiyor - backend zaten UptimeRobot tarafindan surekli
-# uyanik tutuldugu icin backend kontrolunun ek maliyeti yok (mevcut
-# uyanik duruma "biniyor"), ama frontend'i her 15 dakikada bir yoklamak
-# onu SUREKLI uyanik tutup (750 saatlik paylasimli ucretsiz katman
-# butcesini) tek basina asmaya yetiyordu - saatte bir yoklama, kontroller
-# arasinda dogal olarak uykuya donmesine izin verir, sadece kisa bir
-# "yoklama + ~15dk" maliyeti ekler.
+# 30 DAKIKADA BIR calisiyor - backend zaten UptimeRobot tarafindan
+# surekli uyanik tutuldugu icin backend kontrolunun ek maliyeti yok
+# (mevcut uyanik duruma "biniyor"), ama frontend'i her 15 dakikada bir
+# yoklamak onu SUREKLI uyanik tutup (750 saatlik paylasimli ucretsiz
+# katman butcesini) tek basina asmaya yetiyordu - 30 dakikada bir
+# yoklama, kontroller arasinda kismen uykuya donmesine izin verir
+# (tahmini ~210 saat/ay ek maliyet, backend'in ~420 saatiyle toplam
+# ~630 saat/ay - 750 saatlik siniin altinda guvenli bir marj).
 on:
   schedule:
     - cron: '*/15 * * * *'
@@ -52,13 +53,14 @@ jobs:
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
-          # Saatin ilk 15-dakikalik dilimindeysek (dakika < 15) bu, o
-          # saatin "ilk" calismasi sayilir - frontend kontrolu SADECE bu
-          # calismada yapilir (yaklasik saatte bir), 15/30/45. dakika
-          # calismalarinda atlanir. Backend her calismada kontrol edilir
-          # (ek maliyeti yok - bkz. yukaridaki aciklama).
+          # :00 ve :30 calismalarinda (yaklasik 30 dakikada bir) frontend
+          # kontrol edilir, :15/:45 calismalarinda atlanir - saatte bire
+          # kiyasla iki kat daha hizli takilma tespiti (~30dk), ek
+          # maliyeti hala guvenli marjda (~210 saat/ay, bkz. commit
+          # mesaji). Backend her calismada kontrol edilir (ek maliyeti
+          # yok - bkz. yukaridaki aciklama).
           minute=$(date -u +%M)
-          if [ "$minute" -lt 15 ]; then
+          if [ "$((minute % 30))" -lt 15 ]; then
             echo "check_frontend=true" >> "$GITHUB_OUTPUT"
           else
             echo "check_frontend=false" >> "$GITHUB_OUTPUT"
