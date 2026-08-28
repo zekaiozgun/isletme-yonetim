@@ -10,9 +10,15 @@ name: Saglik Bekcisi - Gun Boyu Otomatik Kurtarma
 # HEM frontend'i kontrol edip, gercekten takili kaldiklarini tespit
 # ederse (normal ~60sn'lik soguk baslangictan uzun suren bir
 # basarisizlik) otomatik Render restart tetikler.
+# GECICI OLARAK DEVRE DISI (2026-08-28): "This service has been
+# suspended" mesaji goruldu - bu bekcinin frontend'i de backend gibi
+# gun boyu suni olarak uyanik tutmasi (750 saatlik paylasimli ucretsiz
+# katman limitini asmis olabilir) supheli. Kok neden netlesip guvenli
+# bir sıklık/pencere belirlenene kadar zamanlanmis calisma KAPALI -
+# sadece elle (workflow_dispatch) tetiklenebilir.
 on:
-  schedule:
-    - cron: '*/15 * * * *'
+  # schedule:
+  #   - cron: '*/15 * * * *'
   workflow_dispatch: {}
 
 jobs:
