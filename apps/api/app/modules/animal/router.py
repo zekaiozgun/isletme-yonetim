@@ -43,9 +43,14 @@ def create_animal(
 
 @router.get("", response_model=list[AnimalRead])
 def list_animals(
-    status_id: int | None = None, is_registered_sire: bool = False, db: Session = Depends(get_db)
+    status_id: int | None = None,
+    is_registered_sire: bool = False,
+    is_sire_candidate: bool = False,
+    db: Session = Depends(get_db),
 ) -> list[AnimalRead]:
-    return service.list_animals(db, status_id=status_id, is_registered_sire=is_registered_sire)
+    return service.list_animals(
+        db, status_id=status_id, is_registered_sire=is_registered_sire, is_sire_candidate=is_sire_candidate
+    )
 
 
 # Master Data listeleri (Anayasa m.6): arayuz dropdown'lari bunlardan beslenir.

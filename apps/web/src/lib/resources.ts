@@ -134,6 +134,14 @@ const registeredSires: OptionSource = {
   endpoint: '/animals?is_registered_sire=true',
   label: (a) => `${String(a.tag_number)}${a.name ? ' - ' + String(a.name) : ''}`,
 };
+// Boga KAYDI olustururken "Sürüdeki Hayvan" secimi icin - HENUZ boga
+// olarak kayitli degil, sadece aday olabilecek (Erkek + Aktif + 9 ay ve
+// uzeri) hayvanlar (bkz. kullanici geri bildirimi: bu alan da onceden
+// TUM hayvanlari (disi/buzagi/satilmis dahil) gosteriyordu).
+const sireCandidateAnimals: OptionSource = {
+  endpoint: '/animals?is_sire_candidate=true',
+  label: (a) => `${String(a.tag_number)}${a.name ? ' - ' + String(a.name) : ''}`,
+};
 const pens: OptionSource = { endpoint: '/pens', label: (p) => `${String(p.code)} - ${String(p.name)}` };
 const sires: OptionSource = { endpoint: '/genetic-resource/sires', label: label('name') };
 const semenBatches: OptionSource = {
@@ -271,7 +279,7 @@ const mainResources: ResourceConfig[] = [
       { name: 'name', label: 'Ad', type: 'text', required: true },
       { name: 'registry_no', label: 'Tescil No', type: 'text' },
       { name: 'breed_id', label: 'Irk', type: 'select', options: breeds, required: true },
-      { name: 'animal_id', label: 'Sürüdeki Hayvan (varsa)', type: 'select', options: animals },
+      { name: 'animal_id', label: 'Sürüdeki Hayvan (varsa)', type: 'select', options: sireCandidateAnimals },
       { name: 'is_external', label: 'Dış Kaynak (İşletme Dışı)', type: 'checkbox', defaultValue: 'true' },
       { name: 'known_sire_registry_no', label: 'Dış Kaynaklıysa: Bilinen Babasının Kimlik/Tescil No', type: 'text' },
       { name: 'known_sire_name', label: 'Dış Kaynaklıysa: Bilinen Babasının Adı', type: 'text' },

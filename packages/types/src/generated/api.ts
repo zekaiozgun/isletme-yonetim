@@ -5443,6 +5443,7 @@ export interface operations {
             query?: {
                 status_id?: number | null;
                 is_registered_sire?: boolean;
+                is_sire_candidate?: boolean;
             };
             header?: never;
             path?: never;

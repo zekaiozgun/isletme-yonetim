@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import ConflictError, NotFoundError
 from app.core.lookup_helpers import get_lookup_by_code
 from app.core.validators import require_date_order
-from app.modules.animal.lookups import AnimalStatus
+from app.modules.animal.lookups import AnimalStatus, Gender
 from app.modules.animal.models import Animal
 from app.modules.animal.schemas import AnimalCreate, PedigreeNodeRead
 from app.modules.auth.schemas import Role
@@ -25,6 +25,13 @@ DEFAULT_PEDIGREE_GENERATIONS = 4
 
 ACTIVE_STATUS_CODE = "AKTIF"
 CANCELLED_ENTRY_STATUS_CODE = "HATALI_GIRIS"
+MALE_GENDER_CODE = "ERKEK"
+# Boga KAYDI olustururken "Sürüdeki Hayvan" adayi olarak gosterilecek en
+# kucuk yas - fiili asimda kullanilan esikten (MIN_SIRE_BREEDING_AGE_MONTHS,
+# 11 ay - bkz. breeding/service.py) BILEREK biraz daha erken: genc bir
+# adayi henuz asima hazir olmadan once kayit altina almaya izin verir
+# (bkz. kullanici geri bildirimi).
+MIN_SIRE_CANDIDATE_AGE_MONTHS = 9
 
 
 def get_animal_exit_date(db: Session, animal_id: uuid.UUID) -> date | None:
@@ -125,7 +132,12 @@ def delete_animal(db: Session, animal_id: uuid.UUID) -> None:
         raise ConflictError("Bu hayvan başka kayıtlar (tartı, sağlık, satış, soy vb.) tarafından kullanıldığı için silinemez.") from exc
 
 
-def list_animals(db: Session, status_id: int | None = None, is_registered_sire: bool = False) -> list[Animal]:
+def list_animals(
+    db: Session,
+    status_id: int | None = None,
+    is_registered_sire: bool = False,
+    is_sire_candidate: bool = False,
+) -> list[Animal]:
     """is_registered_sire=True: sadece Genetik Kaynak katalogunda BOGA
     olarak KAYITLI (Sire.animal_id ile suruye baglanmis) VE halen Aktif
     olan hayvanlari doner - dogal asim formundaki "Boga" secimi icin
@@ -133,14 +145,29 @@ def list_animals(db: Session, status_id: int | None = None, is_registered_sire: 
     olarak isaretledigi hayvanlar - bkz. kullanici geri bildirimi).
     Aktif filtresi buraya GOMULUDUR (ayri bir status_id parametresi
     beklemez) - bu listenin tanimi zaten "su an fiilen kullanilabilir
-    boga" oldugu icin."""
+    boga" oldugu icin.
+
+    is_sire_candidate=True: Boga KAYDI OLUSTURURKEN "Sürüdeki Hayvan"
+    secimi icin - HENUZ boga olarak kayitli DEGIL, sadece aday olabilecek
+    (Erkek + Aktif + en az MIN_SIRE_CANDIDATE_AGE_MONTHS yasinda)
+    hayvanlar (bkz. kullanici geri bildirimi: bu alan da onceden
+    filtrelenmemis TUM hayvanlari gosteriyordu). age_months turetilen bir
+    ozellik oldugundan (Anayasa m.4/m.5) SQL'de degil, cekildikten sonra
+    Python'da filtrelenir."""
     stmt = select(Animal)
     if status_id is not None:
         stmt = stmt.where(Animal.status_id == status_id)
     if is_registered_sire:
         active_status = get_lookup_by_code(db, AnimalStatus, ACTIVE_STATUS_CODE)
         stmt = stmt.join(Sire, Sire.animal_id == Animal.id).where(Animal.status_id == active_status.id)
-    return list(db.scalars(stmt.order_by(Animal.birth_date, Animal.tag_number)).all())
+    if is_sire_candidate:
+        male_gender = get_lookup_by_code(db, Gender, MALE_GENDER_CODE)
+        active_status = get_lookup_by_code(db, AnimalStatus, ACTIVE_STATUS_CODE)
+        stmt = stmt.where(Animal.gender_id == male_gender.id, Animal.status_id == active_status.id)
+    animals = list(db.scalars(stmt.order_by(Animal.birth_date, Animal.tag_number)).all())
+    if is_sire_candidate:
+        animals = [a for a in animals if (a.age_months or 0) >= MIN_SIRE_CANDIDATE_AGE_MONTHS]
+    return animals
 
 
 def _known_ancestor_node(registry_no: str | None, name: str | None) -> PedigreeNodeRead | None:
