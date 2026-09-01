@@ -1,16 +1,19 @@
-name: UptimeRobot - Gece Duraklat (20:00 TRT)
+name: UptimeRobot - Gece Duraklat (01:00 TRT)
 
-# Turkiye UTC+3'te sabit (DST yok) - 20:00 TRT = 17:00 UTC (ayni gun).
-# 2026-08-28: pencere 01:00-04:00 TRT'den 20:00-06:00 TRT'ye genisletildi
-# - eski (04:00-01:00 TRT = gunde 21 saat) pencere TEK BASINA 750 saatlik
-# paylasimli ucretsiz katman limitine (~750/30=25 saat/gun butce) ay
-# sonunda carpip servisleri askiya aldirmisti (bkz. o gunku olay). Yeni
-# pencere (06:00-20:00 TRT = gunde 14 saat) ayda ~420 saat tutuyor,
-# guvenli bir marj birakiyor (bkz. health-watchdog.yml - frontend artik
-# AYNI pencerede surekli degil, saatte bir kontrol ediliyor).
+# Turkiye UTC+3'te sabit (DST yok) - 01:00 TRT = 22:00 UTC (bir onceki gun).
+# 2026-08-28: pencere 01:00-04:00 TRT'den 20:00-06:00 TRT'ye (gunde 14
+# saat) daraltilmisti - eski genis pencere (04:00-01:00 TRT = gunde 21
+# saat) frontend'in DE Render'da surekli uyanik tutulmasiyla BIRLIKTE
+# 750 saatlik paylasimli ucretsiz katman limitini asip servisleri askiya
+# aldirmisti (bkz. o gunku olay).
+# 2026-09-01: frontend artik Render'da DEGIL, Vercel'de (bkz.
+# health-watchdog.yml) - butceyi artik SADECE backend kullaniyor, bu
+# yuzden pencere guvenle eski genis haline (04:00-01:00 TRT, gunde 21
+# saat) geri dondu. Backend tek basina ayda ~638 saat tutuyor, 750
+# saatlik sinirin ~112 saat altinda guvenli bir marj birakiyor.
 on:
   schedule:
-    - cron: '0 17 * * *'
+    - cron: '0 22 * * *'
   workflow_dispatch: {}
 
 jobs:

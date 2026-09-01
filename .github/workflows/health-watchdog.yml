@@ -1,6 +1,6 @@
 name: Saglik Bekcisi - Gun Boyu Otomatik Kurtarma
 
-# Gece-sonu is akisi (uptimerobot-night-resume.yml) SADECE 06:00 TRT'de
+# Gece-sonu is akisi (uptimerobot-night-resume.yml) SADECE 04:00 TRT'de
 # calisiyor - gun icinde herhangi bir saatte backend "hibernate-wake-
 # error" turu bir takilmaya girerse (normal soguk baslangictan farkli:
 # kendiliginden duzelmiyor - bkz. 2026-08-24 ~4.5 saat, 2026-08-28 ~2-3
@@ -16,8 +16,9 @@ name: Saglik Bekcisi - Gun Boyu Otomatik Kurtarma
 # saatlik paylasimli ucretsiz katman butcesini tek basina asmaya
 # yetiyordu (bkz. 2026-08-28 "This service has been suspended" olayi) -
 # Vercel'in kendi (Render'dan bagimsiz) ucretsiz katmani bu sorunu
-# tamamen ortadan kaldiriyor. Artik butce SADECE backend'e ayrilabiliyor
-# (~425 saat/ay, 750 saatlik sinirin cok altinda, genis bir marj).
+# tamamen ortadan kaldiriyor. Butce artik SADECE backend'e ayriliyor, bu
+# yuzden gece-duraklama penceresi de (asagida) eski genis haline
+# (04:00-01:00 TRT, gunde 21 saat, ayda ~638 saat) geri dondu.
 on:
   schedule:
     - cron: '*/5 * * * *'
@@ -34,14 +35,14 @@ jobs:
       - name: Gece duraklama penceresinde atla (uptimerobot-night-pause/resume ile AYNI pencere)
         id: window
         run: |
-          # 17:00 UTC (20:00 TRT) - 03:00 UTC (06:00 TRT) arasi, backend
+          # 22:00 UTC (01:00 TRT) - 01:00 UTC (04:00 TRT) arasi, backend
           # UptimeRobot monitoru zaten duraklatilmis durumda (bkz.
           # uptimerobot-night-pause.yml). Bu bekci de o pencerede ping
           # atmaya devam ederse, backend'i suni olarak uyanik tutup
           # gece-uykusuyla hedeflenen saat tasarrufunu bosa cikarir - o
           # yuzden bu pencerede TAMAMEN atlanir.
           hour=$(date -u +%H)
-          if [ "$hour" -ge 17 ] || [ "$hour" -lt 3 ]; then
+          if [ "$hour" -ge 22 ] || [ "$hour" -lt 1 ]; then
             echo "Gece duraklama penceresindeyiz (UTC saat: $hour), bekci atlaniyor."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
