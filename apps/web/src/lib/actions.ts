@@ -503,8 +503,8 @@ export interface InbreedingCheckResult {
   commonAncestorNames: string[];
 }
 
-/** Aşım Kaydı formundaki "Akrabalık Kontrolü" yardımcı aracı için (bkz.
- * components/InbreedingCheckWidget.tsx) - aynı sebeple (apiGet cookie
+/** Aşım Kaydı formunun Kaydet anında çalışan akrabalık kontrolü için
+ * (bkz. components/BreedingEventForm.tsx) - aynı sebeple (apiGet cookie
  * gerektirir) sadece bu Server Action üzerinden erişilir. */
 export async function checkInbreedingAction(
   damId: string | null,

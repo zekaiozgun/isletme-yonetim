@@ -6,8 +6,8 @@ import { loadFormOptions } from '@/lib/formOptions';
 import { getResource, getRelatedLookups } from '@/lib/resources';
 import { ResourceForm } from '@/components/ResourceForm';
 import { HealthEventForm } from '@/components/HealthEventForm';
+import { BreedingEventForm } from '@/components/BreedingEventForm';
 import { RelatedLookupsBar } from '@/components/RelatedLookupsBar';
-import { InbreedingCheckWidget } from '@/components/InbreedingCheckWidget';
 
 interface MeResponse {
   role: 'YONETICI' | 'CALISAN';
@@ -88,22 +88,26 @@ export default async function NewResourcePage({ params }: { params: Promise<{ re
           Bu kayıt, onayladıktan sonra sizin tarafınızdan değiştirilemez veya silinemez. Bilgileri dikkatle girin.
         </p>
       )}
-      {slug === 'breeding-events' && (
-        <InbreedingCheckWidget
-          animals={options['/animals'] ?? []}
-          sireAnimals={options['/animals'] ?? []}
-          semenBatches={options['/genetic-resource/semen-batches'] ?? []}
+      {slug === 'breeding-events' ? (
+        <BreedingEventForm
+          fields={clientFields}
+          options={options}
+          action={action}
+          submitLabel={`${resource.singularTitle} Ekle`}
+          warningField={warningField}
+          redirectTo={`/${resource.slug}`}
+        />
+      ) : (
+        <ResourceForm
+          fields={clientFields}
+          options={options}
+          action={action}
+          submitLabel={`${resource.singularTitle} Ekle`}
+          requireConfirmation={requireConfirmation}
+          warningField={warningField}
+          redirectTo={`/${resource.slug}`}
         />
       )}
-      <ResourceForm
-        fields={clientFields}
-        options={options}
-        action={action}
-        submitLabel={`${resource.singularTitle} Ekle`}
-        requireConfirmation={requireConfirmation}
-        warningField={warningField}
-        redirectTo={`/${resource.slug}`}
-      />
     </div>
   );
 }
