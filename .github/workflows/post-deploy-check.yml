@@ -32,9 +32,11 @@ jobs:
           exit 1
 
       - name: Frontend giriş sayfası kontrol et
+        # 2026-09-01: frontend artik Render'da degil, Vercel'de (bkz.
+        # health-watchdog.yml'deki ayni tarihli aciklama).
         run: |
           for i in $(seq 1 10); do
-            body=$(curl -sf --max-time 10 https://isletme-yonetim-web.onrender.com/login || true)
+            body=$(curl -sf --max-time 10 https://isletme-yonetim-web.vercel.app/login || true)
             if echo "$body" | grep -q "Giriş Yap"; then
               echo "Frontend OK (deneme $i)"
               exit 0

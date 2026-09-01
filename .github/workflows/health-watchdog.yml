@@ -1,36 +1,24 @@
 name: Saglik Bekcisi - Gun Boyu Otomatik Kurtarma
 
 # Gece-sonu is akisi (uptimerobot-night-resume.yml) SADECE 06:00 TRT'de
-# calisiyor - gun icinde herhangi bir saatte backend VEYA frontend
-# "hibernate-wake-error" turu bir takilmaya girerse (normal soguk
-# baslangictan farkli: kendiliginden duzelmiyor - bkz. 2026-08-24 ~4.5
-# saat, 2026-08-28 ~2-3 saat olaylari) hicbir otomasyon fark etmiyordu,
-# sadece bir kullanicinin fark edip beklemesi/elle restart etmesi
-# gerekiyordu. Bu is akisi, gun boyunca duzenli araliklarla backend'i
-# (her calismada) ve frontend'i (25 DAKIKADA BIR - asagiya bkz.) kontrol
-# edip, gercekten takili kaldiklarini tespit ederse (normal ~60sn'lik
-# soguk baslangictan uzun suren bir basarisizlik) otomatik Render
-# restart tetikler.
+# calisiyor - gun icinde herhangi bir saatte backend "hibernate-wake-
+# error" turu bir takilmaya girerse (normal soguk baslangictan farkli:
+# kendiliginden duzelmiyor - bkz. 2026-08-24 ~4.5 saat, 2026-08-28 ~2-3
+# saat olaylari) hicbir otomasyon fark etmiyordu, sadece bir kullanicinin
+# fark edip beklemesi/elle restart etmesi gerekiyordu. Bu is akisi, gun
+# boyunca her calismada backend'i kontrol edip gercekten takili kaldigini
+# tespit ederse (normal ~60sn'lik soguk baslangictan uzun suren bir
+# basarisizlik) otomatik Render restart tetikler.
 #
-# 2026-08-28: "This service has been suspended" olayindan sonra YENIDEN
-# ETKINLESTIRILDI, iki onemli degisiklikle: (1) atlama penceresi, yeni
-# 20:00-06:00 TRT gece-duraklama penceresiyle eslesecek sekilde
-# guncellendi; (2) frontend kontrolu artik HER 15 DAKIKADA BIR degil,
-# 25 DAKIKADA BIR calisiyor - backend zaten UptimeRobot tarafindan
-# surekli uyanik tutuldugu icin backend kontrolunun ek maliyeti yok
-# (mevcut uyanik duruma "biniyor"), ama frontend'i her 15 dakikada bir
-# yoklamak onu SUREKLI uyanik tutup (750 saatlik paylasimli ucretsiz
-# katman butcesini) tek basina asmaya yetiyordu (bkz. tam bu yuzden
-# askiya alinan 2026-08-28 olayi) - 25 dakikada bir yoklama, kontroller
-# arasinda kismen uykuya donmesine izin verir (tahmini ~255 saat/ay ek
-# maliyet, backend'in ~425 saatiyle toplam ~680 saat/ay - 750 saatlik
-# sinirin altinda ~70 saatlik guvenli bir marj).
+# 2026-09-01: Frontend artik Render'da DEGIL, Vercel'de calisiyor (bkz.
+# apps/web deploy hedefi) - bu yuzden frontend kontrolu TAMAMEN
+# kaldirildi. Onceki halinde frontend'i 25 dakikada bir yoklamak, 750
+# saatlik paylasimli ucretsiz katman butcesini tek basina asmaya
+# yetiyordu (bkz. 2026-08-28 "This service has been suspended" olayi) -
+# Vercel'in kendi (Render'dan bagimsiz) ucretsiz katmani bu sorunu
+# tamamen ortadan kaldiriyor. Artik butce SADECE backend'e ayrilabiliyor
+# (~425 saat/ay, 750 saatlik sinirin cok altinda, genis bir marj).
 on:
-  # 25, 60'a tam bolunmedigi icin (60/25 tam sayi degil) "dakika % 25"
-  # gibi basit bir kontrol saat sinirlarinda DUZENSIZ araliklar
-  # uretirdi (bkz. asagidaki gun-basi-itibariyle-toplam-dakika mantigi,
-  # bu duzensizligi onlemek icin) - bu yuzden cron 15 yerine 5 dakikada
-  # bir calisiyor (25, 5'in kati oldugu icin dogru hizalanir).
   schedule:
     - cron: '*/5 * * * *'
   workflow_dispatch: {}
@@ -49,34 +37,15 @@ jobs:
           # 17:00 UTC (20:00 TRT) - 03:00 UTC (06:00 TRT) arasi, backend
           # UptimeRobot monitoru zaten duraklatilmis durumda (bkz.
           # uptimerobot-night-pause.yml). Bu bekci de o pencerede ping
-          # atmaya devam ederse, hem backend'i hem frontend'i suni olarak
-          # uyanik tutup gece-uykusuyla hedeflenen saat tasarrufunu
-          # bosa cikarir - o yuzden bu pencerede TAMAMEN atlanir.
+          # atmaya devam ederse, backend'i suni olarak uyanik tutup
+          # gece-uykusuyla hedeflenen saat tasarrufunu bosa cikarir - o
+          # yuzden bu pencerede TAMAMEN atlanir.
           hour=$(date -u +%H)
           if [ "$hour" -ge 17 ] || [ "$hour" -lt 3 ]; then
             echo "Gece duraklama penceresindeyiz (UTC saat: $hour), bekci atlaniyor."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
-          # Frontend, gunun basindan (00:00 UTC) itibaren gecen TOPLAM
-          # dakika 25'e bolunebiliyorsa kontrol edilir - "dakika % 25"
-          # yerine "gun-basi-itibariyle-toplam-dakika % 25" kullanilmasi
-          # BILINCLI: 60 dakika 25'e tam bolunmedigi icin sadece saatin
-          # kendi dakikasina bakmak, saat sinirlarinda duzensiz (bazen
-          # 10dk, bazen 25dk) araliklar uretirdi. 10# on eki, basinda
-          # sifir olan saat/dakika degerlerinin (orn. "08") yanlislikla
-          # sekizlik (octal) sayi sanilip hata vermesini onler. <5
-          # toleransi, cron'un tam 5 dakikalik izgeraya birebir denk
-          # gelmeme ihtimaline karsi bir tampon. Backend her calismada
-          # kontrol edilir (ek maliyeti yok - bkz. yukaridaki aciklama).
-          hour_num=$((10#$(date -u +%H)))
-          minute_num=$((10#$(date -u +%M)))
-          total_min=$((hour_num * 60 + minute_num))
-          if [ "$((total_min % 25))" -lt 5 ]; then
-            echo "check_frontend=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "check_frontend=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Backend saglik durumunu kontrol et, gercekten takiliysa restart tetikle
@@ -112,31 +81,3 @@ jobs:
           }
 
           check_and_heal "backend" "https://isletme-yonetim.onrender.com/health" "srv-d9f5kggk1i2s73bfsgtg"
-
-      - name: Frontend saglik durumunu kontrol et (25 dakikada bir), gercekten takiliysa restart tetikle
-        if: steps.window.outputs.skip != 'true' && steps.window.outputs.check_frontend == 'true'
-        run: |
-          check_and_heal() {
-            local name="$1"
-            local url="$2"
-            local service_id="$3"
-            local attempts=3
-            local i
-            for i in $(seq 1 "$attempts"); do
-              status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$url" || echo "000")
-              echo "[$name] Deneme $i/$attempts: HTTP $status"
-              if [ "$status" = "200" ]; then
-                echo "[$name] saglikli."
-                return 0
-              fi
-              sleep 20
-            done
-
-            echo "[$name] $attempts denemede de saglikli degil (~1 dakikadir erisilemiyor) - Render restart tetikleniyor."
-            restart_status=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
-              "https://api.render.com/v1/services/${service_id}/restart" \
-              -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}")
-            echo "[$name] Render restart istegi HTTP $restart_status dondu"
-          }
-
-          check_and_heal "frontend" "https://isletme-yonetim-web.onrender.com/login" "srv-d9fmq2f41pts73ei1ol0"
