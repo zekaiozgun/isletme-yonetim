@@ -125,6 +125,15 @@ const animals: OptionSource = {
   endpoint: '/animals',
   label: (a) => `${String(a.tag_number)}${a.name ? ' - ' + String(a.name) : ''}`,
 };
+// Dogal asim formundaki "Boga" secimi icin - HER yetiskin erkek degil,
+// sadece Genetik Kaynak kataloguna bilerek Boga olarak kaydedilmis VE
+// halen Aktif olan hayvanlar (bkz. kullanici geri bildirimi: "her erkek
+// hayvani boga olarak kullanacagiz diye bir durum yok"; backend filtresi
+// icin app/modules/animal/service.py list_animals(is_registered_sire=True)).
+const registeredSires: OptionSource = {
+  endpoint: '/animals?is_registered_sire=true',
+  label: (a) => `${String(a.tag_number)}${a.name ? ' - ' + String(a.name) : ''}`,
+};
 const pens: OptionSource = { endpoint: '/pens', label: (p) => `${String(p.code)} - ${String(p.name)}` };
 const sires: OptionSource = { endpoint: '/genetic-resource/sires', label: label('name') };
 const semenBatches: OptionSource = {
@@ -332,7 +341,7 @@ const mainResources: ResourceConfig[] = [
       { name: 'dam_id', label: 'Anne Adayı', type: 'select', options: animals, required: true },
       { name: 'service_method_id', label: 'Aşım Yöntemi', type: 'select', options: serviceMethods, required: true },
       { name: 'service_date', label: 'Tarih', type: 'date', required: true },
-      { name: 'sire_animal_id', label: 'Boğa (Doğal Aşım — sürüden)', type: 'select', options: animals },
+      { name: 'sire_animal_id', label: 'Boğa (Doğal Aşım — sürüden)', type: 'select', options: registeredSires },
       { name: 'semen_batch_id', label: 'Sperma Partisi (Suni Tohumlama)', type: 'select', options: semenBatches },
       { name: 'note', label: 'Not (Doğal Aşım ise Boğa, Suni Tohumlama ise Sperma Partisi seçin — sadece biri)', type: 'textarea' },
     ],

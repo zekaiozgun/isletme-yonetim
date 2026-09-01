@@ -125,10 +125,21 @@ def delete_animal(db: Session, animal_id: uuid.UUID) -> None:
         raise ConflictError("Bu hayvan başka kayıtlar (tartı, sağlık, satış, soy vb.) tarafından kullanıldığı için silinemez.") from exc
 
 
-def list_animals(db: Session, status_id: int | None = None) -> list[Animal]:
+def list_animals(db: Session, status_id: int | None = None, is_registered_sire: bool = False) -> list[Animal]:
+    """is_registered_sire=True: sadece Genetik Kaynak katalogunda BOGA
+    olarak KAYITLI (Sire.animal_id ile suruye baglanmis) VE halen Aktif
+    olan hayvanlari doner - dogal asim formundaki "Boga" secimi icin
+    (Anayasa m.6: her yetiskin erkek degil, kullanicinin bilerek boga
+    olarak isaretledigi hayvanlar - bkz. kullanici geri bildirimi).
+    Aktif filtresi buraya GOMULUDUR (ayri bir status_id parametresi
+    beklemez) - bu listenin tanimi zaten "su an fiilen kullanilabilir
+    boga" oldugu icin."""
     stmt = select(Animal)
     if status_id is not None:
         stmt = stmt.where(Animal.status_id == status_id)
+    if is_registered_sire:
+        active_status = get_lookup_by_code(db, AnimalStatus, ACTIVE_STATUS_CODE)
+        stmt = stmt.join(Sire, Sire.animal_id == Animal.id).where(Animal.status_id == active_status.id)
     return list(db.scalars(stmt.order_by(Animal.birth_date, Animal.tag_number)).all())
 
 

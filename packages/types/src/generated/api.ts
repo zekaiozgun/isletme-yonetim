@@ -5442,6 +5442,7 @@ export interface operations {
         parameters: {
             query?: {
                 status_id?: number | null;
+                is_registered_sire?: boolean;
             };
             header?: never;
             path?: never;
