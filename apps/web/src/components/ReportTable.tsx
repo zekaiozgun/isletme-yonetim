@@ -1,5 +1,6 @@
 import type { ApiRecord } from '@/lib/api';
 import type { ReportConfig } from '@/lib/reports';
+import { toFilenameSafe } from '@/lib/format';
 import { TableSearch } from '@/components/TableSearch';
 import { CsvExportButton } from '@/components/CsvExportButton';
 import { PdfExportButton } from '@/components/PdfExportButton';
@@ -103,9 +104,9 @@ export function ReportTable({
               columns={pdfColumns}
               rows={csvRows}
               highlightedRows={highlightedRows}
-              filename={`${report.slug}.pdf`}
+              filename={`${toFilenameSafe(report.title)}.pdf`}
             />
-            <CsvExportButton headers={csvHeaders} rows={csvRows} filename={`${report.slug}.csv`} />
+            <CsvExportButton headers={csvHeaders} rows={csvRows} filename={`${toFilenameSafe(report.title)}.csv`} />
           </>
         }
       >

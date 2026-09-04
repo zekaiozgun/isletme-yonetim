@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { apiGetSafe, type ApiRecord } from '@/lib/api';
 import type { ColumnConfig, ResourceConfig } from '@/lib/resources';
-import { formatDateDMY } from '@/lib/format';
+import { formatDateDMY, toFilenameSafe } from '@/lib/format';
 import { TableSearch } from '@/components/TableSearch';
 import { CsvExportButton } from '@/components/CsvExportButton';
 
@@ -64,7 +64,7 @@ export async function ResourceTable({ resource, rows }: { resource: ResourceConf
   return (
     <TableSearch
       placeholder={`${resource.title} içinde ara...`}
-      actions={<CsvExportButton headers={csvHeaders} rows={csvRows} filename={`${resource.slug}.csv`} />}
+      actions={<CsvExportButton headers={csvHeaders} rows={csvRows} filename={`${toFilenameSafe(resource.title)}.csv`} />}
     >
       <div className="overflow-x-auto rounded border border-slate-200">
         <table className="min-w-full divide-y divide-slate-200 text-sm">

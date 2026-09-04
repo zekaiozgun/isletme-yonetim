@@ -13,6 +13,19 @@ export function formatDateDMY(value: unknown): string {
 }
 
 /**
+ * Rapor/kaynak başlıklarını (örn. "Doğum/Buzağılama Raporu") indirilen
+ * dosya adı için güvenli hale getirir - önceden PDF/CSV indirmeleri
+ * İngilizce/teknik slug'ı (örn. "calving.pdf") kullanıyordu (bkz.
+ * kullanıcı geri bildirimi). Windows'ta dosya adında yasak olan
+ * karakterleri (\/:*?"<>|) tire ile değiştirir - Türkçe harflere (ğ, ü,
+ * ş, ı, ö, ç) DOKUNMAZ, modern işletim sistemleri Unicode dosya adlarını
+ * sorunsuz destekliyor.
+ */
+export function toFilenameSafe(title: string): string {
+  return title.replace(/[\\/:*?"<>|]/g, '-').trim();
+}
+
+/**
  * Bir sayıyı Türkçe noktalama kuralıyla (binlik ayırıcı nokta, ondalık
  * ayırıcı virgül - örn. 1.234,5) gösterir - para birimi, ağırlık (kg) gibi
  * birim eki gerektirmeyen HER ondalık değer için ortak kaynak. API'den
