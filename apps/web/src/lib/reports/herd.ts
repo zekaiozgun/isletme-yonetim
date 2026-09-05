@@ -13,7 +13,7 @@ import {
 export const herdReports: ReportConfig[] = [
   {
     slug: 'active-animals',
-    title: 'Hayvan Listesi (Durum Filtresi)',
+    title: 'Aktif Hayvanlar',
     description:
       'Seçilen statülerdeki (varsayılan: Aktif) hayvanlar, yaş (ay) dahil. Satılan/ölen hayvanları da görmek için ilgili statüleri işaretleyin. CSV olarak indirilebilir.',
     endpoint: '/reports/active-animals',
@@ -23,9 +23,9 @@ export const herdReports: ReportConfig[] = [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
       { key: 'gender_name', label: 'D/E', format: formatGenderShort, width: 'narrow' },
       { key: 'breed_name', label: 'Irk', format: formatPlain, width: 'narrow' },
-      { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate, width: 'narrow' },
       { key: 'age_months', label: 'Yaş', format: formatAgeMixed, width: 'narrow' },
       { key: 'mother_tag_number', label: 'Anne/Baba', format: formatParentage, width: 'narrow' },
+      { key: 'birth_date', label: 'Doğum Tarihi', format: formatDate, width: 'narrow' },
       { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },
     ],
   },

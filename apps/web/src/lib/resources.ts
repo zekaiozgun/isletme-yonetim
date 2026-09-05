@@ -176,15 +176,15 @@ const mainResources: ResourceConfig[] = [
     createEndpoint: '/animals',
     columns: [
       { key: 'tag_number', label: 'Küpe No' },
-      { key: 'name', label: 'İsim' },
-      { key: 'mother_id', label: 'Anne', lookup: animals },
-      { key: 'father_sire_id', label: 'Baba (Boğa)', lookup: sires },
       { key: 'breed_id', label: 'Irk', lookup: breeds },
       { key: 'gender_id', label: 'Cinsiyet', lookup: genders },
       { key: 'age_months', label: 'Yaş', format: formatAgeMixed },
-      { key: 'status_id', label: 'Statü', lookup: animalStatuses },
+      { key: 'mother_id', label: 'Anne', lookup: animals },
+      { key: 'father_sire_id', label: 'Baba (Boğa)', lookup: sires },
       { key: 'birth_date', label: 'Doğum Tarihi', date: true },
+      { key: 'status_id', label: 'Statü', lookup: animalStatuses },
       { key: 'entry_value', label: 'Giriş Değeri (TL)', format: formatCurrencyTRY },
+      { key: 'name', label: 'İsim' },
     ],
     fields: [
       { name: 'tag_number', label: 'Küpe No', type: 'text', required: true },
@@ -210,7 +210,7 @@ const mainResources: ResourceConfig[] = [
       { name: 'note', label: 'Not', type: 'textarea' },
     ],
     relatedReports: [
-      { slug: 'active-animals', title: 'Hayvan Listesi (Durum Filtresi)' },
+      { slug: 'active-animals', title: 'Aktif Hayvanlar' },
       { slug: 'calves', title: 'Buzağı Listesi (0-7 Ay)' },
       { slug: 'heifers-steers', title: 'Düve ve Dana Listesi (7-12 Ay)' },
       { slug: 'offspring-by-mother', title: 'Anne Bazında Yavru Listesi' },
