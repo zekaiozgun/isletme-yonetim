@@ -177,6 +177,8 @@ const mainResources: ResourceConfig[] = [
     columns: [
       { key: 'tag_number', label: 'Küpe No' },
       { key: 'name', label: 'İsim' },
+      { key: 'mother_id', label: 'Anne', lookup: animals },
+      { key: 'father_sire_id', label: 'Baba (Boğa)', lookup: sires },
       { key: 'breed_id', label: 'Irk', lookup: breeds },
       { key: 'gender_id', label: 'Cinsiyet', lookup: genders },
       { key: 'age_months', label: 'Yaş', format: formatAgeMixed },
