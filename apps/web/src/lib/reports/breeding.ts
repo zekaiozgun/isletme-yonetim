@@ -184,7 +184,7 @@ export const breedingReports: ReportConfig[] = [
       { key: 'last_service_date', label: 'Son Toh T', format: formatDate, width: 'narrow' },
       { key: 'service_attempt_count', label: 'Deneme. S', width: 'narrow' },
       { key: 'age_months', label: 'Yaş', format: formatAgeMixed, width: 'narrow' },
-      { key: 'reason', label: 'Sebep', width: 'wide' },
+      { key: 'reason', label: 'Sebep', width: 'narrow' },
       { key: 'service_method_name', label: 'Yöntem (Boş Çıkanlar)', format: formatPlain, width: 'narrow' },
       { key: 'returned_from_pregnancy', label: 'Uyarı', format: formatReturnedFromPregnancy, width: 'narrow' },
       { key: 'note', label: 'Not', format: formatPlain, width: 'wide' },

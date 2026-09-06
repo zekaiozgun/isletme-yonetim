@@ -15,7 +15,7 @@ export const healthReports: ReportConfig[] = [
       { key: 'event_date', label: 'Tarih', format: formatDate, width: 'narrow' },
       { key: 'event_type_name', label: 'Olay Tipi', width: 'narrow' },
       { key: 'disease_name', label: 'Hastalık/Tanı', format: formatPlain, width: 'narrow' },
-      { key: 'medications', label: 'İlaçlar', format: formatPlain, width: 'wide' },
+      { key: 'medications', label: 'İlaçlar', format: formatPlain, width: 'narrow' },
       { key: 'veterinarian_note', label: 'Veteriner Notu', format: formatPlain, width: 'wide' },
     ],
     rowHighlight: (row) => Boolean(row.is_illness),
