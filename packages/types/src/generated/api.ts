@@ -4276,6 +4276,10 @@ export interface components {
             male_count: number;
             /** Avg Daily Gain Kg */
             avg_daily_gain_kg?: number | null;
+            /** Alive Count */
+            alive_count: number;
+            /** Died Count */
+            died_count: number;
             /** Loss Rate */
             loss_rate?: number | null;
         };
@@ -4900,6 +4904,10 @@ export interface components {
             male_count: number;
             /** Avg Daily Gain Kg */
             avg_daily_gain_kg?: number | null;
+            /** Alive Count */
+            alive_count: number;
+            /** Died Count */
+            died_count: number;
             /** Loss Rate */
             loss_rate?: number | null;
         };

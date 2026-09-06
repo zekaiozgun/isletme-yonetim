@@ -6,10 +6,11 @@ import { TableSearch } from '@/components/TableSearch';
 import { CsvExportButton } from '@/components/CsvExportButton';
 import { PdfExportButton } from '@/components/PdfExportButton';
 
-type SortKey = 'avg_daily_gain_kg' | 'loss_rate';
+type SortKey = 'avg_daily_gain_kg' | 'died_count' | 'loss_rate';
 
 const SORT_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'avg_daily_gain_kg', label: 'Ort. Günlük Kilo Artışı' },
+  { key: 'died_count', label: 'Ölen' },
   { key: 'loss_rate', label: 'Kayıp Oranı' },
 ];
 
@@ -57,7 +58,10 @@ export function ParentPerformanceTable({
       if (a.value === null && b.value === null) return 0;
       if (a.value === null) return 1;
       if (b.value === null) return -1;
-      return sortKey === 'loss_rate' ? a.value - b.value : b.value - a.value;
+      // Kilo artisinda buyuk-kucuk (en iyi ustte), kayip/olen sayisinda
+      // kucuk-buyuk (en AZ kayip ustte) siralanir - ikisinde de "en iyi"
+      // her zaman en ustte.
+      return sortKey === 'loss_rate' || sortKey === 'died_count' ? a.value - b.value : b.value - a.value;
     });
     return withValue.map((w) => w.row);
   }, [rows, sortKey]);
@@ -66,17 +70,21 @@ export function ParentPerformanceTable({
     return <p className="text-sm text-slate-500">Henüz yeterli veri yok.</p>;
   }
 
-  const csvHeaders = [parentColumnLabel, 'Yavru Sayısı', 'Ort. Günlük Kilo Artışı', 'Kayıp Oranı'];
+  const csvHeaders = [parentColumnLabel, 'Yavru Sayısı', 'Hayatta', 'Ort. Günlük Kilo Artışı', 'Ölen', 'Kayıp Oranı'];
   const csvRows = sortedRows.map((row) => [
     getParentLabel(row),
     offspringCountLabel(row),
+    String(row.alive_count),
     formatGain(row.avg_daily_gain_kg),
+    String(row.died_count),
     formatLossRate(row.loss_rate),
   ]);
   const pdfColumns = [
     { label: parentColumnLabel, width: 'narrow' as const },
     { label: 'Yavru Sayısı', width: 'narrow' as const },
+    { label: 'Hayatta', width: 'narrow' as const },
     { label: 'Ort. Günlük Kilo Artışı', width: 'narrow' as const },
+    { label: 'Ölen', width: 'narrow' as const },
     { label: 'Kayıp Oranı', width: 'narrow' as const },
   ];
 
@@ -102,6 +110,9 @@ export function ParentPerformanceTable({
               </th>
               <th className="whitespace-nowrap px-[0.5ch] py-1.5 text-left font-medium leading-tight text-slate-600">
                 Yavru Sayısı
+              </th>
+              <th className="whitespace-nowrap px-[0.5ch] py-1.5 text-left font-medium leading-tight text-slate-600">
+                Hayatta
               </th>
               {SORT_COLUMNS.map((col) => {
                 const active = sortKey === col.key;
@@ -136,7 +147,9 @@ export function ParentPerformanceTable({
                 >
                   <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{label}</td>
                   <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{offspringCountLabel(row)}</td>
+                  <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{String(row.alive_count)}</td>
                   <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{formatGain(row.avg_daily_gain_kg)}</td>
+                  <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{String(row.died_count)}</td>
                   <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{formatLossRate(row.loss_rate)}</td>
                 </tr>
               );

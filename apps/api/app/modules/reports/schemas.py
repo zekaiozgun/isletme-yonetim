@@ -175,7 +175,12 @@ class MotherPerformanceRead(BaseModel):
     # araligi olmadan) gunluk canli agirlik artisi (ADG). Hicbir yavrunun
     # yeterli tartisi yoksa None.
     avg_daily_gain_kg: float | None = None
-    # TUM yavrularin (hala aktif olanlar dahil) yuzde kaci oldu.
+    # asagidaki uc alan birbirinden turetilebilir (alive+died=offspring,
+    # loss_rate=died/offspring*100) ama ucu de ACIKCA tasinir - kullanici
+    # geri bildirimi: sadece yuzde (loss_rate) yeterli degildi, ham
+    # sayilari (kac tanesi hayatta, kac tanesi oldu) da gormek istedi.
+    alive_count: int
+    died_count: int
     loss_rate: float | None = None
 
 
@@ -189,6 +194,8 @@ class SirePerformanceRead(BaseModel):
     female_count: int
     male_count: int
     avg_daily_gain_kg: float | None = None
+    alive_count: int
+    died_count: int
     loss_rate: float | None = None
 
 

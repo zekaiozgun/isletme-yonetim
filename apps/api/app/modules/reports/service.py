@@ -965,6 +965,8 @@ def list_mother_performance(db: Session) -> list[MotherPerformanceRead]:
                 female_count=female_count,
                 male_count=len(offspring) - female_count,
                 avg_daily_gain_kg=round(sum(gains) / len(gains), 3) if gains else None,
+                alive_count=len(offspring) - died_count,
+                died_count=died_count,
                 loss_rate=round(died_count / len(offspring) * 100, 1),
             )
         )
@@ -1010,6 +1012,8 @@ def list_sire_performance(db: Session) -> list[SirePerformanceRead]:
                 female_count=female_count,
                 male_count=len(offspring) - female_count,
                 avg_daily_gain_kg=round(sum(gains) / len(gains), 3) if gains else None,
+                alive_count=len(offspring) - died_count,
+                died_count=died_count,
                 loss_rate=round(died_count / len(offspring) * 100, 1),
             )
         )
