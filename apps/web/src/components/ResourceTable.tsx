@@ -72,7 +72,7 @@ export async function ResourceTable({ resource, rows }: { resource: ResourceConf
             <tr>
               <th className="w-[1%] px-[0.5ch] py-1.5 text-left font-medium text-slate-600">#</th>
               {resource.columns.map((column) => (
-                <th key={column.key} className="whitespace-nowrap px-[0.5ch] py-1.5 text-left font-medium text-slate-600">
+                <th key={column.key} className="w-[1%] whitespace-nowrap px-[0.5ch] py-1.5 text-left font-medium text-slate-600">
                   {column.label}
                 </th>
               ))}
@@ -92,7 +92,7 @@ export async function ResourceTable({ resource, rows }: { resource: ResourceConf
                 <tr key={String(row.id)} data-search={searchText}>
                   <td className="w-[1%] whitespace-nowrap px-[0.5ch] py-1.5 text-slate-500">{index + 1}</td>
                   {resource.columns.map((column, columnIndex) => (
-                    <td key={column.key} className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">
+                    <td key={column.key} className="w-[1%] whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">
                       {cellValues[columnIndex]}
                     </td>
                   ))}
