@@ -8,11 +8,11 @@ import { PdfExportButton } from '@/components/PdfExportButton';
 
 type SortKey = 'avg_daily_gain_kg' | 'died_count' | 'loss_rate';
 
-const SORT_COLUMNS: { key: SortKey; label: string }[] = [
-  { key: 'avg_daily_gain_kg', label: 'Ort. Günlük Kilo Artışı' },
-  { key: 'died_count', label: 'Ölen' },
-  { key: 'loss_rate', label: 'Kayıp Oranı' },
-];
+const SORT_LABELS: Record<SortKey, string> = {
+  avg_daily_gain_kg: 'Ort. Günlük Kilo Artışı',
+  died_count: 'Ölen',
+  loss_rate: 'Kayıp Oranı',
+};
 
 function formatGain(value: unknown): string {
   return typeof value === 'number' ? `${value.toFixed(3)} kg/gün` : '—';
@@ -28,10 +28,14 @@ function offspringCountLabel(row: ApiRecord): string {
 
 /** Anne/Baba Bazında Verimlilik Sıralaması raporlarının ortak tablosu -
  * sütun başlığına tıklayınca aktif sıralama kriteri değişir (kilo artışı
- * büyükten küçüğe, kayıp oranı küçükten büyüğe - "en iyi" her zaman
+ * büyükten küçüğe, kayıp/ölen sayısı küçükten büyüğe - "en iyi" her zaman
  * üstte). Ebeveyn kimliği (Anne küpe no ya da Baba gösterim önceliği)
  * çağıran taraftan `getParentLabel` ile gelir, bu bileşen ebeveyn
- * türünden bağımsızdır. */
+ * türünden bağımsızdır. Sütun sırası BİLEREK bu şekilde (Yavru Sayısı,
+ * Kilo Artışı, sonra yan yana Hayatta/Ölen, sonra Kayıp Oranı) - bkz.
+ * kullanıcı geri bildirimi. "Ort. Günlük Kilo Artışı" başlığı kelime
+ * kelime alt alta yazılır (br ile) - sütunun kendisi diğerlerinden çok
+ * daha geniş bir başlık yüzünden gereksiz genişlemesin diye. */
 export function ParentPerformanceTable({
   rows,
   getParentLabel,
@@ -70,22 +74,45 @@ export function ParentPerformanceTable({
     return <p className="text-sm text-slate-500">Henüz yeterli veri yok.</p>;
   }
 
-  const csvHeaders = [parentColumnLabel, 'Yavru Sayısı', 'Hayatta', 'Ort. Günlük Kilo Artışı', 'Ölen', 'Kayıp Oranı'];
+  function sortButton(key: SortKey, content: React.ReactNode) {
+    const active = sortKey === key;
+    return (
+      <button
+        type="button"
+        onClick={() => setSortKey(key)}
+        className={`inline-flex items-center gap-1 font-medium hover:underline ${
+          active ? 'text-slate-900' : 'text-slate-600'
+        }`}
+      >
+        {content}
+        {active && <span aria-hidden="true">▾</span>}
+      </button>
+    );
+  }
+
+  const csvHeaders = [
+    parentColumnLabel,
+    'Yavru Sayısı',
+    SORT_LABELS.avg_daily_gain_kg,
+    'Hayatta',
+    SORT_LABELS.died_count,
+    SORT_LABELS.loss_rate,
+  ];
   const csvRows = sortedRows.map((row) => [
     getParentLabel(row),
     offspringCountLabel(row),
-    String(row.alive_count),
     formatGain(row.avg_daily_gain_kg),
+    String(row.alive_count),
     String(row.died_count),
     formatLossRate(row.loss_rate),
   ]);
   const pdfColumns = [
     { label: parentColumnLabel, width: 'narrow' as const },
     { label: 'Yavru Sayısı', width: 'narrow' as const },
+    { label: SORT_LABELS.avg_daily_gain_kg, width: 'narrow' as const },
     { label: 'Hayatta', width: 'narrow' as const },
-    { label: 'Ort. Günlük Kilo Artışı', width: 'narrow' as const },
-    { label: 'Ölen', width: 'narrow' as const },
-    { label: 'Kayıp Oranı', width: 'narrow' as const },
+    { label: SORT_LABELS.died_count, width: 'narrow' as const },
+    { label: SORT_LABELS.loss_rate, width: 'narrow' as const },
   ];
 
   return (
@@ -111,26 +138,25 @@ export function ParentPerformanceTable({
               <th className="whitespace-nowrap px-[0.5ch] py-1.5 text-left font-medium leading-tight text-slate-600">
                 Yavru Sayısı
               </th>
+              <th className="whitespace-nowrap px-[0.5ch] py-1.5 text-left leading-tight">
+                {sortButton(
+                  'avg_daily_gain_kg',
+                  <span>
+                    Ort.
+                    <br />
+                    Günlük
+                    <br />
+                    Kilo
+                    <br />
+                    Artışı
+                  </span>
+                )}
+              </th>
               <th className="whitespace-nowrap px-[0.5ch] py-1.5 text-left font-medium leading-tight text-slate-600">
                 Hayatta
               </th>
-              {SORT_COLUMNS.map((col) => {
-                const active = sortKey === col.key;
-                return (
-                  <th key={col.key} className="whitespace-nowrap px-[0.5ch] py-1.5 text-left">
-                    <button
-                      type="button"
-                      onClick={() => setSortKey(col.key)}
-                      className={`inline-flex items-center gap-1 font-medium hover:underline ${
-                        active ? 'text-slate-900' : 'text-slate-600'
-                      }`}
-                    >
-                      {col.label}
-                      {active && <span aria-hidden="true">▾</span>}
-                    </button>
-                  </th>
-                );
-              })}
+              <th className="whitespace-nowrap px-[0.5ch] py-1.5 text-left">{sortButton('died_count', SORT_LABELS.died_count)}</th>
+              <th className="whitespace-nowrap px-[0.5ch] py-1.5 text-left">{sortButton('loss_rate', SORT_LABELS.loss_rate)}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -147,8 +173,8 @@ export function ParentPerformanceTable({
                 >
                   <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{label}</td>
                   <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{offspringCountLabel(row)}</td>
-                  <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{String(row.alive_count)}</td>
                   <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{formatGain(row.avg_daily_gain_kg)}</td>
+                  <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{String(row.alive_count)}</td>
                   <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{String(row.died_count)}</td>
                   <td className="whitespace-nowrap px-[0.5ch] py-1.5 text-slate-700">{formatLossRate(row.loss_rate)}</td>
                 </tr>
