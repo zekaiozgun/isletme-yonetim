@@ -13,7 +13,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
-from app.core.date_utils import full_months_between, remaining_days_after_months
+from app.core.date_utils import full_months_between, remaining_days_after_months, today_istanbul
 from app.core.orm import TimestampMixin
 
 
@@ -99,7 +99,7 @@ class Animal(TimestampMixin, Base):
         ay ilerledikce buyumeye devam ediyordu)."""
         if self.birth_date is None:
             return None
-        reference_date = self.status_date or date.today()
+        reference_date = self.status_date or today_istanbul()
         return full_months_between(self.birth_date, reference_date)
 
     @property
@@ -110,7 +110,7 @@ class Animal(TimestampMixin, Base):
         gunluk mu 29 gunluk mu oldugu ay bazinda ayirt edilemiyordu)."""
         if self.birth_date is None:
             return None
-        reference_date = self.status_date or date.today()
+        reference_date = self.status_date or today_istanbul()
         return (reference_date - self.birth_date).days
 
     @property
@@ -123,6 +123,6 @@ class Animal(TimestampMixin, Base):
         toplami her zaman reference_date'e tam oturur."""
         if self.birth_date is None:
             return None
-        reference_date = self.status_date or date.today()
+        reference_date = self.status_date or today_istanbul()
         months = full_months_between(self.birth_date, reference_date)
         return remaining_days_after_months(self.birth_date, reference_date, months)

@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.date_utils import today_istanbul
 from app.core.exceptions import ConflictError, NotFoundError
 from app.core.lookup_helpers import get_lookup_by_code
 from app.core.validators import require_date_order
@@ -114,7 +115,7 @@ def cancel_animal_entry(db: Session, animal_id: uuid.UUID, note: str | None = No
     animal = get_animal(db, animal_id)
     cancelled_status = get_lookup_by_code(db, AnimalStatus, CANCELLED_ENTRY_STATUS_CODE)
     animal.status_id = cancelled_status.id
-    animal.status_date = date.today()
+    animal.status_date = today_istanbul()
     if note:
         animal.note = note
     db.commit()
