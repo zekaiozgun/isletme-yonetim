@@ -2,7 +2,23 @@
 saklanmaz, istek aninda buradaki paylasilan mantikla turetilir."""
 
 import calendar
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
+
+_ISTANBUL = ZoneInfo("Europe/Istanbul")
+
+
+def today_istanbul() -> date:
+    """"Bugun"u TURKIYE saatiyle dondurur - cIPLAK date.today() KULLANMA:
+    o, sunucunun calistigi makinenin (Render/Docker'da UTC) sistem saat
+    dilimini kullanir. UTC ile Turkiye arasindaki 3 saatlik farktan dolayi,
+    Turkiye'de gece yarisindan sabah ~03:00'e kadar UTC hala BIR ONCEKI
+    gundedir - bu pencerede date.today() bir gun GERIDEN donerdi (orn. az
+    once girilen bir tohumlama kaydi icin "gunden sonraki gun sayisi" -1
+    cikmasi gibi). PDF export'ta ayni sorun zaten Europe/Istanbul ile
+    cozulmustu (bkz. pdf_export/service.py) - buradaki her "bugun"
+    varsayilani da ayni mantikla hesaplanmali."""
+    return datetime.now(_ISTANBUL).date()
 
 
 def full_months_between(start: date, end: date) -> int:

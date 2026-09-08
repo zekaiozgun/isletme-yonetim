@@ -25,7 +25,7 @@ from decimal import Decimal
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, aliased, joinedload
 
-from app.core.date_utils import add_months, full_months_between, remaining_days_after_months
+from app.core.date_utils import add_months, full_months_between, remaining_days_after_months, today_istanbul
 from app.core.exceptions import NotFoundError
 from app.core.lookup_helpers import get_lookup_by_code
 from app.modules.animal import service as animal_service
@@ -489,7 +489,7 @@ def list_breeding_candidates(db: Session, today: date | None = None) -> list[Bre
     satirlari henuz aksiyon gerektirmese de sayi gizlenmez - raporu okuyan
     kullanici zaten "Post Partum" etiketinden bunun bilgi amacli oldugunu
     anlar."""
-    today = today or date.today()
+    today = today or today_istanbul()
     last_calving_by_dam = _latest_calving_by_dam(db)
     entries: list[tuple[int, BreedingCandidateRead]] = []
     for animal, classification in _classify_all_active_females(db, today):
@@ -562,7 +562,7 @@ def list_breeding_candidates(db: Session, today: date | None = None) -> list[Bre
 
 
 def list_bred_animals(db: Session, today: date | None = None) -> list[BredAnimalRead]:
-    today = today or date.today()
+    today = today or today_istanbul()
     last_calving_by_dam = _latest_calving_by_dam(db)
     rows: list[BredAnimalRead] = []
     for animal, classification in _classify_all_active_females(db, today):
@@ -630,7 +630,7 @@ def list_active_withdrawal_periods(db: Session, today: date | None = None) -> li
     saglik olayinda event_date + medication.withdrawal_period_days olarak
     hesaplanir (bkz. app.modules.health.service.calculate_withdrawal_end_date
     - ayni formul, burada raporlama icin toplu calistirilir)."""
-    today = today or date.today()
+    today = today or today_istanbul()
     active_id = get_lookup_by_code(db, AnimalStatus, ACTIVE_STATUS_CODE).id
     stmt = (
         select(HealthEventMedication)
@@ -751,7 +751,7 @@ def list_calf_loss_analysis(
     dogum-sonrasi kaderine gore (bkz. _calf_loss_category) siniflandirir -
     irk/cinsiyet/ikiz/anne/boga kirilimiyla (list_calvings ile ayni desen)
     hangi grupta kaybin yogunlastigini karsilastirmaya izin verir."""
-    today = today or date.today()
+    today = today or today_istanbul()
     stmt = (
         select(Animal)
         .options(
@@ -1479,7 +1479,7 @@ def list_feed_stock_status(db: Session, as_of_date: date | None = None) -> list[
     donemlerinden turetilir) = mevcut stok. Agirlikli ortalama birim
     maliyetle (bkz. _feed_avg_cost_per_kg) carpilarak stok degeri (TL) de
     hesaplanir - hicbiri saklanmaz (Anayasa m.5)."""
-    as_of_date = as_of_date or date.today()
+    as_of_date = as_of_date or today_istanbul()
     rows: list[FeedStockStatusRead] = []
 
     for feed_item in db.scalars(
@@ -1546,7 +1546,7 @@ def list_daily_ration_cost(db: Session, as_of_date: date | None = None) -> list[
     Yetiskin/buzagi sayilari sadece baglam icin gosterilir. Anayasa m.4/m.5:
     hicbir yerde saklanmaz, o anki rasyon + pen_assignments + agirlikli
     ortalama yem alim fiyatindan turetilir."""
-    as_of_date = as_of_date or date.today()
+    as_of_date = as_of_date or today_istanbul()
     rations = _rations_overlapping(db, as_of_date, as_of_date)
     if not rations:
         return []
@@ -1598,7 +1598,7 @@ def list_feed_stock_runway(db: Session, as_of_date: date | None = None) -> list[
     ortalama tuketim DEGIL, 'su anki rasyonlar/hayvan sayisiyla devam
     edilirse' varsayimidir; rasyonlar veya hayvan sayisi degisirse tahmin
     de degisir, hicbir yerde saklanmaz (Anayasa m.4/m.5)."""
-    as_of_date = as_of_date or date.today()
+    as_of_date = as_of_date or today_istanbul()
     stock_by_item = {row.feed_item_name: row for row in list_feed_stock_status(db, as_of_date)}
     if not stock_by_item:
         return []
@@ -1649,7 +1649,7 @@ def list_mixer_batch(db: Session, as_of_date: date | None = None) -> list[MixerB
     degistikce (satis/olum/dogum/padok degisimi) bir sonraki
     goruntulemede otomatik guncellenir - hicbir yerde saklanmaz (Anayasa
     m.4/m.5)."""
-    as_of_date = as_of_date or date.today()
+    as_of_date = as_of_date or today_istanbul()
     rations = _rations_overlapping(db, as_of_date, as_of_date)
     if not rations:
         return []
@@ -1733,7 +1733,7 @@ def list_death_losses(db: Session, start_date: date, end_date: date, today: date
     olarak ayrica izlenebilsin diye kendi sayisi/orani vardir. "Neden
     Dagilimi" icin DeathReason gibi yapilandirilmis bir alan olmadigindan
     (bkz. tasarim karari) satisin serbest metin Not alani kullanilir."""
-    today = today or date.today()
+    today = today or today_istanbul()
     stmt = (
         select(Death)
         .options(joinedload(Death.animal), joinedload(Death.death_reason))
@@ -1880,7 +1880,7 @@ def list_animals_by_status(db: Session, status_ids: list[int] | None = None, tod
     hayvanlar doner (calves/heifers-steers'in aksine yas araligina gore
     filtrelemez). Yas gibi turetilmis alanlar (bkz. full_months_between)
     hicbir yerde saklanmaz, yalnizca burada hesaplanir."""
-    today = today or date.today()
+    today = today or today_istanbul()
     stmt = (
         select(Animal)
         .options(
@@ -1920,7 +1920,7 @@ def list_animals_by_status(db: Session, status_ids: list[int] | None = None, tod
 
 
 def list_calves(db: Session, today: date | None = None) -> list[YoungAnimalRead]:
-    today = today or date.today()
+    today = today or today_istanbul()
     rows: list[YoungAnimalRead] = []
     for animal, age_months in _active_animals_with_age(db, today):
         if not (0 <= age_months < CALF_MAX_MONTHS):
@@ -1930,7 +1930,7 @@ def list_calves(db: Session, today: date | None = None) -> list[YoungAnimalRead]
 
 
 def list_heifers_and_steers(db: Session, today: date | None = None) -> list[YoungAnimalRead]:
-    today = today or date.today()
+    today = today or today_istanbul()
     rows: list[YoungAnimalRead] = []
     for animal, age_months in _active_animals_with_age(db, today):
         if not (CALF_MAX_MONTHS <= age_months < BREEDING_AGE_MONTHS):
@@ -2045,7 +2045,7 @@ def list_pen_occupancy(db: Session) -> list[PenOccupancyRead]:
 
 
 def get_herd_inventory(db: Session, today: date | None = None) -> HerdInventoryRead:
-    today = today or date.today()
+    today = today or today_istanbul()
     female_id = get_lookup_by_code(db, Gender, FEMALE_GENDER_CODE).id
     male_id = get_lookup_by_code(db, Gender, MALE_GENDER_CODE).id
     active_id = get_lookup_by_code(db, AnimalStatus, ACTIVE_STATUS_CODE).id
@@ -2099,7 +2099,7 @@ def list_herd_status_summary(db: Session, today: date | None = None) -> list[Her
     get_herd_inventory + list_breeding_candidates + list_bred_animals
     sonuclarini yeniden duzenler.
     """
-    today = today or date.today()
+    today = today or today_istanbul()
     inventory = get_herd_inventory(db, today)
     candidates = list_breeding_candidates(db, today)
     bred = list_bred_animals(db, today)
@@ -2141,7 +2141,7 @@ def list_herd_status_summary(db: Session, today: date | None = None) -> list[Her
 
 
 def get_dashboard_summary(db: Session, today: date | None = None) -> DashboardSummaryRead:
-    today = today or date.today()
+    today = today or today_istanbul()
     inventory = get_herd_inventory(db, today)
     bred_animals = list_bred_animals(db, today)
     pen_occupancy = list_pen_occupancy(db)
@@ -3412,7 +3412,7 @@ def get_animal_valuation(db: Session, animal_id: uuid.UUID, as_of_date: date | N
     fazladan sorgu maliyeti onemsizdir - kod tekrari yerine
     list_herd_animal_market_values'un AYNI, zaten test edilmis
     yapi taslarini (bkz. _CostContext/_AssetContext) yeniden kullanir."""
-    as_of_date = as_of_date or date.today()
+    as_of_date = as_of_date or today_istanbul()
     animal = db.get(Animal, animal_id)
     if animal is None:
         return None
