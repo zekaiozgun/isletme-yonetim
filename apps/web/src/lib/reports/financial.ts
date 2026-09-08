@@ -33,7 +33,9 @@ export const financialReports: ReportConfig[] = [
     slug: 'herd-profit-loss',
     title: 'Sürü Kâr/Zarar Raporu',
     description:
-      'Seçilen dönemde sürünün özkaynak değişimini iki katmanda özetler: Ekonomik Sonuç (satış geliri, satın alma bedeli, yem/sağlık maliyeti ve piyasa değeri hareketinin birleşimi - tek bir "sermaye büyüdü mü küçüldü mü" cevabı) ve altında açılan Piyasa Değer Köprüsü (doğum, satın alma, ölüm, satış ve mevcut sürünün değer değişimiyle dönem başından sonuna kalem kalem geçiş). Doğumla giren değerin ne kadarının annenin gebelik dönemi yem maliyeti, ne kadarının gerçek doğum kârı olduğu ayrıca gösterilir. Varsayılan aralık 1 yıl - daha kısa geriye veri yoksa mevcut veriyle sınırlı kalır. Satın Alma Bedeli, dönem içinde alınan TÜM hayvanları kapsar (o hayvan daha sonra satılmış/ölmüş olsa bile) - bu yüzden Tahmini Piyasa Değeri raporundaki (sadece hâlâ hayatta olanları sayan) "Toplam Edinme Değeri" tutarından farklı çıkabilir, bu bir hata değildir.',
+      'Seçilen dönemde sürünün özkaynak değişimini iki katmanda özetler: Ekonomik Sonuç (satış geliri, satın alma bedeli, yem/sağlık maliyeti ve piyasa değeri hareketinin birleşimi - tek bir "sermaye büyüdü mü küçüldü mü" cevabı) ve altında açılan Piyasa Değer Köprüsü (doğum, satın alma, ölüm, satış ve mevcut sürünün değer değişimiyle dönem başından sonuna kalem kalem geçiş).',
+    helpNote:
+      'Doğumla giren değerin ne kadarının annenin gebelik dönemi yem maliyeti, ne kadarının gerçek doğum kârı olduğu ayrıca gösterilir. Varsayılan aralık 1 yıl - daha kısa geriye veri yoksa mevcut veriyle sınırlı kalır. Satın Alma Bedeli, dönem içinde alınan TÜM hayvanları kapsar (o hayvan daha sonra satılmış/ölmüş olsa bile) - bu yüzden Tahmini Piyasa Değeri raporundaki (sadece hâlâ hayatta olanları sayan) "Toplam Edinme Değeri" tutarından farklı çıkabilir, bu bir hata değildir.',
     endpoint: '/reports/herd-profit-loss',
     group: 'Mali',
     dateRange: true,
@@ -85,7 +87,9 @@ export const financialReports: ReportConfig[] = [
     slug: 'herd-animal-market-values',
     title: 'Sürü Hayvan Listesi - Tahmini Piyasa Değeri',
     description:
-      'Belirtilen tarih itibarıyla yaşayan TÜM hayvanların tahmini piyasa değeri tek tek listelenir - büyüme çıpası girilmiş genç hayvanlar için piyasa tahmini, diğerleri için maliyet-bazlı defter değeri kullanılır. Alım/satım öncesi birden fazla hayvanı bir arada değerlendirmek için satırları işaretleyip seçilenlerin toplamını görebilirsiniz. "Toplam Edinme Değeri" sadece belirtilen tarihte HÂLÂ HAYATTA olan satın alınmış hayvanları kapsar (bir anlık fotoğraftır, satın alma tarihine bakmaz) - bu yüzden Sürü Kâr/Zarar Raporu\'ndaki (o dönemde alınan TÜM hayvanları kapsayan) "Satın Alma Bedeli" tutarından farklı çıkabilir.',
+      'Belirtilen tarih itibarıyla yaşayan TÜM hayvanların tahmini piyasa değeri tek tek listelenir - büyüme çıpası girilmiş genç hayvanlar için piyasa tahmini, diğerleri için maliyet-bazlı defter değeri kullanılır. Alım/satım öncesi birden fazla hayvanı bir arada değerlendirmek için satırları işaretleyip seçilenlerin toplamını görebilirsiniz.',
+    helpNote:
+      '"Toplam Edinme Değeri" sadece belirtilen tarihte HÂLÂ HAYATTA olan satın alınmış hayvanları kapsar (bir anlık fotoğraftır, satın alma tarihine bakmaz) - bu yüzden Sürü Kâr/Zarar Raporu\'ndaki (o dönemde alınan TÜM hayvanları kapsayan) "Satın Alma Bedeli" tutarından farklı çıkabilir.',
     endpoint: '/reports/herd-animal-market-values',
     group: 'Mali',
     singleDate: true,
