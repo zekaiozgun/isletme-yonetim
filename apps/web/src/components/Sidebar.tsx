@@ -107,11 +107,11 @@ function NavLinks({ onNavigate, role }: { onNavigate?: () => void; role: Sidebar
         </div>
       )}
 
-      {role === 'YONETICI' && matches('Kullanıcılar Büyüme Değerleme Çıpaları Yönetim') && (
+      {matches('Kullanıcılar Büyüme Değerleme Çıpaları Yönetim') && (role === 'YONETICI' || matches('Büyüme Değerleme Çıpaları')) && (
         <div className="border-b border-slate-200 pb-5">
           <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">Yönetim</div>
           <ul className="space-y-0.5">
-            {matches('Kullanıcılar') && (
+            {role === 'YONETICI' && matches('Kullanıcılar') && (
               <li>
                 <NavLink href="/users" label="Kullanıcılar" isActive={isPathActive(pathname, '/users')} onNavigate={onNavigate} />
               </li>

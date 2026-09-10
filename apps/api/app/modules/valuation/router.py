@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.modules.auth.dependencies import require_admin
 from app.modules.valuation import service
 from app.modules.valuation.schemas import GrowthValuationCheckpointBulkUpdate, GrowthValuationCheckpointRead
 
@@ -13,7 +14,7 @@ def list_checkpoints(db: Session = Depends(get_db)) -> list[GrowthValuationCheck
     return service.list_checkpoints(db)
 
 
-@router.put("", response_model=list[GrowthValuationCheckpointRead])
+@router.put("", response_model=list[GrowthValuationCheckpointRead], dependencies=[Depends(require_admin)])
 def replace_checkpoints(
     payload: GrowthValuationCheckpointBulkUpdate, db: Session = Depends(get_db)
 ) -> list[GrowthValuationCheckpointRead]:

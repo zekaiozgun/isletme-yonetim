@@ -4,13 +4,13 @@ import { useActionState } from 'react';
 
 export type SaveCheckpointsFormState = { error?: string } | null;
 
-interface Row {
+export interface CheckpointRow {
   code: string;
   label: string;
   femaleOnly?: boolean;
 }
 
-const ROWS: Row[] = [
+export const CHECKPOINT_ROWS: CheckpointRow[] = [
   { code: 'AGE_3', label: '3 Aylık' },
   { code: 'AGE_6', label: '6 Aylık' },
   { code: 'AGE_9', label: '9 Aylık' },
@@ -47,7 +47,7 @@ export function GrowthValuationCheckpointsForm({
             </tr>
           </thead>
           <tbody>
-            {ROWS.map((row) => (
+            {CHECKPOINT_ROWS.map((row) => (
               <tr key={row.code} className="border-b border-slate-100 last:border-0">
                 <td className="px-3 py-2 text-slate-700">{row.label}</td>
                 <td className="px-3 py-2">
