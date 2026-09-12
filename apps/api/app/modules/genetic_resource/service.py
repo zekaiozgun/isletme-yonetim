@@ -1,6 +1,6 @@
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.exceptions import ConflictError, NotFoundError
 from app.modules.genetic_resource.models import SemenBatch, Sire
@@ -16,7 +16,7 @@ def create_sire(db: Session, data: SireCreate) -> Sire:
 
 
 def get_sire(db: Session, sire_id: int) -> Sire:
-    sire = db.get(Sire, sire_id)
+    sire = db.scalars(select(Sire).options(joinedload(Sire.animal)).where(Sire.id == sire_id)).first()
     if sire is None:
         raise NotFoundError(f"Sire bulunamadi: {sire_id}")
     return sire
@@ -42,7 +42,12 @@ def delete_sire(db: Session, sire_id: int) -> None:
 
 
 def list_sires(db: Session) -> list[Sire]:
-    return list(db.scalars(select(Sire).order_by(Sire.name)).all())
+    # display_name (bkz. models.py) suruye ait bogalarda Animal kaydindan
+    # turedigi icin SQL'de dogrudan siralanamaz (join gerektirir + Sire.name
+    # bu durumda bos olabilir) - kucuk bir liste oldugundan Python'da
+    # turetilmis degere gore siralamak daha basit ve dogru.
+    sires = list(db.scalars(select(Sire).options(joinedload(Sire.animal))).all())
+    return sorted(sires, key=lambda s: s.display_name.lower())
 
 
 def create_semen_batch(db: Session, data: SemenBatchCreate) -> SemenBatch:

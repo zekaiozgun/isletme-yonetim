@@ -311,7 +311,7 @@ def _latest_breeding_by_dam(db: Session) -> dict[uuid.UUID, BreedingEvent]:
         .options(
             joinedload(BreedingEvent.service_method),
             joinedload(BreedingEvent.sire_animal),
-            joinedload(BreedingEvent.semen_batch).joinedload(SemenBatch.sire),
+            joinedload(BreedingEvent.semen_batch).joinedload(SemenBatch.sire).joinedload(Sire.animal),
         )
         .order_by(BreedingEvent.service_date)
     )
@@ -332,7 +332,7 @@ def _breeding_event_sire_label(event: BreedingEvent) -> str:
         return f"{sire_animal.tag_number}{' - ' + sire_animal.name if sire_animal.name else ''}"
     assert event.semen_batch_id is not None
     batch = event.semen_batch
-    return f"{batch.batch_no} ({batch.sire.name})"
+    return f"{batch.batch_no} ({batch.sire.display_name})"
 
 
 def _returned_from_pregnancy(
@@ -676,7 +676,7 @@ def list_calvings(db: Session, start_date: date, end_date: date) -> list[Calving
             joinedload(Animal.birth_type),
             joinedload(Animal.litter_type),
             joinedload(Animal.mother),
-            joinedload(Animal.father_sire),
+            joinedload(Animal.father_sire).joinedload(Sire.animal),
             joinedload(Animal.status),
         )
         .where(Animal.birth_date.isnot(None), Animal.birth_date >= start_date, Animal.birth_date <= end_date)
@@ -698,7 +698,7 @@ def list_calvings(db: Session, start_date: date, end_date: date) -> list[Calving
                 birth_weight_kg=animal.birth_weight_kg,
                 mother_id=animal.mother_id,
                 mother_tag_number=animal.mother.tag_number if animal.mother else None,
-                father_sire_name=animal.father_sire.name if animal.father_sire else None,
+                father_sire_name=animal.father_sire.display_name if animal.father_sire else None,
                 status_name=animal.status.name,
                 note=animal.note,
             )
@@ -760,7 +760,7 @@ def list_calf_loss_analysis(
             joinedload(Animal.birth_type),
             joinedload(Animal.litter_type),
             joinedload(Animal.mother),
-            joinedload(Animal.father_sire),
+            joinedload(Animal.father_sire).joinedload(Sire.animal),
         )
         .where(Animal.birth_date.isnot(None), Animal.birth_date >= start_date, Animal.birth_date <= end_date)
         .order_by(Animal.birth_date, Animal.tag_number)
@@ -789,7 +789,7 @@ def list_calf_loss_analysis(
                 gender_name=animal.gender.name,
                 litter_type_name=animal.litter_type.name if animal.litter_type else None,
                 mother_tag_number=animal.mother.tag_number if animal.mother else None,
-                father_sire_name=animal.father_sire.name if animal.father_sire else None,
+                father_sire_name=animal.father_sire.display_name if animal.father_sire else None,
                 outcome_category=_calf_loss_category(animal, death, today),
                 death_date=death.death_date if death else None,
                 death_reason_name=death.death_reason.name if death else None,
@@ -880,9 +880,14 @@ def list_offspring_by_sire(db: Session, q: str | None = None) -> list[OffspringB
                 Sire.name.ilike(needle),
                 Sire.registry_no.ilike(needle),
                 sire_animal_alias.tag_number.ilike(needle),
+                sire_animal_alias.name.ilike(needle),
             )
         )
-    stmt = stmt.order_by(Sire.name, Animal.birth_date)
+    # Sire.name suruye ait bogalarda bos olabilir (bkz. models.py
+    # display_name) - siralama icin dolu olan ilk degere (kupe no yedek
+    # olarak) dusulur, aksi halde herd-linked bogalar hep listenin bir
+    # ucuna yigilirdi.
+    stmt = stmt.order_by(func.coalesce(Sire.name, sire_animal_alias.tag_number), Animal.birth_date)
     rows: list[OffspringBySireRead] = []
     for animal in db.scalars(stmt).all():
         sire = animal.father_sire
@@ -892,7 +897,7 @@ def list_offspring_by_sire(db: Session, q: str | None = None) -> list[OffspringB
                 sire_id=sire.id,
                 sire_tag_number=sire.animal.tag_number if sire.animal else None,
                 sire_registry_no=sire.registry_no,
-                sire_name=sire.name,
+                sire_name=sire.display_name,
                 animal_id=animal.id,
                 tag_number=animal.tag_number,
                 name=animal.name,
@@ -1007,7 +1012,7 @@ def list_sire_performance(db: Session) -> list[SirePerformanceRead]:
                 sire_id=sire.id,
                 sire_tag_number=sire.animal.tag_number if sire.animal else None,
                 sire_registry_no=sire.registry_no,
-                sire_name=sire.name,
+                sire_name=sire.display_name,
                 offspring_count=len(offspring),
                 female_count=female_count,
                 male_count=len(offspring) - female_count,
@@ -1096,7 +1101,7 @@ def list_breeding_performance(db: Session, start_date: date, end_date: date) -> 
         .options(
             joinedload(BreedingEvent.service_method),
             joinedload(BreedingEvent.sire_animal),
-            joinedload(BreedingEvent.semen_batch).joinedload(SemenBatch.sire),
+            joinedload(BreedingEvent.semen_batch).joinedload(SemenBatch.sire).joinedload(Sire.animal),
         )
         .where(BreedingEvent.service_date >= start_date, BreedingEvent.service_date <= end_date)
     )
@@ -1865,7 +1870,7 @@ def _active_animals_with_age(db: Session, today: date) -> list[tuple[Animal, int
         .options(
             joinedload(Animal.gender),
             joinedload(Animal.mother),
-            joinedload(Animal.father_sire),
+            joinedload(Animal.father_sire).joinedload(Sire.animal),
             joinedload(Animal.breed),
         )
         .where(Animal.status_id == active_id, Animal.birth_date.isnot(None))
@@ -1886,7 +1891,7 @@ def list_animals_by_status(db: Session, status_ids: list[int] | None = None, tod
         .options(
             joinedload(Animal.gender),
             joinedload(Animal.mother),
-            joinedload(Animal.father_sire),
+            joinedload(Animal.father_sire).joinedload(Sire.animal),
             joinedload(Animal.breed),
         )
         .order_by(Animal.birth_date, Animal.tag_number)
@@ -1912,7 +1917,7 @@ def list_animals_by_status(db: Session, status_ids: list[int] | None = None, tod
                     else None
                 ),
                 mother_tag_number=animal.mother.tag_number if animal.mother else None,
-                father_sire_name=animal.father_sire.name if animal.father_sire else None,
+                father_sire_name=animal.father_sire.display_name if animal.father_sire else None,
                 note=animal.note,
             )
         )
@@ -1953,7 +1958,7 @@ def _to_young_animal_read(animal: Animal, age_months: int, today: date) -> Young
             remaining_days_after_months(animal.birth_date, today, age_months) if animal.birth_date else None
         ),
         mother_tag_number=animal.mother.tag_number if animal.mother else None,
-        father_sire_name=animal.father_sire.name if animal.father_sire else None,
+        father_sire_name=animal.father_sire.display_name if animal.father_sire else None,
         note=animal.note,
     )
 

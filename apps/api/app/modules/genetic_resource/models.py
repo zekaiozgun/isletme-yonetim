@@ -23,7 +23,14 @@ class Sire(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     registry_no: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
-    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    # Sadece DIS KAYNAKLI (animal_id=None) bogalarda zorunludur (bkz.
+    # schemas.SireCreate validasyonu) - suruye ait bir bogada (animal_id
+    # dolu) kimlik zaten Animal kaydindan gelir (bkz. display_name),
+    # burada ayrica tutulmaz/istenmez (Anayasa m.6: ayni gercek icin
+    # ikinci bir kayit acilmaz - kullanici geri bildirimi: bu ikisi
+    # birbirinden bagimsiz duzenlenebildigi icin cakisan/mukerrer veri
+    # girisine yol aciyordu).
+    name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     breed_id: Mapped[int] = mapped_column(ForeignKey("breeds.id"), nullable=False)
     animal_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("animals.id"), nullable=True, unique=True
@@ -47,6 +54,18 @@ class Sire(TimestampMixin, Base):
     # veriyor, iki tablo arasinda birden fazla FK yolu var (belirsizligi
     # gidermek icin bu iliskinin hangi sutunu kullandigini acikca belirtiyoruz).
     animal = relationship("Animal", foreign_keys=[animal_id])
+
+    @property
+    def display_name(self) -> str:
+        """Gosterim icin kullanilacak TEK kimlik: suruye ait bir bogaysa
+        (animal_id dolu) Animal kaydindan (kupe no + varsa ad) turetilir -
+        reports.service._breeding_event_sire_label ile AYNI format,
+        boylece boganin adi uygulamanin her yerinde tutarli gorunur. Dis
+        kaynakliysa (animal_id=None) kendi name'i kullanilir (bu durumda
+        zorunludur, bkz. schemas.SireCreate)."""
+        if self.animal_id is not None and self.animal is not None:
+            return f"{self.animal.tag_number}{' - ' + self.animal.name if self.animal.name else ''}"
+        return self.name or ""
 
 
 class SemenBatch(TimestampMixin, Base):

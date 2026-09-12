@@ -78,6 +78,15 @@ class Animal(TimestampMixin, Base):
 
     mother = relationship("Animal", remote_side=[id], foreign_keys=[mother_id])
     father_sire = relationship("Sire", foreign_keys=[father_sire_id])
+    # Sire.animal_id -> Animal.id yolunun TERSİ (viewonly): bu hayvan
+    # Genetik Kaynak kataloğunda bir Boğa olarak kayıtlıysa o kaydı verir.
+    # foreign_keys ACIKCA belirtilmeli - Sire/Animal arasinda iki ayri FK
+    # yolu var (digeri father_sire_id), aksi halde SQLAlchemy hangisini
+    # kullanacagini bilemez (bkz. genetic_resource/models.py Sire.animal
+    # docstring'i, ayni belirsizlik orada da var).
+    sire_registration = relationship(
+        "Sire", primaryjoin="Sire.animal_id == Animal.id", foreign_keys="Sire.animal_id", uselist=False, viewonly=True
+    )
     breed = relationship("Breed")
     gender = relationship("Gender")
     birth_type = relationship("BirthType")
@@ -87,6 +96,17 @@ class Animal(TimestampMixin, Base):
     entry_source = relationship("EntrySource")
     status = relationship("AnimalStatus")
     death_reason = relationship("DeathReason")
+
+    @property
+    def is_registered_sire(self) -> bool:
+        """Bu hayvan Genetik Kaynak kataloğunda bir Boğa olarak kayıtlı mı
+        (Sire.animal_id ile bağlanmış mı) - Hayvanlar listesinde diğer
+        erkek hayvanlardan ayırt etmek için (bkz. kullanıcı geri bildirimi:
+        "Boğa statüsündeki hayvan diğer erkek hayvanlardan farklıdır").
+        Ayrı bir statü DEĞİLDİR (AnimalStatus yaşam döngüsünü, bu ise bir
+        rolü ifade eder - ikisi bağımsız eksenlerdir), sadece türetilen bir
+        bayraktır."""
+        return self.sire_registration is not None
 
     @property
     def age_months(self) -> int | None:

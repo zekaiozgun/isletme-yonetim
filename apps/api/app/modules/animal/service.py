@@ -7,7 +7,7 @@ from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.date_utils import today_istanbul
 from app.core.exceptions import ConflictError, NotFoundError
@@ -155,7 +155,7 @@ def list_animals(
     filtrelenmemis TUM hayvanlari gosteriyordu). age_months turetilen bir
     ozellik oldugundan (Anayasa m.4/m.5) SQL'de degil, cekildikten sonra
     Python'da filtrelenir."""
-    stmt = select(Animal)
+    stmt = select(Animal).options(joinedload(Animal.sire_registration))
     if status_id is not None:
         stmt = stmt.where(Animal.status_id == status_id)
     if is_registered_sire:

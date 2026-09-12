@@ -1,12 +1,15 @@
 import uuid
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 
 class SireCreate(BaseModel):
     registry_no: str | None = None
-    name: str
+    # Sadece animal_id BOŞSA (dış kaynaklı boğa) zorunludur - sürüye ait
+    # bir boğada (animal_id dolu) kimlik Animal kaydından gelir, burada
+    # ayrıca istenmez (bkz. models.py Sire.display_name).
+    name: str | None = None
     breed_id: int
     animal_id: uuid.UUID | None = None
     is_external: bool = True
@@ -20,11 +23,18 @@ class SireCreate(BaseModel):
     known_dam_name: str | None = None
     note: str | None = None
 
+    @model_validator(mode="after")
+    def _require_name_when_not_herd_linked(self) -> "SireCreate":
+        if self.animal_id is None and not (self.name or "").strip():
+            raise ValueError("Sürüde kayıtlı bir hayvan seçilmediyse Ad alanı zorunludur.")
+        return self
+
 
 class SireRead(SireCreate):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    display_name: str
     created_at: datetime
     updated_at: datetime
 

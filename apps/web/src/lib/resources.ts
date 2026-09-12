@@ -29,6 +29,15 @@ function formatHealthEventMedications(value: unknown): string {
     .join(', ');
 }
 
+/** Hayvanlar listesinde "Boğa" rozeti - Genetik Kaynak kataloğunda bu
+ * hayvana bağlı bir Sire kaydı varsa gösterilir (bkz. kullanıcı geri
+ * bildirimi: "Boğa statüsündeki hayvan diğer erkek hayvanlardan
+ * farklıdır"). AnimalStatus'tan (yaşam döngüsü) bağımsız bir roldür,
+ * elle işaretlenmez - backend'de Animal.is_registered_sire türetilir. */
+function formatSireBadge(value: unknown): string {
+  return value === true ? 'Boğa' : '—';
+}
+
 function formatDressingPercentage(_value: unknown, row: ApiRecord): string {
   const live = Number(row.sale_weight_kg);
   const carcass = Number(row.carcass_weight_kg);
@@ -143,7 +152,7 @@ const sireCandidateAnimals: OptionSource = {
   label: (a) => `${String(a.tag_number)}${a.name ? ' - ' + String(a.name) : ''}`,
 };
 const pens: OptionSource = { endpoint: '/pens', label: (p) => `${String(p.code)} - ${String(p.name)}` };
-const sires: OptionSource = { endpoint: '/genetic-resource/sires', label: label('name') };
+const sires: OptionSource = { endpoint: '/genetic-resource/sires', label: label('display_name') };
 const semenBatches: OptionSource = {
   endpoint: '/genetic-resource/semen-batches',
   label: (b) => `${String(b.batch_no)} (${String(b.purchase_date)})`,
@@ -178,6 +187,7 @@ const mainResources: ResourceConfig[] = [
       { key: 'tag_number', label: 'Küpe No' },
       { key: 'breed_id', label: 'Irk', lookup: breeds },
       { key: 'gender_id', label: 'Cinsiyet', lookup: genders },
+      { key: 'is_registered_sire', label: 'Boğa', format: formatSireBadge },
       { key: 'age_months', label: 'Yaş', format: formatAgeMixed },
       { key: 'mother_id', label: 'Anne', lookup: animals },
       { key: 'father_sire_id', label: 'Baba (Boğa)', lookup: sires },
@@ -272,13 +282,17 @@ const mainResources: ResourceConfig[] = [
     listEndpoint: '/genetic-resource/sires',
     createEndpoint: '/genetic-resource/sires',
     columns: [
-      { key: 'name', label: 'Ad' },
+      { key: 'display_name', label: 'Ad' },
       { key: 'registry_no', label: 'Tescil No' },
       { key: 'breed_id', label: 'Irk', lookup: breeds },
       { key: 'is_external', label: 'Dış Kaynak', boolean: true },
     ],
     fields: [
-      { name: 'name', label: 'Ad', type: 'text', required: true },
+      {
+        name: 'name',
+        label: 'Ad (sürüden bir hayvan seçtiyseniz boş bırakabilirsiniz - hayvanın kendi adı kullanılır)',
+        type: 'text',
+      },
       { name: 'registry_no', label: 'Tescil No', type: 'text' },
       { name: 'breed_id', label: 'Irk', type: 'select', options: breeds, required: true },
       { name: 'animal_id', label: 'Sürüdeki Hayvan (varsa)', type: 'select', options: sireCandidateAnimals },

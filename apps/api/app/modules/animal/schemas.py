@@ -56,6 +56,7 @@ class AnimalRead(AnimalBase):
     age_days: int | None = None
     age_remainder_days: int | None = None
     is_locked: bool
+    is_registered_sire: bool = False
     created_at: datetime
     updated_at: datetime
 
