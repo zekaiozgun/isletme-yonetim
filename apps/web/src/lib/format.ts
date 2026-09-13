@@ -135,3 +135,33 @@ export function formatNowIstanbulDMYHM(): string {
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
   return `${get('day')}/${get('month')}/${get('year')} ${get('hour')}:${get('minute')}`;
 }
+
+/**
+ * "Bugün"ü YYYY-MM-DD (ISO) olarak Türkiye yerel tarihiyle döner.
+ * new Date().toISOString().slice(0, 10) KULLANMA: o her zaman UTC
+ * bazlıdır - rapor sayfaları Vercel'de (UTC) render edildiği için,
+ * Türkiye'de gece yarısından ~03:00'e kadar hâlâ bir önceki günün
+ * tarihini döndürürdü (bkz. formatNowIstanbulDMYHM ile aynı sorun;
+ * backend'deki today_istanbul() ile aynı mantık - core/date_utils.py).
+ */
+export function todayIstanbulIso(): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Istanbul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+/** todayIstanbulIso()'dan `days` gün önce/sonrasını (days negatifse) ISO
+ * olarak döner - takvim günü aritmetiği UTC-ankorlu bir Date üzerinden
+ * yapılır (DST belirsizliği olmasın diye; Türkiye zaten DST kullanmıyor
+ * ama bu yöntem her koşulda güvenli). */
+export function addDaysToIstanbulIso(days: number): string {
+  const [y, m, d] = todayIstanbulIso().split('-').map(Number);
+  const shifted = new Date(Date.UTC(y, m - 1, d));
+  shifted.setUTCDate(shifted.getUTCDate() + days);
+  return shifted.toISOString().slice(0, 10);
+}

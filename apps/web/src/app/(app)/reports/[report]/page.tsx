@@ -10,21 +10,19 @@ import { DailyFeedCostSection } from '@/components/DailyFeedCostSection';
 import { GroupedOffspringList } from '@/components/GroupedOffspringList';
 import { DateRangeFilter } from '@/components/DateRangeFilter';
 import { MarketValueSeriesFilter } from '@/components/MarketValueSeriesFilter';
-import { formatNowIstanbulDMYHM } from '@/lib/format';
+import { addDaysToIstanbulIso, formatNowIstanbulDMYHM, todayIstanbulIso } from '@/lib/format';
 
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayIstanbulIso();
 }
 
 function firstDayOfMonthIso(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+  const [year, month] = todayIstanbulIso().split('-');
+  return `${year}-${month}-01`;
 }
 
 function daysAgoIso(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  return d.toISOString().slice(0, 10);
+  return addDaysToIstanbulIso(-days);
 }
 
 export default async function ReportPage({
