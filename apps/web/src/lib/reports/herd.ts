@@ -56,6 +56,11 @@ export const herdReports: ReportConfig[] = [
     description: '7-12 ay yaşındaki aktif hayvanlar (dişi: düve, erkek: dana).',
     endpoint: '/reports/heifers-steers',
     group: 'Sürü Listeleri',
+    groupSummaryKey: [
+      { key: 'gender_name', label: 'Cinsiyet' },
+      { key: 'breed_name', label: 'Irk' },
+      { key: 'birth_type_name', label: 'Doğum Şekli' },
+    ],
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
       { key: 'gender_name', label: 'D/E', format: formatGenderShort, width: 'narrow' },
