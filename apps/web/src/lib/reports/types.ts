@@ -54,10 +54,13 @@ export interface ReportConfig {
    * (örn. doğum sonrası bekleme süresi gibi anlık görünmeyebilecek
    * kuralları) kullanıcıya açık şekilde anlatmak için. */
   helpNote?: string;
-  /** Belirtilirse, tablonun üstünde bu sütuna göre gruplanmış kayıt
-   * sayısı özeti gösterilir (örn. "Toplam: 45 · Aktif: 40 · Öldü: 3 · Satıldı: 2").
-   * Sütunun kendi label'ı grup adı olarak kullanılır. */
-  groupSummaryKey?: string;
+  /** Belirtilirse, tablonun üstünde toplam sayı + bu sütun(lar)a göre
+   * gruplanmış kayıt sayısı özeti gösterilir. Tek bir sütun adı (string)
+   * verilirse eski davranış: "Toplam: 45 · Aktif: 40 · Öldü: 3" - tek
+   * satır, ayrı bir etiket yok. Birden fazla kırılım gösterilecekse
+   * ({key,label}[]) her biri kendi etiketiyle ALT ALTA ayrı bir satırda
+   * gösterilir (örn. Cinsiyet/Irk/Doğum Şekli dağılımı bir arada). */
+  groupSummaryKey?: string | { key: string; label: string }[];
   /** true ise arama TÜM satırları önceden indirip istemcide gizlemek
    * (varsayılan davranış) yerine SUNUCU TARAFINDA yapılır: kutuya yazıp
    * Enter'a basmak `q` query param'ıyla sayfayı yeniden yükler, backend

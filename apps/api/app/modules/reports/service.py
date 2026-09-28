@@ -1872,6 +1872,7 @@ def _active_animals_with_age(db: Session, today: date) -> list[tuple[Animal, int
             joinedload(Animal.mother),
             joinedload(Animal.father_sire).joinedload(Sire.animal),
             joinedload(Animal.breed),
+            joinedload(Animal.birth_type),
         )
         .where(Animal.status_id == active_id, Animal.birth_date.isnot(None))
         .order_by(Animal.birth_date)
@@ -1951,6 +1952,7 @@ def _to_young_animal_read(animal: Animal, age_months: int, today: date) -> Young
         name=animal.name,
         gender_name=animal.gender.name,
         breed_name=animal.breed.name if animal.breed else None,
+        birth_type_name=animal.birth_type.name if animal.birth_type else None,
         birth_date=animal.birth_date,
         age_months=age_months,
         age_days=(today - animal.birth_date).days if animal.birth_date else None,

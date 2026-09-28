@@ -37,21 +37,53 @@ function headerClass(width: ReportConfig['columns'][number]['width']): string {
 // report.groupSummaryKey belirtilen sutunun degerine gore kayit sayisini
 // gruplar (orn. statu bazinda kac buzagi) - arama kutusundan bagimsiz,
 // her zaman TAM veri setinin toplamini gosterir.
-function GroupSummary({ rows, groupKey }: { rows: ApiRecord[]; groupKey: string }) {
+function countsFor(rows: ApiRecord[], groupKey: string): [string, number][] {
   const counts = new Map<string, number>();
   for (const row of rows) {
     const raw = row[groupKey];
     const value = raw === null || raw === undefined || raw === '' ? '—' : String(raw);
     counts.set(value, (counts.get(value) ?? 0) + 1);
   }
-  const entries = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+}
+
+function GroupSummary({
+  rows,
+  groupKey,
+}: {
+  rows: ApiRecord[];
+  groupKey: string | { key: string; label: string }[];
+}) {
+  // Tek sutun (string): eski davranis - tek satir, ayri bir etiket yok.
+  if (typeof groupKey === 'string') {
+    const entries = countsFor(rows, groupKey);
+    return (
+      <div className="mb-3 flex flex-wrap items-center gap-2 text-sm print:mb-2">
+        <span className="rounded-full bg-slate-900 px-3 py-1 font-medium text-white">Toplam: {rows.length}</span>
+        {entries.map(([value, count]) => (
+          <span key={value} className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
+            {value}: {count}
+          </span>
+        ))}
+      </div>
+    );
+  }
+  // Birden fazla kirilim: her biri kendi etiketiyle ayri bir satirda,
+  // "Toplam" sadece ilk satirda gosterilir.
   return (
-    <div className="mb-3 flex flex-wrap items-center gap-2 text-sm print:mb-2">
-      <span className="rounded-full bg-slate-900 px-3 py-1 font-medium text-white">Toplam: {rows.length}</span>
-      {entries.map(([value, count]) => (
-        <span key={value} className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
-          {value}: {count}
-        </span>
+    <div className="mb-3 flex flex-col gap-1.5 text-sm print:mb-2">
+      {groupKey.map(({ key, label }, index) => (
+        <div key={key} className="flex flex-wrap items-center gap-2">
+          {index === 0 && (
+            <span className="rounded-full bg-slate-900 px-3 py-1 font-medium text-white">Toplam: {rows.length}</span>
+          )}
+          <span className="w-20 shrink-0 text-xs font-medium uppercase tracking-wide text-slate-400">{label}</span>
+          {countsFor(rows, key).map(([value, count]) => (
+            <span key={value} className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
+              {value}: {count}
+            </span>
+          ))}
+        </div>
       ))}
     </div>
   );
