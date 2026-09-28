@@ -409,6 +409,8 @@ class YoungAnimalRead(BaseModel):
     gender_name: str
     breed_name: str | None = None
     birth_type_name: str | None = None
+    status_name: str | None = None
+    entry_value: Decimal | None = None
     birth_date: date | None = None
     age_months: int | None = None
     age_days: int | None = None

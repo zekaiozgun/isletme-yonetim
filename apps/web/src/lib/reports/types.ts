@@ -61,6 +61,11 @@ export interface ReportConfig {
    * ({key,label}[]) her biri kendi etiketiyle ALT ALTA ayrı bir satırda
    * gösterilir (örn. Cinsiyet/Irk/Doğum Şekli dağılımı bir arada). */
   groupSummaryKey?: string | { key: string; label: string }[];
+  /** Belirtilirse, özet bloğuna sayısal bir sütunun (tüm satırlar
+   * üzerinden) toplamını gösteren bir satır daha eklenir (örn. "Toplam
+   * Giriş Değeri: 3.220.000,00 ₺") - groupSummaryKey'in aksine bu bir
+   * dağılım değil, TEK bir toplam değerdir. */
+  sumSummaryKey?: { key: string; label: string; format: (value: number) => string };
   /** true ise arama TÜM satırları önceden indirip istemcide gizlemek
    * (varsayılan davranış) yerine SUNUCU TARAFINDA yapılır: kutuya yazıp
    * Enter'a basmak `q` query param'ıyla sayfayı yeniden yükler, backend

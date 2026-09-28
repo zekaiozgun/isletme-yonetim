@@ -47,16 +47,31 @@ function countsFor(rows: ApiRecord[], groupKey: string): [string, number][] {
   return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
 }
 
+// report.sumSummaryKey belirtilen sayisal sutunun TUM satirlar uzerinden
+// toplamini dondurur (gruplamiyor, tek bir sayidir).
+function sumFor(rows: ApiRecord[], key: string): number {
+  let total = 0;
+  for (const row of rows) {
+    const raw = row[key];
+    const n = typeof raw === 'number' ? raw : Number(raw);
+    if (Number.isFinite(n)) total += n;
+  }
+  return total;
+}
+
 function GroupSummary({
   rows,
   groupKey,
+  sumKey,
 }: {
   rows: ApiRecord[];
-  groupKey: string | { key: string; label: string }[];
+  groupKey?: string | { key: string; label: string }[];
+  sumKey?: { key: string; label: string; format: (value: number) => string };
 }) {
-  // Tek sutun (string): eski davranis - tek satir, ayri bir etiket yok.
-  if (typeof groupKey === 'string') {
-    const entries = countsFor(rows, groupKey);
+  // Tek sutun (string): eski davranis - tek satir, ayri bir etiket yok,
+  // toplam sutunu (varsa) da ayni satira eklenir.
+  if (typeof groupKey === 'string' || (groupKey === undefined && sumKey)) {
+    const entries = groupKey ? countsFor(rows, groupKey) : [];
     return (
       <div className="mb-3 flex flex-wrap items-center gap-2 text-sm print:mb-2">
         <span className="rounded-full bg-slate-900 px-3 py-1 font-medium text-white">Toplam: {rows.length}</span>
@@ -65,14 +80,20 @@ function GroupSummary({
             {value}: {count}
           </span>
         ))}
+        {sumKey && (
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
+            {sumKey.label}: {sumKey.format(sumFor(rows, sumKey.key))}
+          </span>
+        )}
       </div>
     );
   }
-  // Birden fazla kirilim: her biri kendi etiketiyle ayri bir satirda,
-  // "Toplam" sadece ilk satirda gosterilir.
+  // Birden fazla kirilim (+ opsiyonel toplam satiri): her biri kendi
+  // etiketiyle ayri bir satirda, "Toplam" sadece ilk satirda gosterilir.
+  const groupRows = groupKey ?? [];
   return (
     <div className="mb-3 flex flex-col gap-1.5 text-sm print:mb-2">
-      {groupKey.map(({ key, label }, index) => (
+      {groupRows.map(({ key, label }, index) => (
         <div key={key} className="flex flex-wrap items-center gap-2">
           {index === 0 && (
             <span className="rounded-full bg-slate-900 px-3 py-1 font-medium text-white">Toplam: {rows.length}</span>
@@ -85,6 +106,15 @@ function GroupSummary({
           ))}
         </div>
       ))}
+      {sumKey && (
+        <div className="flex flex-wrap items-center gap-2">
+          {groupRows.length === 0 && (
+            <span className="rounded-full bg-slate-900 px-3 py-1 font-medium text-white">Toplam: {rows.length}</span>
+          )}
+          <span className="w-20 shrink-0 text-xs font-medium uppercase tracking-wide text-slate-400">{sumKey.label}</span>
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">{sumKey.format(sumFor(rows, sumKey.key))}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -124,7 +154,9 @@ export function ReportTable({
 
   return (
     <>
-      {report.groupSummaryKey && <GroupSummary rows={rows} groupKey={report.groupSummaryKey} />}
+      {(report.groupSummaryKey || report.sumSummaryKey) && (
+        <GroupSummary rows={rows} groupKey={report.groupSummaryKey} sumKey={report.sumSummaryKey} />
+      )}
       <TableSearch
         placeholder={`${report.title} içinde ara...`}
         serverQuery={serverQuery}

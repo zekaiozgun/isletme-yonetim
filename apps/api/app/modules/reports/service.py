@@ -1894,6 +1894,7 @@ def list_animals_by_status(db: Session, status_ids: list[int] | None = None, tod
             joinedload(Animal.mother),
             joinedload(Animal.father_sire).joinedload(Sire.animal),
             joinedload(Animal.breed),
+            joinedload(Animal.status),
         )
         .order_by(Animal.birth_date, Animal.tag_number)
     )
@@ -1909,6 +1910,8 @@ def list_animals_by_status(db: Session, status_ids: list[int] | None = None, tod
                 name=animal.name,
                 gender_name=animal.gender.name,
                 breed_name=animal.breed.name if animal.breed else None,
+                status_name=animal.status.name,
+                entry_value=animal.entry_value,
                 birth_date=animal.birth_date,
                 age_months=age_months,
                 age_days=(today - animal.birth_date).days if animal.birth_date else None,

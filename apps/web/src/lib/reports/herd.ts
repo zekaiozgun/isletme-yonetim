@@ -1,6 +1,7 @@
 import type { ReportConfig } from './types';
 import {
   formatAgeMixed,
+  formatCurrency,
   formatDate,
   formatGenderShort,
   formatHerdStatusCategory,
@@ -19,6 +20,12 @@ export const herdReports: ReportConfig[] = [
     endpoint: '/reports/active-animals',
     group: 'Sürü Listeleri',
     statusFilter: true,
+    groupSummaryKey: [
+      { key: 'gender_name', label: 'Cinsiyet' },
+      { key: 'breed_name', label: 'Irk' },
+      { key: 'status_name', label: 'Statü' },
+    ],
+    sumSummaryKey: { key: 'entry_value', label: 'Toplam Giriş Değeri', format: formatCurrency },
     columns: [
       { key: 'tag_number', label: 'Küpe No', width: 'narrow' },
       { key: 'gender_name', label: 'D/E', format: formatGenderShort, width: 'narrow' },
