@@ -37,6 +37,7 @@ from app.modules.genetic_resource.models import SemenBatch, Sire
 from app.modules.death.models import Death
 from app.modules.evaluation.lookups import EvaluationDirection
 from app.modules.evaluation.models import AnimalEvaluation, EvaluationReason
+from app.modules.expense.models import GeneralExpense
 from app.modules.feed.models import FeedItem, FeedPurchase, PenRation, RationItem
 from app.modules.fx import service as fx_service
 from app.modules.health.models import HealthEvent, HealthEventMedication
@@ -60,6 +61,7 @@ from app.modules.reports.schemas import (
     DailyRationCostRead,
     DashboardSummaryRead,
     DeathLossReportRead,
+    GeneralExpenseDetailRead,
     FeedConsumptionRead,
     FeedStockRunwayRead,
     FeedStockStatusRead,
@@ -2695,6 +2697,91 @@ def _health_cost_for_period(db: Session, start_date: date, end_date: date) -> tu
     return health_try, health_usd
 
 
+def _general_expense_cost_for_period(db: Session, start_date: date, end_date: date) -> tuple[Decimal, Decimal]:
+    """SURUDEKI TUM hayvanlardan bagimsiz, [start_date, end_date] araliginda
+    kaydedilen genel isletme giderlerinin (yakit, iscilik/yevmiye, usta/
+    bakim-onarim, diger) TOPLAMI (TL, USD - her kaydin kendi tarihindeki
+    TCMB kuruyla) - Yem/Saglik maliyetleriyle AYNI seviyede ucuncu bir
+    nakit maliyet kalemi (bkz. list_herd_cost_summary/get_herd_profit_loss)."""
+    expense_try = expense_usd = Decimal("0")
+    stmt = select(GeneralExpense).where(
+        GeneralExpense.expense_date >= start_date, GeneralExpense.expense_date <= end_date
+    )
+    for expense in db.scalars(stmt).all():
+        expense_try += expense.amount
+        expense_usd += _try_to_usd(db, expense.amount, expense.expense_date)
+    return expense_try, expense_usd
+
+
+def list_monthly_expense_summary(db: Session, start_date: date, end_date: date) -> list[HerdCostSummaryRead]:
+    """'Aylık Harcama Raporu' - [start_date, end_date] araliginda GERCEKLESEN
+    TUM nakit isletme giderlerini (Yem + Saglik/Ilac + kategori bazinda
+    Genel Giderler) TL/USD olarak tek bir listede ozetler. list_herd_cost_summary'
+    den FARKLI: burada satis geliri, hayvan alim bedeli gibi gelir/sermaye
+    kalemleri YOKTUR - saf "bu donem ne kadar harcadik" sorusuna cevap
+    verir (bkz. kullanici geri bildirimi)."""
+
+    def row(category: str, category_code: str, try_amount: Decimal, usd_amount: Decimal) -> HerdCostSummaryRead:
+        return HerdCostSummaryRead(
+            category=category,
+            category_code=category_code,
+            amount_try=_round_money(try_amount),
+            amount_usd=_round_money(usd_amount),
+        )
+
+    feed_try, feed_usd = _feed_cost_for_period(db, start_date, end_date)
+    health_try, health_usd = _health_cost_for_period(db, start_date, end_date)
+
+    category_stmt = (
+        select(GeneralExpense)
+        .options(joinedload(GeneralExpense.category))
+        .where(GeneralExpense.expense_date >= start_date, GeneralExpense.expense_date <= end_date)
+    )
+    by_category_try: dict[str, Decimal] = {}
+    by_category_usd: dict[str, Decimal] = {}
+    for expense in db.scalars(category_stmt).all():
+        name = expense.category.name
+        usd = _try_to_usd(db, expense.amount, expense.expense_date)
+        by_category_try[name] = by_category_try.get(name, Decimal("0")) + expense.amount
+        by_category_usd[name] = by_category_usd.get(name, Decimal("0")) + usd
+
+    general_expense_try = sum(by_category_try.values(), Decimal("0"))
+    general_expense_usd = sum(by_category_usd.values(), Decimal("0"))
+    grand_total_try = feed_try + health_try + general_expense_try
+    grand_total_usd = feed_usd + health_usd + general_expense_usd
+
+    rows = [
+        row("Yem Maliyeti", "FEED", feed_try, feed_usd),
+        row("Sağlık/İlaç Maliyeti", "HEALTH", health_try, health_usd),
+    ]
+    for name in sorted(by_category_try):
+        rows.append(row(name, "EXPENSE_CATEGORY", by_category_try[name], by_category_usd[name]))
+    rows.append(row("Genel Giderler Toplamı", "GENERAL_EXPENSE_TOTAL", general_expense_try, general_expense_usd))
+    rows.append(row("GENEL TOPLAM", "GRAND_TOTAL", grand_total_try, grand_total_usd))
+    return rows
+
+
+def list_monthly_expense_detail(db: Session, start_date: date, end_date: date) -> list[GeneralExpenseDetailRead]:
+    """list_monthly_expense_summary'nin 'Genel Giderler' kalemini olusturan
+    HAM kayitlarin kendisi - rapor sayfasinda ozetin altinda ayrica gosterilir."""
+    stmt = (
+        select(GeneralExpense)
+        .options(joinedload(GeneralExpense.category))
+        .where(GeneralExpense.expense_date >= start_date, GeneralExpense.expense_date <= end_date)
+        .order_by(GeneralExpense.expense_date.desc())
+    )
+    return [
+        GeneralExpenseDetailRead(
+            id=expense.id,
+            expense_date=expense.expense_date,
+            category_name=expense.category.name,
+            amount=expense.amount,
+            note=expense.note,
+        )
+        for expense in db.scalars(stmt).all()
+    ]
+
+
 def list_herd_cost_summary(db: Session, start_date: date, end_date: date) -> list[HerdCostSummaryRead]:
     """Belirtilen tarih araliginda GERCEKLESEN (dagitilan/kaydedilen/satilan)
     tum NAKIT maliyet ve gelir kalemlerini TL ve USD olarak ozetler -
@@ -2725,6 +2812,7 @@ def list_herd_cost_summary(db: Session, start_date: date, end_date: date) -> lis
     kotu gostermesin diye."""
     feed_try, feed_usd = _feed_cost_for_period(db, start_date, end_date)
     health_try, health_usd = _health_cost_for_period(db, start_date, end_date)
+    general_expense_try, general_expense_usd = _general_expense_cost_for_period(db, start_date, end_date)
 
     entry_value_try = entry_value_usd = Decimal("0")
     entry_value_stmt = select(Animal).options(joinedload(Animal.entry_source)).where(
@@ -2742,8 +2830,8 @@ def list_herd_cost_summary(db: Session, start_date: date, end_date: date) -> lis
         revenue_try += sale.total_amount
         revenue_usd += _try_to_usd(db, sale.total_amount, sale.sale_date)
 
-    total_cost_try = feed_try + health_try + entry_value_try
-    total_cost_usd = feed_usd + health_usd + entry_value_usd
+    total_cost_try = feed_try + health_try + general_expense_try + entry_value_try
+    total_cost_usd = feed_usd + health_usd + general_expense_usd + entry_value_usd
 
     def row(category: str, category_code: str, try_amount: Decimal, usd_amount: Decimal) -> HerdCostSummaryRead:
         return HerdCostSummaryRead(
@@ -2753,12 +2841,13 @@ def list_herd_cost_summary(db: Session, start_date: date, end_date: date) -> lis
             amount_usd=_round_money(usd_amount),
         )
 
-    operational_cost_try = feed_try + health_try
-    operational_cost_usd = feed_usd + health_usd
+    operational_cost_try = feed_try + health_try + general_expense_try
+    operational_cost_usd = feed_usd + health_usd + general_expense_usd
 
     return [
         row("Yem Maliyeti", "FEED", feed_try, feed_usd),
         row("Sağlık/Tedavi Maliyeti", "HEALTH", health_try, health_usd),
+        row("Genel İşletme Giderleri", "GENERAL_EXPENSE", general_expense_try, general_expense_usd),
         row("Giriş Değeri (Satın Alma)", "ENTRY_VALUE", entry_value_try, entry_value_usd),
         row("Toplam Maliyet", "TOTAL_COST", total_cost_try, total_cost_usd),
         row("Satış Geliri", "REVENUE", revenue_try, revenue_usd),
@@ -3233,9 +3322,11 @@ def get_herd_profit_loss(db: Session, start_date: date, end_date: date) -> HerdP
        KENDI buyume/degisimi de dogru sekilde bu satira dahil oluyor).
 
     2) Ekonomik Sonuc (KARISIK bazlar): +Satis Geliri -Satin Alma Bedeli
-       -Yem Maliyeti -Sağlık Maliyeti ±(1)'in net degisimi = Net Ekonomik
-       Kar/Zarar - nakit akislarini piyasa degeri koprusuyle birlestirip
-       TEK bir "sermaye degisti mi" cevabi verir.
+       -Yem Maliyeti -Sağlık Maliyeti -Genel İşletme Giderleri (yakıt,
+       işçilik/yevmiye, usta/bakım-onarım vb. - bkz. expense modülü)
+       ±(1)'in net degisimi = Net Ekonomik Kar/Zarar - nakit akislarini
+       piyasa degeri koprusuyle birlestirip TEK bir "sermaye degisti mi"
+       cevabi verir.
 
     Dogum Kari kirilimi: her DOGUM girisi icin, dogan hayvanin PIYASA
     (giris) degeri ile annesinin GEBELIK penceresindeki (dogum -
@@ -3364,12 +3455,17 @@ def get_herd_profit_loss(db: Session, start_date: date, end_date: date) -> HerdP
 
     feed_try, feed_usd = _feed_cost_for_period(db, start_date, end_date)
     health_try, health_usd = _health_cost_for_period(db, start_date, end_date)
+    general_expense_try, general_expense_usd = _general_expense_cost_for_period(db, start_date, end_date)
 
     value_bridge_net_try = closing_try - opening_try
     value_bridge_net_usd = closing_usd - opening_usd
 
-    net_result_try = sale_revenue_try - purchases_value_try - feed_try - health_try + value_bridge_net_try
-    net_result_usd = sale_revenue_usd - purchases_value_usd - feed_usd - health_usd + value_bridge_net_usd
+    net_result_try = (
+        sale_revenue_try - purchases_value_try - feed_try - health_try - general_expense_try + value_bridge_net_try
+    )
+    net_result_usd = (
+        sale_revenue_usd - purchases_value_usd - feed_usd - health_usd - general_expense_usd + value_bridge_net_usd
+    )
 
     return HerdProfitLossRead(
         start_date=start_date,
@@ -3406,6 +3502,8 @@ def get_herd_profit_loss(db: Session, start_date: date, end_date: date) -> HerdP
         feed_cost_usd=_round_money(feed_usd),
         health_cost_try=_round_money(health_try),
         health_cost_usd=_round_money(health_usd),
+        general_expense_try=_round_money(general_expense_try),
+        general_expense_usd=_round_money(general_expense_usd),
         net_result_try=_round_money(net_result_try),
         net_result_usd=_round_money(net_result_usd),
     )

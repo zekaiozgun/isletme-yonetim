@@ -79,6 +79,7 @@ export function HerdProfitLossSection({ data }: { data: ApiRecord }) {
         <EcoRow label="Satın Alma Bedeli" usdAmount={-num('purchase_cost_usd')} tone="nakit" />
         <EcoRow label="Yem Maliyeti" usdAmount={-num('feed_cost_usd')} tone="maliyet" />
         <EcoRow label="Sağlık/Tedavi Maliyeti" usdAmount={-num('health_cost_usd')} tone="maliyet" />
+        <EcoRow label="Genel İşletme Giderleri" usdAmount={-num('general_expense_usd')} tone="maliyet" />
 
         <details className="px-4 py-2.5">
           <summary className="flex cursor-pointer list-none items-center justify-between text-sm">

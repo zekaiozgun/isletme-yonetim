@@ -33,7 +33,7 @@ export const financialReports: ReportConfig[] = [
     slug: 'herd-profit-loss',
     title: 'Sürü Kâr/Zarar Raporu',
     description:
-      'Seçilen dönemde sürünün özkaynak değişimini iki katmanda özetler: Ekonomik Sonuç (satış geliri, satın alma bedeli, yem/sağlık maliyeti ve piyasa değeri hareketinin birleşimi - tek bir "sermaye büyüdü mü küçüldü mü" cevabı) ve altında açılan Piyasa Değer Köprüsü (doğum, satın alma, ölüm, satış ve mevcut sürünün değer değişimiyle dönem başından sonuna kalem kalem geçiş).',
+      'Seçilen dönemde sürünün özkaynak değişimini iki katmanda özetler: Ekonomik Sonuç (satış geliri, satın alma bedeli, yem/sağlık/genel işletme gideri maliyeti ve piyasa değeri hareketinin birleşimi - tek bir "sermaye büyüdü mü küçüldü mü" cevabı) ve altında açılan Piyasa Değer Köprüsü (doğum, satın alma, ölüm, satış ve mevcut sürünün değer değişimiyle dönem başından sonuna kalem kalem geçiş).',
     helpNote:
       'Doğumla giren değerin ne kadarının annenin gebelik dönemi yem maliyeti, ne kadarının gerçek doğum kârı olduğu ayrıca gösterilir. Varsayılan aralık 1 yıl - daha kısa geriye veri yoksa mevcut veriyle sınırlı kalır. Satın Alma Bedeli, dönem içinde alınan TÜM hayvanları kapsar (o hayvan daha sonra satılmış/ölmüş olsa bile) - bu yüzden Tahmini Piyasa Değeri raporundaki (sadece hâlâ hayatta olanları sayan) "Toplam Edinme Değeri" tutarından farklı çıkabilir, bu bir hata değildir.',
     endpoint: '/reports/herd-profit-loss',
@@ -71,7 +71,7 @@ export const financialReports: ReportConfig[] = [
     slug: 'herd-cost-summary',
     title: 'Sürü Genel Maliyet-Gelir Özeti',
     description:
-      'Aralıkta gerçekleşen yem, sağlık ve alım maliyeti ile satış gelirinin TL ve USD (her kalemin kendi tarihindeki TCMB kuruyla) genel özeti - planlama için. Satın alma bir sermaye/demirbaş hareketidir, yem/sağlık gibi tekrarlanan bir işletme gideri değildir - "Net" satın alma dahil tam resmi korurken, "Operasyonel Net" sadece tekrarlanan kalemleri (satış geliri − yem − sağlık) kıyaslayarak dönemler arası karşılaştırılabilir bir gösterge sunar.',
+      'Aralıkta gerçekleşen yem, sağlık, genel işletme gideri (yakıt, işçilik/yevmiye, usta/bakım-onarım vb.) ve alım maliyeti ile satış gelirinin TL ve USD (her kalemin kendi tarihindeki TCMB kuruyla) genel özeti - planlama için. Satın alma bir sermaye/demirbaş hareketidir, yem/sağlık gibi tekrarlanan bir işletme gideri değildir - "Net" satın alma dahil tam resmi korurken, "Operasyonel Net" sadece tekrarlanan kalemleri (satış geliri − yem − sağlık − genel gider) kıyaslayarak dönemler arası karşılaştırılabilir bir gösterge sunar.',
     endpoint: '/reports/herd-cost-summary',
     group: 'Mali',
     dateRange: true,
@@ -82,6 +82,22 @@ export const financialReports: ReportConfig[] = [
       { key: 'amount_usd', label: 'Tutar ($)', format: formatUsd, width: 'narrow' },
     ],
     rowHighlight: (row) => row.category_code === 'NET' || row.category_code === 'OPERATIONAL_NET',
+  },
+  {
+    slug: 'monthly-expenses',
+    title: 'Aylık Harcama Raporu',
+    description:
+      'Seçilen dönemde GERÇEKLEŞEN tüm nakit işletme giderlerini (Yem, Sağlık/İlaç, Genel Giderler - yakıt/işçilik-yevmiye/usta-bakım-onarım/diğer) tek listede özetler. Sürü Genel Maliyet-Gelir Özeti\'nden farkı: burada satış geliri veya hayvan alım bedeli yoktur, saf "bu dönem ne kadar harcadık" sorusuna cevap verir. Varsayılan aralık önceki takvim ayının tamamıdır (bu ay henüz kapanmadığı için), istediğin tarih aralığına değiştirebilirsin.',
+    endpoint: '/reports/monthly-expense-summary',
+    group: 'Mali',
+    dateRange: true,
+    defaultPreviousMonth: true,
+    columns: [
+      { key: 'category', label: 'Kalem', width: 'narrow' },
+      { key: 'amount_try', label: 'Tutar (TL)', format: formatCurrency, width: 'narrow' },
+      { key: 'amount_usd', label: 'Tutar ($)', format: formatUsd, width: 'narrow' },
+    ],
+    rowHighlight: (row) => row.category_code === 'GENERAL_EXPENSE_TOTAL' || row.category_code === 'GRAND_TOTAL',
   },
   {
     slug: 'herd-animal-market-values',

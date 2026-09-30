@@ -128,6 +128,7 @@ const saleTypes: OptionSource = { endpoint: '/sales/types', label: label('name')
 const disposalMethods: OptionSource = { endpoint: '/deaths/disposal-methods', label: label('name') };
 const evaluationReasons: OptionSource = { endpoint: '/evaluations/reasons', label: label('name') };
 const evaluationPriorities: OptionSource = { endpoint: '/evaluations/priorities', label: label('name') };
+const expenseCategories: OptionSource = { endpoint: '/expenses/categories', label: label('name') };
 
 // --- Başka kaynaklara referans (kayıt seçici) ---
 const animals: OptionSource = {
@@ -604,6 +605,27 @@ const mainResources: ResourceConfig[] = [
       { slug: 'breeding-recommendations', title: 'Damızlık Önerileri' },
     ],
   },
+  {
+    slug: 'general-expenses',
+    title: 'Genel Giderler',
+    singularTitle: 'Genel Gider',
+    group: 'Genel Giderler',
+    listEndpoint: '/expenses',
+    createEndpoint: '/expenses',
+    columns: [
+      { key: 'expense_date', label: 'Tarih', date: true },
+      { key: 'category_id', label: 'Kategori', lookup: expenseCategories },
+      { key: 'amount', label: 'Tutar (TL)', format: formatCurrencyTRY },
+      { key: 'note', label: 'Açıklama' },
+    ],
+    fields: [
+      { name: 'expense_date', label: 'Tarih', type: 'date', required: true },
+      { name: 'category_id', label: 'Kategori', type: 'select', options: expenseCategories, required: true },
+      { name: 'amount', label: 'Tutar (TL)', type: 'decimal', required: true },
+      { name: 'note', label: 'Açıklama', type: 'textarea' },
+    ],
+    relatedReports: [{ slug: 'monthly-expenses', title: 'Aylık Harcama Raporu' }],
+  },
 ];
 
 // --- Master Data (lookup) tablolarinin tam CRUD kaynaklari ---
@@ -641,6 +663,7 @@ const lookupDefs: LookupResourceDef[] = [
   { slug: 'feed-units', title: 'Yem Birimleri', singularTitle: 'Yem Birimi', group: 'Yem', endpoint: '/feed/units' },
   { slug: 'sale-types', title: 'Satış Tipleri', singularTitle: 'Satış Tipi', group: 'Satış', endpoint: '/sales/types' },
   { slug: 'disposal-methods', title: 'İmha Yöntemleri', singularTitle: 'İmha Yöntemi', group: 'Ölüm', endpoint: '/deaths/disposal-methods' },
+  { slug: 'expense-categories', title: 'Gider Kategorileri', singularTitle: 'Gider Kategorisi', group: 'Genel Giderler', endpoint: '/expenses/categories' },
 ];
 
 const lookupResources: ResourceConfig[] = lookupDefs.map((def) => ({

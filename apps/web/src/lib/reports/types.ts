@@ -37,6 +37,12 @@ export interface ReportConfig {
    * belirtilmezse varsayılan "bu ayın başı" kullanılır. Kullanıcı her
    * zaman kendi tarih aralığını seçip bunu değiştirebilir. */
   defaultRangeDays?: number;
+  /** true ise ilk açıldığında (hiçbir tarih seçilmeden) aralık ÖNCEKİ
+   * takvim ayının tamamı olur (1'i - son günü) - "bu ayın başından
+   * bugüne" (henüz kapanmamış, eksik bir ay) değil, gerçekten kapanmış
+   * bir dönem. defaultRangeDays ile birlikte kullanılmaz - ikisi de
+   * verilirse bu öncelikli olur. */
+  defaultPreviousMonth?: boolean;
   /** true ise rapor sayfası tek bir "tarih itibariyle" filtresi gösterir
    * (aralık değil) ve bunu `as_of_date` query param'ı olarak endpoint'e ekler. */
   singleDate?: boolean;

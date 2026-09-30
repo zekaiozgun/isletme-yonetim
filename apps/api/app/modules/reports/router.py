@@ -28,6 +28,7 @@ from app.modules.reports.schemas import (
     FeedConsumptionRead,
     FeedStockRunwayRead,
     FeedStockStatusRead,
+    GeneralExpenseDetailRead,
     GeneticCompositionRead,
     HealthEventReportRead,
     HerdCostSummaryRead,
@@ -280,6 +281,24 @@ def herd_cost_summary(
     db: Session = Depends(get_db),
 ) -> list[HerdCostSummaryRead]:
     return service.list_herd_cost_summary(db, start_date, end_date)
+
+
+@router.get("/monthly-expense-summary", response_model=list[HerdCostSummaryRead])
+def monthly_expense_summary(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    db: Session = Depends(get_db),
+) -> list[HerdCostSummaryRead]:
+    return service.list_monthly_expense_summary(db, start_date, end_date)
+
+
+@router.get("/monthly-expense-detail", response_model=list[GeneralExpenseDetailRead])
+def monthly_expense_detail(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    db: Session = Depends(get_db),
+) -> list[GeneralExpenseDetailRead]:
+    return service.list_monthly_expense_detail(db, start_date, end_date)
 
 
 @router.get("/herd-profit-loss", response_model=list[HerdProfitLossRead])

@@ -165,3 +165,19 @@ export function addDaysToIstanbulIso(days: number): string {
   shifted.setUTCDate(shifted.getUTCDate() + days);
   return shifted.toISOString().slice(0, 10);
 }
+
+/** Bugünün (Türkiye yerel) tarihi ne olursa olsun, ÖNCEKİ takvim ayının
+ * tamamını (1'i - son günü) ISO olarak döner - "bu ayın başından bugüne"
+ * (ay henüz bitmemiş, eksik) değil, gerçekten KAPANMIŞ bir ay. Aylık
+ * Harcama Raporu'nun varsayılan aralığı için (bkz. kullanıcı geri
+ * bildirimi: "geçmiş ay ne harcamış olduk" - ay bitmeden bakmanın bir
+ * anlamı yok). */
+export function previousMonthRangeIstanbul(): { start: string; end: string } {
+  const [y, m] = todayIstanbulIso().split('-').map(Number);
+  // JS Date ayları 0-indeksli: gercek ayin (1-indeksli) bir onceki ayi
+  // "month: m - 1" ile ifade edilir (orn. Eylul=9 -> Agustos icin index 7).
+  const firstOfPrevMonth = new Date(Date.UTC(y, m - 2, 1));
+  const lastOfPrevMonth = new Date(Date.UTC(y, m - 1, 0));
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  return { start: iso(firstOfPrevMonth), end: iso(lastOfPrevMonth) };
+}

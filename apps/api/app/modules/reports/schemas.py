@@ -492,6 +492,18 @@ class HerdCostSummaryRead(BaseModel):
     amount_usd: Decimal
 
 
+class GeneralExpenseDetailRead(BaseModel):
+    """Aylık Harcama Raporu'nun detay listesi - list_monthly_expense_detail
+    ile aynı tarih aralığındaki GeneralExpense kayıtlarını, kategori adı
+    çözümlenmiş olarak döner."""
+
+    id: int
+    expense_date: date
+    category_name: str
+    amount: Decimal
+    note: str | None = None
+
+
 class AnimalMarketValueRead(BaseModel):
     animal_id: uuid.UUID
     tag_number: str
@@ -610,6 +622,8 @@ class HerdProfitLossRead(BaseModel):
     feed_cost_usd: Decimal
     health_cost_try: Decimal
     health_cost_usd: Decimal
+    general_expense_try: Decimal
+    general_expense_usd: Decimal
     net_result_try: Decimal
     net_result_usd: Decimal
 

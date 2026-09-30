@@ -7,10 +7,11 @@ import { HerdAnimalValueTable } from '@/components/HerdAnimalValueTable';
 import { HerdProfitLossSection } from '@/components/HerdProfitLossSection';
 import { ParentPerformanceSection } from '@/components/ParentPerformanceSection';
 import { DailyFeedCostSection } from '@/components/DailyFeedCostSection';
+import { MonthlyExpenseSection } from '@/components/MonthlyExpenseSection';
 import { GroupedOffspringList } from '@/components/GroupedOffspringList';
 import { DateRangeFilter } from '@/components/DateRangeFilter';
 import { MarketValueSeriesFilter } from '@/components/MarketValueSeriesFilter';
-import { addDaysToIstanbulIso, formatNowIstanbulDMYHM, todayIstanbulIso } from '@/lib/format';
+import { addDaysToIstanbulIso, formatNowIstanbulDMYHM, previousMonthRangeIstanbul, todayIstanbulIso } from '@/lib/format';
 
 function todayIso(): string {
   return todayIstanbulIso();
@@ -48,8 +49,15 @@ export default async function ReportPage({
   let rangeStart: string | undefined;
   let rangeEnd: string | undefined;
   if (report.dateRange) {
-    rangeStart = sp.start || (report.defaultRangeDays ? daysAgoIso(report.defaultRangeDays) : firstDayOfMonthIso());
-    rangeEnd = sp.end || todayIso();
+    const previousMonth = report.defaultPreviousMonth ? previousMonthRangeIstanbul() : null;
+    rangeStart =
+      sp.start ||
+      (previousMonth
+        ? previousMonth.start
+        : report.defaultRangeDays
+          ? daysAgoIso(report.defaultRangeDays)
+          : firstDayOfMonthIso());
+    rangeEnd = sp.end || (previousMonth ? previousMonth.end : todayIso());
   }
 
   const asOfDate = report.singleDate ? sp.as_of_date || todayIso() : undefined;
@@ -88,6 +96,10 @@ export default async function ReportPage({
   const feedStockRunwayRows =
     report.slug === 'feed-daily-cost'
       ? await apiGetSafe<ApiRecord[]>(`/reports/feed-stock-runway${separator}${query.toString()}`, [])
+      : [];
+  const monthlyExpenseDetailRows =
+    report.slug === 'monthly-expenses'
+      ? await apiGetSafe<ApiRecord[]>(`/reports/monthly-expense-detail${separator}${query.toString()}`, [])
       : [];
 
   const showCustomFilter = report.singleDate || report.statusFilter;
@@ -137,6 +149,8 @@ export default async function ReportPage({
         <ParentPerformanceSection motherRows={rows} sireRows={sireRows} />
       ) : report.slug === 'feed-daily-cost' ? (
         <DailyFeedCostSection costReport={report} costRows={rows} runwayRows={feedStockRunwayRows} />
+      ) : report.slug === 'monthly-expenses' ? (
+        <MonthlyExpenseSection summaryReport={report} summaryRows={rows} detailRows={monthlyExpenseDetailRows} />
       ) : report.groupBy ? (
         <GroupedOffspringList report={report} rows={rows} searchQuery={searchQuery} />
       ) : (
