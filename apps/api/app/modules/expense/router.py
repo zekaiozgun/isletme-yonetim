@@ -10,6 +10,13 @@ from app.modules.expense.schemas import GeneralExpenseCreate, GeneralExpenseRead
 
 router = APIRouter(prefix="/expenses", tags=["expenses"])
 
+# BILEREK asagidaki /{expense_id} rotalarindan ONCE eklenir: Starlette
+# rotalari kayit SIRASINA gore esler, "/{expense_id}" (int) tek segmentlik
+# HER yolu (orn. "/categories") yakalardi - lookup router'i sonraya
+# birakmak "categories"i gecersiz bir expense_id gibi 422'letirdi (bkz.
+# kullanici geri bildirimi: "gider kategorisi giremiyorum").
+router.include_router(build_lookup_router(ExpenseCategory, "/categories", "expense-lookups", "gider kategorisi"))
+
 
 @router.post("", response_model=GeneralExpenseRead, status_code=201)
 def create_general_expense(payload: GeneralExpenseCreate, db: Session = Depends(get_db)) -> GeneralExpenseRead:
@@ -45,6 +52,3 @@ def delete_general_expense(expense_id: int, db: Session = Depends(get_db)) -> No
         service.delete_general_expense(db, expense_id)
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-
-router.include_router(build_lookup_router(ExpenseCategory, "/categories", "expense-lookups", "gider kategorisi"))
