@@ -36,6 +36,12 @@ class Sire(TimestampMixin, Base):
         UUID(as_uuid=True), ForeignKey("animals.id"), nullable=True, unique=True
     )
     is_external: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
+    # Gercek bir boga DEGIL, "menseyi bilinmeyen/satin alinan hayvanlarin
+    # babasi" icin konmus yer tutucu (orn. ilk surunun U.HEREFORD/U.ANGUS
+    # kaydi). Soy analizinde (ortak ata/akrabalik uyarisi) BILINMEYEN sayilir
+    # - aksi halde ayni yer tutucuyu paylasan tum hayvanlar yapay olarak
+    # akraba gorunurdu (bkz. animal/service.py find_common_ancestors).
+    is_placeholder: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     # Dis kaynakli (is_external=True) bir boganin KENDI ebeveyni suruye
     # ait degildir, tam bir Animal kaydi acilmaz - ama suni tohumlama
     # kataloğunda cogunlukla bilinir (kimlik no + ad). Girilirse, soy

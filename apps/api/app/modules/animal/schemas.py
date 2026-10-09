@@ -78,6 +78,9 @@ class PedigreeNodeRead(BaseModel):
     name: str | None = None
     breed_name: str | None = None
     is_external: bool = False
+    # Gercek bir ata degil, "menseyi bilinmiyor" yer tutucusu (bkz.
+    # Sire.is_placeholder) - ortak ata hesabinda atlanir.
+    is_placeholder: bool = False
     mother: "PedigreeNodeRead | None" = None
     father: "PedigreeNodeRead | None" = None
 

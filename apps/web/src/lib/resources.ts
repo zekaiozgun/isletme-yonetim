@@ -287,6 +287,7 @@ const mainResources: ResourceConfig[] = [
       { key: 'registry_no', label: 'Tescil No' },
       { key: 'breed_id', label: 'Irk', lookup: breeds },
       { key: 'is_external', label: 'Dış Kaynak', boolean: true },
+      { key: 'is_placeholder', label: 'Yer Tutucu', boolean: true },
     ],
     fields: [
       {
@@ -298,6 +299,11 @@ const mainResources: ResourceConfig[] = [
       { name: 'breed_id', label: 'Irk', type: 'select', options: breeds, required: true },
       { name: 'animal_id', label: 'Sürüdeki Hayvan (varsa)', type: 'select', options: sireCandidateAnimals },
       { name: 'is_external', label: 'Dış Kaynak (İşletme Dışı)', type: 'checkbox' },
+      {
+        name: 'is_placeholder',
+        label: 'Yer Tutucu (gerçek bir boğa değil: menşei bilinmeyen/satın alınan hayvanların babası yerine konan kayıt - akrabalık uyarısında ortak ata sayılmaz)',
+        type: 'checkbox',
+      },
       { name: 'known_sire_registry_no', label: 'Dış Kaynaklıysa: Bilinen Babasının Kimlik/Tescil No', type: 'text' },
       { name: 'known_sire_name', label: 'Dış Kaynaklıysa: Bilinen Babasının Adı', type: 'text' },
       { name: 'known_dam_registry_no', label: 'Dış Kaynaklıysa: Bilinen Annesinin Kimlik/Tescil No', type: 'text' },

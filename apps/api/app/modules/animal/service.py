@@ -203,6 +203,7 @@ def _pedigree_node_from_sire(sire: Sire, remaining_generations: int) -> Pedigree
         name=sire.name,
         breed_name=sire.breed.name if sire.breed else None,
         is_external=True,
+        is_placeholder=sire.is_placeholder,
         mother=mother_node,
         father=father_node,
     )
@@ -283,7 +284,9 @@ def _collect_pedigree_keys(node: PedigreeNodeRead | None, keys: dict[tuple, str]
     if node is None:
         return
     key = (node.animal_id,) if node.animal_id is not None else (node.tag_number, node.name)
-    if key != (None, None):
+    # Yer tutucu (menseyi bilinmiyor) gercek bir ata degildir - kendisi
+    # ortak ata sayilmaz, ama bildigi gercek atalar (known_*) hala taranir.
+    if key != (None, None) and not node.is_placeholder:
         keys.setdefault(key, node.tag_number or node.name or "?")
     _collect_pedigree_keys(node.mother, keys)
     _collect_pedigree_keys(node.father, keys)
