@@ -70,6 +70,15 @@ interface ResourceFormProps {
     matchValues: string[];
     message: string;
   };
+  /**
+   * Opsiyonel: action, kaydetmeden ÖNCE kullanıcıdan bir onay bekliyorsa
+   * (örn. BreedingEventForm'un akrabalık uyarısı - window.confirm)
+   * güvenlik ağı zamanlayıcısını durdurmak için kullanılır. 'hold' iken 6
+   * sn'lik sayaç sıfırlanır (kullanıcı mesajı okurken sert yenileme
+   * tetiklenmez), 'cancel' ise sayaç tamamen iptal edilir (kullanıcı İptal
+   * dedi - hiçbir yere yönlendirilmemeli). null/verilmezse eski davranış.
+   */
+  safetyNetGateRef?: { current: 'hold' | 'cancel' | null };
 }
 
 const inputClass =
@@ -85,6 +94,7 @@ export function ResourceForm({
   readOnly = false,
   warningField,
   redirectTo,
+  safetyNetGateRef,
 }: ResourceFormProps) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(action, null);
   const [step, setStep] = useState<'form' | 'review'>('form');
@@ -111,11 +121,27 @@ export function ResourceForm({
   function handleSubmitSafetyNet() {
     if (!redirectTo) return;
     navigatedRef.current = false;
-    setTimeout(() => {
-      if (!navigatedRef.current) {
+    if (safetyNetGateRef) safetyNetGateRef.current = null;
+    // 6 sn'lik sayaç, kullanıcıdan onay beklenirken ('hold') sıfırlanır ve
+    // İptal'de ('cancel') tamamen durur - aksi halde uyarıyı okumak 6 sn'den
+    // uzun sürünce sert yenileme kaydı yarıda kesiyordu (kullanıcı geri
+    // bildirimi: akrabalık uyarısından sonra kayıt tamamlanmıyor).
+    let waitedMs = 0;
+    const tick = setInterval(() => {
+      if (navigatedRef.current || safetyNetGateRef?.current === 'cancel') {
+        clearInterval(tick);
+        return;
+      }
+      if (safetyNetGateRef?.current === 'hold') {
+        waitedMs = 0;
+        return;
+      }
+      waitedMs += 500;
+      if (waitedMs >= 6000) {
+        clearInterval(tick);
         window.location.href = redirectTo;
       }
-    }, 6000);
+    }, 500);
   }
 
   const showingReview = requireConfirmation && step === 'review' && reviewData !== null;

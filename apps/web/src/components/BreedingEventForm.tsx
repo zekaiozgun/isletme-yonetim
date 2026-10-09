@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import { checkInbreedingAction } from '@/lib/actions';
 import { ResourceForm, type ClientFieldConfig, type FormState } from './ResourceForm';
 
@@ -32,12 +33,17 @@ export function BreedingEventForm({
   redirectTo?: string;
   warningField?: { fieldName: string; matchValues: string[]; message: string };
 }) {
+  // ResourceForm'un 6 sn'lik sert-yenileme güvenlik ağı, kullanıcı uyarıyı
+  // okurken/onaylarken kaydı yarıda kesmesin diye - bkz. ResourceForm.safetyNetGateRef.
+  const gateRef = useRef<'hold' | 'cancel' | null>(null);
+
   async function actionWithInbreedingCheck(prevState: FormState, formData: FormData): Promise<FormState> {
     const damId = String(formData.get('dam_id') ?? '');
     const sireAnimalId = String(formData.get('sire_animal_id') ?? '');
     const semenBatchIdRaw = String(formData.get('semen_batch_id') ?? '');
 
     if (damId && (sireAnimalId || semenBatchIdRaw)) {
+      gateRef.current = 'hold';
       const outcome = await checkInbreedingAction(
         damId,
         sireAnimalId || null,
@@ -50,8 +56,12 @@ export function BreedingEventForm({
             'Aşım zaten gerçekleşmiş bir olay olduğu için bu sadece bilgilendirme amaçlıdır — kaydı onaylayarak devam edebilirsiniz.\n\n' +
             'Devam edilsin mi?'
         );
-        if (!proceed) return prevState;
+        if (!proceed) {
+          gateRef.current = 'cancel';
+          return prevState;
+        }
       }
+      gateRef.current = null;
     }
 
     return action(prevState, formData);
@@ -65,6 +75,7 @@ export function BreedingEventForm({
       submitLabel={submitLabel}
       redirectTo={redirectTo}
       warningField={warningField}
+      safetyNetGateRef={gateRef}
     />
   );
 }
