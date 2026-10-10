@@ -11,7 +11,7 @@ import { MonthlyExpenseSection } from '@/components/MonthlyExpenseSection';
 import { GroupedOffspringList } from '@/components/GroupedOffspringList';
 import { DateRangeFilter } from '@/components/DateRangeFilter';
 import { MarketValueSeriesFilter } from '@/components/MarketValueSeriesFilter';
-import { addDaysToIstanbulIso, formatNowIstanbulDMYHM, previousMonthRangeIstanbul, todayIstanbulIso } from '@/lib/format';
+import { addDaysToIstanbulIso, buildReportPeriod, formatNowIstanbulDMYHM, previousMonthRangeIstanbul, todayIstanbulIso } from '@/lib/format';
 
 function todayIso(): string {
   return todayIstanbulIso();
@@ -103,6 +103,7 @@ export default async function ReportPage({
       : [];
 
   const showCustomFilter = report.singleDate || report.statusFilter;
+  const period = buildReportPeriod(rangeStart, rangeEnd, asOfDate);
 
   return (
     <div>
@@ -148,13 +149,18 @@ export default async function ReportPage({
       ) : report.slug === 'parent-performance' ? (
         <ParentPerformanceSection motherRows={rows} sireRows={sireRows} />
       ) : report.slug === 'feed-daily-cost' ? (
-        <DailyFeedCostSection costReport={report} costRows={rows} runwayRows={feedStockRunwayRows} />
+        <DailyFeedCostSection costReport={report} costRows={rows} runwayRows={feedStockRunwayRows} period={period} />
       ) : report.slug === 'monthly-expenses' ? (
-        <MonthlyExpenseSection summaryReport={report} summaryRows={rows} detailRows={monthlyExpenseDetailRows} />
+        <MonthlyExpenseSection
+          summaryReport={report}
+          summaryRows={rows}
+          detailRows={monthlyExpenseDetailRows}
+          period={period}
+        />
       ) : report.groupBy ? (
         <GroupedOffspringList report={report} rows={rows} searchQuery={searchQuery} />
       ) : (
-        <ReportTable report={report} rows={rows} serverQuery={searchQuery} />
+        <ReportTable report={report} rows={rows} serverQuery={searchQuery} period={period} />
       )}
     </div>
   );

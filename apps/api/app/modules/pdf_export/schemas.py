@@ -29,6 +29,10 @@ class PdfSummaryBox(BaseModel):
 
 class PdfTableRequest(BaseModel):
     title: str
+    # Raporun kapsadigi donem/tarih (orn. "Dönem: 01/09/2026 - 30/09/2026" ya
+    # da "Tarih itibarıyla: 10/10/2026") - basligin hemen altinda, aciklamadan
+    # ONCE vurgulu gosterilir, basili kagitta hangi doneme ait oldugu belli olsun.
+    period: str | None = None
     description: str | None = None
     summary_boxes: list[PdfSummaryBox] = []
     columns: list[PdfColumnSpec]

@@ -21,6 +21,9 @@ export interface PdfSummaryBox {
 
 interface PdfExportButtonProps {
   title: string;
+  /** Raporun kapsadığı dönem/tarih (örn. "Dönem: 01/09/2026 - 30/09/2026") -
+   * başlığın hemen altında vurgulu basılır. */
+  period?: string;
   description?: string;
   summaryBoxes?: PdfSummaryBox[];
   columns: PdfColumn[];
@@ -37,7 +40,7 @@ interface PdfExportButtonProps {
  * /api/render-pdf üzerinden bir istek atar, bu yüzden CSV'nin aksine
  * asenkron bir "Hazırlanıyor…" durumu vardır.
  */
-export function PdfExportButton({ title, description, summaryBoxes, columns, rows, highlightedRows, filename }: PdfExportButtonProps) {
+export function PdfExportButton({ title, period, description, summaryBoxes, columns, rows, highlightedRows, filename }: PdfExportButtonProps) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,6 +53,7 @@ export function PdfExportButton({ title, description, summaryBoxes, columns, row
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title,
+          period,
           description,
           summary_boxes: (summaryBoxes ?? []).map((box) => ({
             label: box.label,

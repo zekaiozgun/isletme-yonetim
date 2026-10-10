@@ -26,17 +26,19 @@ export function MonthlyExpenseSection({
   summaryReport,
   summaryRows,
   detailRows,
+  period,
 }: {
   summaryReport: ReportConfig;
   summaryRows: ApiRecord[];
   detailRows: ApiRecord[];
+  period?: { label: string; fileSuffix: string };
 }) {
   return (
     <div className="space-y-8">
-      <ReportTable report={summaryReport} rows={summaryRows} />
+      <ReportTable report={summaryReport} rows={summaryRows} period={period} />
       <div>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Genel Gider Kayıtları</h2>
-        <ReportTable report={detailReport} rows={detailRows} />
+        <ReportTable report={detailReport} rows={detailRows} period={period} />
       </div>
     </div>
   );

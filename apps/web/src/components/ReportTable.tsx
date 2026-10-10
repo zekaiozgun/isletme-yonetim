@@ -123,9 +123,13 @@ export function ReportTable({
   report,
   rows,
   serverQuery,
+  period,
 }: {
   report: ReportConfig;
   rows: ApiRecord[];
+  /** Raporun kapsadığı dönem/tarih (bkz. lib/format.ts buildReportPeriod) -
+   * PDF'te başlığın altında basılır ve indirilen dosya adına eklenir. */
+  period?: { label: string; fileSuffix: string };
   /** report.serverSearch true ise mevcut arama sorgusu (bkz. TableSearch) -
    * verilirse, 0 satır dönse bile arama kutusu (sorguyu değiştirebilsin
    * diye) HER ZAMAN gösterilir; verilmezse (client-side arama) 0 satırda
@@ -151,6 +155,7 @@ export function ReportTable({
   // oluşuyor. Bir "Not" benzeri sütun varsa o fazla alanı doğal olarak
   // yutar, tablo da w-full kalabilir.
   const hasWideColumn = report.columns.some((c) => c.width === 'wide');
+  const baseFilename = period ? `${toFilenameSafe(report.title)} ${period.fileSuffix}` : toFilenameSafe(report.title);
 
   return (
     <>
@@ -164,13 +169,14 @@ export function ReportTable({
           <>
             <PdfExportButton
               title={report.title}
+              period={period?.label}
               description={report.description}
               columns={pdfColumns}
               rows={csvRows}
               highlightedRows={highlightedRows}
-              filename={`${toFilenameSafe(report.title)}.pdf`}
+              filename={`${baseFilename}.pdf`}
             />
-            <CsvExportButton headers={csvHeaders} rows={csvRows} filename={`${toFilenameSafe(report.title)}.csv`} />
+            <CsvExportButton headers={csvHeaders} rows={csvRows} filename={`${baseFilename}.csv`} />
           </>
         }
       >

@@ -28,10 +28,12 @@ export function DailyFeedCostSection({
   costReport,
   costRows,
   runwayRows,
+  period,
 }: {
   costReport: ReportConfig;
   costRows: ApiRecord[];
   runwayRows: ApiRecord[];
+  period?: { label: string; fileSuffix: string };
 }) {
   return (
     <div className="space-y-8">
@@ -39,13 +41,13 @@ export function DailyFeedCostSection({
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
           Padok Bazında Günlük Maliyet
         </h2>
-        <ReportTable report={costReport} rows={costRows} />
+        <ReportTable report={costReport} rows={costRows} period={period} />
       </div>
       <div>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
           Yem Kalemi Bazında Stok Tükenme Tahmini
         </h2>
-        <ReportTable report={runwayReport} rows={runwayRows} />
+        <ReportTable report={runwayReport} rows={runwayRows} period={period} />
       </div>
     </div>
   );

@@ -46,6 +46,7 @@ body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 9pt; color: #1e
 div.header-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 h1 { font-size: 14pt; margin: 0; color: #0f172a; }
 span.generated-at { font-size: 8pt; color: #94a3b8; white-space: nowrap; }
+p.period { font-size: 10pt; font-weight: bold; color: #0f172a; margin: 4px 0 0 0; }
 p.description { font-size: 8pt; color: #64748b; margin: 4px 0 12px 0; }
 table { border-collapse: collapse; }
 table.full-width { width: 100%; }
@@ -111,6 +112,7 @@ def render_table_pdf(data: PdfTableRequest) -> bytes:
         )
         body_rows.append(f'<tr class="{" ".join(row_classes)}">{cells}</tr>')
 
+    period_html = f'<p class="period">{_escape(data.period)}</p>' if data.period else ""
     description_html = f'<p class="description">{_escape(data.description)}</p>' if data.description else ""
     summary_boxes_html = (
         f'<div class="summary-boxes">{"".join(_summary_box_html(box) for box in data.summary_boxes)}</div>'
@@ -127,6 +129,7 @@ def render_table_pdf(data: PdfTableRequest) -> bytes:
         f"<h1>{_escape(data.title)}</h1>"
         f'<span class="generated-at">Oluşturulma: {generated_at}</span>'
         "</div>"
+        f"{period_html}"
         f"{description_html}"
         f"{summary_boxes_html}"
         f'<table class="{table_class}"><thead><tr>{header_cells}</tr></thead>'

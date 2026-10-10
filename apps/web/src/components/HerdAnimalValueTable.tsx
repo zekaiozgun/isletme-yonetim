@@ -3,13 +3,20 @@
 import { useMemo, useState } from 'react';
 import type { ApiRecord } from '@/lib/api';
 import { formatAgeMixed, formatGenderShort, formatSourceCode, formatValuationStatus } from '@/lib/reports';
-import { formatCurrencyTRY as formatCurrency, formatUsdValue as formatUsd, formatNumberTR, formatDateDMY } from '@/lib/format';
+import {
+  buildReportPeriod,
+  formatCurrencyTRY as formatCurrency,
+  formatUsdValue as formatUsd,
+  formatNumberTR,
+  formatDateDMY,
+} from '@/lib/format';
 import { TableSearch } from '@/components/TableSearch';
 import { CsvExportButton } from '@/components/CsvExportButton';
 import { PdfExportButton, type PdfSummaryBox } from '@/components/PdfExportButton';
 
 export function HerdAnimalValueTable({ rows, asOfDate }: { rows: ApiRecord[]; asOfDate?: string }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const period = buildReportPeriod(undefined, undefined, asOfDate);
 
   const totals = useMemo(() => {
     let try_ = 0;
@@ -157,13 +164,18 @@ export function HerdAnimalValueTable({ rows, asOfDate }: { rows: ApiRecord[]; as
           <>
             <PdfExportButton
               title="Sürü Hayvan Listesi - Tahmini Piyasa Değeri"
+              period={period?.label}
               summaryBoxes={pdfSummaryBoxes}
               columns={pdfColumns}
               rows={pdfRows}
               highlightedRows={[pdfRows.length - 1]}
-              filename="herd-animal-market-values.pdf"
+              filename={`herd-animal-market-values${period ? ` ${period.fileSuffix}` : ''}.pdf`}
             />
-            <CsvExportButton headers={csvHeaders} rows={csvRows} filename="herd-animal-market-values.csv" />
+            <CsvExportButton
+              headers={csvHeaders}
+              rows={csvRows}
+              filename={`herd-animal-market-values${period ? ` ${period.fileSuffix}` : ''}.csv`}
+            />
           </>
         }
       >

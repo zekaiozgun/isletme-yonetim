@@ -12,6 +12,28 @@ export function formatDateDMY(value: unknown): string {
   return `${day}/${month}/${year}`;
 }
 
+/** Bir raporun kapsadığı dönemi/tarihi PDF başlığı altında basılacak metne
+ * ve indirilen dosya adına eklenecek ek'e çevirir: tarih aralığı raporları
+ * "Dönem: 01/09/2026 - 30/09/2026", tek tarihli (itibarıyla) raporlar
+ * "Tarih itibarıyla: 10/10/2026". İkisi de yoksa undefined (o rapor zamandan
+ * bağımsız bir anlık görüntüdür, PDF zaten "Oluşturulma" damgası taşır). */
+export function buildReportPeriod(
+  rangeStart?: string,
+  rangeEnd?: string,
+  asOfDate?: string
+): { label: string; fileSuffix: string } | undefined {
+  if (rangeStart && rangeEnd) {
+    return {
+      label: `Dönem: ${formatDateDMY(rangeStart)} - ${formatDateDMY(rangeEnd)}`,
+      fileSuffix: `${rangeStart}_${rangeEnd}`,
+    };
+  }
+  if (asOfDate) {
+    return { label: `Tarih itibarıyla: ${formatDateDMY(asOfDate)}`, fileSuffix: asOfDate };
+  }
+  return undefined;
+}
+
 /**
  * Rapor/kaynak başlıklarını (örn. "Doğum/Buzağılama Raporu") indirilen
  * dosya adı için güvenli hale getirir - önceden PDF/CSV indirmeleri
