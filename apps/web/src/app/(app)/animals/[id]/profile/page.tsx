@@ -57,6 +57,8 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
     evaluationPriorities,
     valuation,
     geneticComposition,
+    allDeaths,
+    deathReasons,
   ] = await Promise.all([
     apiGetSafe<ApiRecord[]>('/animals/genders', []),
     apiGetSafe<ApiRecord[]>('/animals/breeds', []),
@@ -77,7 +79,13 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
     apiGetSafe<ApiRecord[]>('/evaluations/priorities', []),
     apiGetSafe<ApiRecord | null>(`/reports/animal-valuation/${id}`, null),
     apiGetSafe<{ composition_text: string | null }>(`/animals/${id}/genetic-composition`, { composition_text: null }),
+    apiGetSafe<ApiRecord[]>('/deaths', []),
+    apiGetSafe<ApiRecord[]>('/animals/death-reasons', []),
   ]);
+
+  // Ölüm kaydı (varsa) - tarih, neden ve ölümüne düşülen not profilde
+  // görünür olsun (kullanıcı geri bildirimi).
+  const deathRecord = allDeaths.find((d) => String(d.animal_id) === String(id)) ?? null;
 
   // Soy ağacı (3 nesil: anne/baba + anneanne/dede vb.) - tek uç noktadan,
   // hiçbir yerde saklanmaz (bkz. components/PedigreeTree.tsx).
@@ -109,6 +117,21 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
   const penMap = new Map(pens.map((p) => [String(p.id), `${String(p.code)} - ${String(p.name)}`]));
 
   const isActiveStatus = statusName === 'Aktif';
+  const isDeadStatus = statusName === 'Öldü';
+  const statusDate = deathRecord?.death_date ?? animal.status_date;
+  const deathReasonName = deathRecord ? findName(deathReasons, deathRecord.death_reason_id) : null;
+  const deathNote = deathRecord?.note ? String(deathRecord.note) : null;
+  const statusBannerTone = isActiveStatus
+    ? 'border-emerald-300 bg-emerald-50 text-emerald-900'
+    : isDeadStatus
+      ? 'border-red-300 bg-red-50 text-red-900'
+      : 'border-amber-300 bg-amber-50 text-amber-900';
+  const statusBannerDetail = [
+    statusDate ? `${formatDateDMY(statusDate)} tarihinde` : null,
+    deathReasonName ? `Neden: ${deathReasonName}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
   const deltaPercent =
     valuation && valuation.entry_value_try !== null && valuation.entry_value_try !== undefined && Number(valuation.entry_value_try) !== 0
       ? ((Number(valuation.current_value_try) - Number(valuation.entry_value_try)) / Number(valuation.entry_value_try)) * 100
@@ -117,11 +140,19 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
   // Sayfadaki verilerin PDF Profili için yeniden şekillendirilmesi -
   // ekranda gösterilenle AYNI veriler, backend'in genel-amaçlı çok-tablolu
   // renderer'ının beklediği düz (flat) biçimde (bkz. AnimalProfilePdfButton).
-  const subtitleParts = [genderName, breedName, statusName, formatAgeMixed(animal.age_months, animal)];
+  const subtitleParts = [
+    genderName,
+    breedName,
+    isActiveStatus ? 'AKTİF' : statusName.toLocaleUpperCase('tr-TR'),
+    formatAgeMixed(animal.age_months, animal),
+  ];
   const metaLineParts = [
     animal.birth_date ? `Doğum ${formatDateDMY(animal.birth_date)}` : null,
     `Giriş ${formatDateDMY(animal.entry_date)}`,
     entrySourceName,
+    !isActiveStatus && statusDate ? `${statusName}: ${formatDateDMY(statusDate)}` : null,
+    deathReasonName ? `Ölüm nedeni: ${deathReasonName}` : null,
+    deathNote ? `Ölüm notu: ${deathNote}` : null,
   ].filter((p): p is string => Boolean(p));
 
   const pdfInfoBoxes: PdfKeyValueBox[] = [
@@ -263,6 +294,16 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
             Kaydı Düzenle
           </Link>
         </div>
+      </div>
+
+      <div className={`mb-4 rounded-lg border-2 px-4 py-3 ${statusBannerTone}`}>
+        <p className="text-lg font-bold tracking-wide">{statusName.toLocaleUpperCase('tr-TR')}</p>
+        {statusBannerDetail && <p className="text-sm">{statusBannerDetail}</p>}
+        {deathNote && (
+          <p className="mt-1.5 border-t border-current/20 pt-1.5 text-sm">
+            <span className="font-semibold">Ölüm notu:</span> {deathNote}
+          </p>
+        )}
       </div>
 
       <div className="mb-2 flex flex-wrap gap-1.5">
