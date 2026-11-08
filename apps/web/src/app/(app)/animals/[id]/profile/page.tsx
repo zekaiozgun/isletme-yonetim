@@ -59,6 +59,9 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
     geneticComposition,
     allDeaths,
     deathReasons,
+    allSales,
+    saleTypes,
+    buyers,
   ] = await Promise.all([
     apiGetSafe<ApiRecord[]>('/animals/genders', []),
     apiGetSafe<ApiRecord[]>('/animals/breeds', []),
@@ -81,7 +84,17 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
     apiGetSafe<{ composition_text: string | null }>(`/animals/${id}/genetic-composition`, { composition_text: null }),
     apiGetSafe<ApiRecord[]>('/deaths', []),
     apiGetSafe<ApiRecord[]>('/animals/death-reasons', []),
+    apiGetSafe<ApiRecord[]>('/sales', []),
+    apiGetSafe<ApiRecord[]>('/sales/types', []),
+    apiGetSafe<ApiRecord[]>('/sales/buyers', []),
   ]);
+
+  // Satış/kesim kaydı (varsa) - tip (Satış/Kesim vb.), alıcı, tutar ve
+  // satışa düşülen not profilde görünür olsun.
+  const saleRecord = allSales.find((s) => String(s.animal_id) === String(id)) ?? null;
+  const saleTypeName = saleRecord ? findName(saleTypes, saleRecord.sale_type_id) : null;
+  const buyerName = saleRecord ? findName(buyers, saleRecord.buyer_id) : null;
+  const saleNote = saleRecord?.note ? String(saleRecord.note) : null;
 
   // Ölüm kaydı (varsa) - tarih, neden ve ölümüne düşülen not profilde
   // görünür olsun (kullanıcı geri bildirimi).
@@ -118,7 +131,7 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
 
   const isActiveStatus = statusName === 'Aktif';
   const isDeadStatus = statusName === 'Öldü';
-  const statusDate = deathRecord?.death_date ?? animal.status_date;
+  const statusDate = deathRecord?.death_date ?? saleRecord?.sale_date ?? animal.status_date;
   const deathReasonName = deathRecord ? findName(deathReasons, deathRecord.death_reason_id) : null;
   const deathNote = deathRecord?.note ? String(deathRecord.note) : null;
   const statusBannerTone = isActiveStatus
@@ -129,6 +142,11 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
   const statusBannerDetail = [
     statusDate ? `${formatDateDMY(statusDate)} tarihinde` : null,
     deathReasonName ? `Neden: ${deathReasonName}` : null,
+    saleTypeName ? `İşlem: ${saleTypeName}` : null,
+    buyerName ? `Alıcı: ${buyerName}` : null,
+    saleRecord && saleRecord.total_amount !== null && saleRecord.total_amount !== undefined
+      ? `Tutar: ${formatCurrencyTRY(saleRecord.total_amount)}`
+      : null,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -153,6 +171,8 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
     !isActiveStatus && statusDate ? `${statusName}: ${formatDateDMY(statusDate)}` : null,
     deathReasonName ? `Ölüm nedeni: ${deathReasonName}` : null,
     deathNote ? `Ölüm notu: ${deathNote}` : null,
+    saleTypeName ? `İşlem: ${saleTypeName}${buyerName ? ` (${buyerName})` : ''}` : null,
+    saleNote ? `${saleTypeName ?? 'Satış'} notu: ${saleNote}` : null,
   ].filter((p): p is string => Boolean(p));
 
   const pdfInfoBoxes: PdfKeyValueBox[] = [
@@ -302,6 +322,11 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
         {deathNote && (
           <p className="mt-1.5 border-t border-current/20 pt-1.5 text-sm">
             <span className="font-semibold">Ölüm notu:</span> {deathNote}
+          </p>
+        )}
+        {saleNote && (
+          <p className="mt-1.5 border-t border-current/20 pt-1.5 text-sm">
+            <span className="font-semibold">{saleTypeName ?? 'Satış'} notu:</span> {saleNote}
           </p>
         )}
       </div>
