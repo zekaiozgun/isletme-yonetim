@@ -115,6 +115,12 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
       )
     : [];
 
+  // Yavru listesi: doğum tarihine göre (eskiden yeniye) - hem anne hem
+  // (damızlık boğaysa) baba olarak.
+  const offspringList = [...offspringAsMother, ...offspringAsSire].sort((a, b) =>
+    String(a.birth_date).localeCompare(String(b.birth_date))
+  );
+
   const weightPoints: TrendPoint[] = weightRecords
     .filter((w) => typeof w.weigh_date === 'string' && typeof w.weight_kg !== 'undefined' && w.weight_kg !== null)
     .map((w) => ({ date: String(w.weigh_date), value: Number(w.weight_kg) }));
@@ -268,6 +274,18 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
         ];
       }),
   });
+  if (offspringList.length > 0) {
+    pdfTables.push({
+      title: 'Yavrular',
+      columns: ['Doğum Tarihi', 'Küpe No', 'D/E', 'Statü'],
+      rows: offspringList.map((o) => [
+        formatDateDMY(o.birth_date),
+        String(o.tag_number),
+        String(o.gender_name ?? '—'),
+        String(o.status_name ?? '—'),
+      ]),
+    });
+  }
   pdfTables.push({
     title: 'Değerlendirme Geçmişi',
     columns: ['Tarih', 'Neden', 'Öncelik', 'Not'],
@@ -404,27 +422,44 @@ export default async function AnimalProfilePage({ params }: { params: Promise<{ 
               </div>
             )}
             <PedigreeTree node={pedigree} />
-            {(offspringAsMother.length > 0 || offspringAsSire.length > 0) && (
-              <div className="mt-4">
-                <p className="mb-1 text-xs font-medium text-slate-500">
-                  Yavruları ({offspringAsMother.length + offspringAsSire.length})
-                </p>
-                <ul className="space-y-1 text-sm">
-                  {[...offspringAsMother, ...offspringAsSire].map((o) => (
-                    <li key={String(o.animal_id)}>
-                      <Link href={`/animals/${o.animal_id}/profile`} className="text-slate-700 hover:underline">
-                        {String(o.tag_number)}
-                      </Link>{' '}
-                      <span className="text-slate-400">({formatDateDMY(o.birth_date)})</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {selfAsSire && offspringAsMother.length === 0 && offspringAsSire.length === 0 && (
-              <p className="mt-4 text-sm text-slate-500">Bu hayvan bir damızlık boğa olarak kayıtlı, henüz yavrusu yok.</p>
-            )}
           </Section>
+
+          {(offspringAsMother.length > 0 || offspringAsSire.length > 0 || genderName === 'Dişi' || selfAsSire) && (
+            <Section title={`Yavrular (${offspringList.length})`}>
+              {offspringList.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  {selfAsSire ? 'Bu hayvan bir damızlık boğa olarak kayıtlı, henüz yavrusu yok.' : 'Henüz kayıtlı yavrusu yok.'}
+                </p>
+              ) : (
+                <div className="overflow-x-auto rounded border border-slate-200">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-medium text-slate-600">Doğum Tarihi</th>
+                        <th className="px-3 py-2 text-left font-medium text-slate-600">Küpe No</th>
+                        <th className="px-3 py-2 text-left font-medium text-slate-600">D/E</th>
+                        <th className="px-3 py-2 text-left font-medium text-slate-600">Statü</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {offspringList.map((o) => (
+                        <tr key={String(o.animal_id)} className="border-t border-slate-100">
+                          <td className="px-3 py-1.5 text-slate-700">{formatDateDMY(o.birth_date)}</td>
+                          <td className="px-3 py-1.5">
+                            <Link href={`/animals/${o.animal_id}/profile`} className="font-medium text-slate-800 hover:underline">
+                              {String(o.tag_number)}
+                            </Link>
+                          </td>
+                          <td className="px-3 py-1.5 text-slate-700">{String(o.gender_name ?? '—')}</td>
+                          <td className="px-3 py-1.5 text-slate-700">{String(o.status_name ?? '—')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Section>
+          )}
 
           {damBreedingEvents.length > 0 && (
             <Section title="Üreme Geçmişi">
